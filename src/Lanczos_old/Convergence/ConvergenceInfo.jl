@@ -46,7 +46,7 @@ end
 mutable struct ConvergenceInfoOut
     # Factorization info
     factorizationtype::String
-    blockdim::Int
+    blocksize::Int
     # Requested number of eigrnpairs
     howmany::Int
     # Lanczos convergence
@@ -73,9 +73,9 @@ mutable struct ConvergenceInfoOut
     function ConvergenceInfoOut(convergenceinfo::ConvergenceInfo, eigenvaluesinfo::EigenvaluesInfo, factorization::KrylovFactorization, walltimes::Vector{Float64})
         factorizationtype_ = string(typeof(factorization))
         factorizationtype = split(first(split(factorizationtype_,"{")), ".")[end]
-        blockdim = isa(factorization, LanczosFactorization) ? 1 : factorization.blockdim
+        blocksize = isa(factorization, LanczosFactorization) ? 1 : factorization.blocksize
         new(factorizationtype, 
-            blockdim,
+            blocksize,
             convergenceinfo.howmany, 
             convergenceinfo.tol, 
             convergenceinfo.residual, 
@@ -151,7 +151,7 @@ function display_convergenceinfo(info::ConvergenceInfoOut; show_convergence_deta
     formatted_percentages = join(["\e[1;36m" * @sprintf("%.2f", p) * "%\e[0m" for p in percentages], ", ")
 
     factorizationtype   = @sprintf("\e[1m%s\e[0m", info.factorizationtype)
-    blocksize           = @sprintf("\e[1m%d\e[0m", info.blockdim)
+    blocksize           = @sprintf("\e[1m%d\e[0m", info.blocksize)
     howmany             = @sprintf("\e[1;36m %d \e[0m", info.howmany)
     converged           = @sprintf("%s %d \e[0m", eig_tol_color, info.converged_eigentol) 
     lanczos_coverged    = @sprintf("%s %d \e[0m", lanczos_tol_color, info.converged_tol)
@@ -218,7 +218,7 @@ function print_convergenceinfo(info::ConvergenceInfoOut; show_convergence_detail
     formatted_percentages = join(["" * @sprintf("%.2f", p) * "" for p in percentages], ", ")
 
     factorizationtype   = @sprintf("%s", info.factorizationtype)
-    blocksize           = @sprintf("%d", info.blockdim)
+    blocksize           = @sprintf("%d", info.blocksize)
     howmany             = @sprintf(" %d ", info.howmany)
     converged           = @sprintf("%s %d ", eig_tol_color, info.converged_eigentol) 
     lanczos_coverged    = @sprintf("%s %d ", lanczos_tol_color, info.converged_tol)

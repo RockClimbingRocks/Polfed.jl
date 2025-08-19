@@ -22,7 +22,7 @@ function lanczos_algorithm!(
         convergenceinfo.numiter >= convergenceinfo.maxiter && break
     end
 
-    factorization_report = FactorizationReport(convergenceinfo, factorization, walltimes, cputimes)
+    factorization_report = FactorizationReport(convergenceinfo, factorization, iterator, walltimes, cputimes)
     return factorization_report
 end
 

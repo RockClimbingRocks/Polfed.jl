@@ -10,7 +10,7 @@ function clenshaw(
     transform::ClenshawType, 
     Ỹ::AbstractVecOrMat{<:Number}, 
     Y::AbstractVecOrMat{<:Number}, 
-    b::Vector{<:Vector{<:Vector{<:Number}}}, 
+    b::AbstractVector{<:AbstractVector{<:AbstractVector{<:Number}}}, 
     ::CPU, 
     ::MulColsParallel
 )
@@ -40,12 +40,12 @@ end
 
 function clenshaw(
     transform::ClenshawType, 
-    W::AbstractVecOrMat{<:Number},
-    V::AbstractVecOrMat{<:Number}, 
-    b::AbstractVector{<:AbstractVecOrMat{<:Number}}, 
+    W::AbstractVecOrMat{T},
+    V::AbstractVecOrMat{T}, 
+    b::AbstractVector{<:AbstractVecOrMat{T}}, 
     ::ProcessingUnit, 
     ::NoParallel
-)
+) where {T<:Number}
 
     transform(W, V, b)
 end

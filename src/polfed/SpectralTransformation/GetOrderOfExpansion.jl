@@ -14,9 +14,9 @@ end
 
 #HERE i need to corrrect it because i leav a and b as thy should be, but i decres K as i want!.... than a and b go furher away 
 function getorderofexapnsion_in_interval!(spectral_transform::SpectralTransformConfigFull)
-    @unpack coefficients, polynomialtype, normalization, cutoff, a, b, order_safety_factor = spectral_transform
-    target = (a+b)/2
-    halfwidth = (b-a)/2
+    @unpack coefficients, polynomialtype, normalization, cutoff, left, right, order_safety_factor = spectral_transform
+    target = (left+right)/2
+    halfwidth = (right-left)/2
 
     # coeffs = map(n -> coefficients(λ,n,Kmax), 0:Kmax)
     # coeffs_ = @view(coeffs[1:K+1])
@@ -27,8 +27,8 @@ function getorderofexapnsion_in_interval!(spectral_transform::SpectralTransformC
         normalization_ = transform(target) 
         p(x::Real) = transform(x)/normalization_ * normalization
     
-        p_a = p(a) 
-        p_b = p(b)
+        p_a = p(left) 
+        p_b = p(right)
 
         max(p_a, p_b) >= cutoff && (return -1)
         max(p_a, p_b) <  cutoff && (return +1)
@@ -41,6 +41,7 @@ function getorderofexapnsion_in_interval!(spectral_transform::SpectralTransformC
     spectral_transform.order = floor(Int64, K*order_safety_factor)
 
     println("Before resetting: left = $left, right = $right")
-    (order_safety_factor < 1.) && (getbounds_from_K!(spectral_transform, :mean); println("After resetting: left = $(spectral_transform.left), right = $(spectral_transform.right)"))
+    (order_safety_factor < 1.) && (getbounds_from_K!(spectral_transform, :mean); 
+    println("After resetting: left = $(spectral_transform.left), right = $(spectral_transform.right)"))
 
 end

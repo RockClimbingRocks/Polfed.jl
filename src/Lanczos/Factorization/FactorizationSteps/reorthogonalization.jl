@@ -6,9 +6,24 @@
     reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
 end
 
-@inline function reorthogonalization!(factorization::KrylovFactorization, ::PartialRO)
-    throw(error("reorthogonalization! method not yet defined for PartialRO."))
+
+
+@inline function reorthogonalization!(factorization::KrylovFactorization, pro::PartialRO)
+    # throw(error("reorthogonalization! method not yet defined for PartialRO."))
+    krylovdim = factorization.krylovdim
+    blocksize =  factorization isa LanczosFactorization ? 1 : factorization.blocksize
+    kryloviter = Integer(krylovdim ÷ blocksize)
+    pro_condition = (kryloviter%(2+pro.skip)==0) || ((kryloviter-1)%(2+pro.skip)==0)
+
+    if pro_condition
+        # println("Performing reorthogonalization... (at iter ", kryloviter, ")")
+        krylovbasis = all_withoutlasttwo(factorization.basis)
+        reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
+    end
+
 end
+
+
 
 
 ############################################################################################################################
@@ -34,11 +49,12 @@ end
 end
 
  
+
 ############################################################################################################################
 #                                       CLASSICAL GRAM-SCHMIDT REORTHOGONALIZATION 
 ############################################################################################################################
 
-# @inline function reorthogonalization!(krylovbasis::AbstractMatrix{E}, W::AbstractVector{E}, _::ProcessingUni) where {E<:Number}
+# @inline function reorthogonalization!(krylovbasis::AbstractMatrix{E}, W::AbstractVector{E}, _::ProcessingUnit) where {E<:Number}
 #     for i in 1:size(krylovbasis,2)
 #         v = view(krylovbasis, :, i)
 #         β = v'*W
@@ -46,28 +62,11 @@ end
 #     end
 # end
 
-# @inline function reorthogonalization!(krylovbasis::AbstractMatrix{E}, W::AbstractMatrix{E}, pu::ProcessingUnit, ::ClassicalGramSchmidt) where {E<:Number}
+# @inline function reorthogonalization!(krylovbasis::AbstractMatrix{E}, W::AbstractMatrix{E}, pu::ProcessingUnit) where {E<:Number}
 #     s = size(W,2)
 #     β = pu.Matrix{E}(undef, s, s)
 #     for i in 1:s:size(krylovbasis,2)
 #         v = view(krylovbasis, :, i:i+s-1)
-#         mul!(β, v', W)
-#         W .-= v*β
-#     end
-# end
-
-# @inline function reorthogonalization!(krylovbasis::Vector{<:T}, W::T, _::ProcessingUnit, ::ClassicalGramSchmidt) where {T<:AbstractVector}
-#     for v in krylovbasis    
-#         β = v' * W
-#         W .-= v*β
-#     end
-# end
-
-# @inline function reorthogonalization!(krylovbasis::Vector{<:T}, W::T, pu::ProcessingUnit, ::ClassicalGramSchmidt) where {T<:AbstractMatrix}
-#     s = size(W,2)
-#     β =  pu.Matrix{eltype(W)}(undef, s, s)
-
-#     for v in krylovbasis    
 #         mul!(β, v', W)
 #         W .-= v*β
 #     end

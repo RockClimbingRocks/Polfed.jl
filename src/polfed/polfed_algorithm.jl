@@ -3,7 +3,6 @@ function polfed_algorithm(
     lanczos_config::LanczosConfigFull,
     dos::DoSConfigFull,
     pu::ProcessingUnit,
-    produce_report::Bool
 )
 
     getdos!(dos, spectral_transform, lanczos_config, pu)
@@ -11,7 +10,7 @@ function polfed_algorithm(
 
 
 
-    vals, vecs, fact_report = lanczosmethod(
+    vals, vecs, fact_report = lanczos(
         spectral_transform.f!_transformed, lanczos_config.x0, spectral_transform.howmany;
         rot         = lanczos_config.rot,
         basistype   = lanczos_config.basistype, 
@@ -19,7 +18,7 @@ function polfed_algorithm(
         tol         = lanczos_config.tol, 
         eigentol    = lanczos_config.eigentol, 
         which       = lanczos_config.which,
-        mapvals     = f!
+        mapvals     = spectral_transform.f!
     ) 
 
     return vals, vecs, fact_report

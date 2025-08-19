@@ -1,17 +1,21 @@
 
 
 mutable struct LanczosConfig
-    rot#::ReOrthTechnique
+    rot::ReOrthTechnique
+    basistype::Type{<:OrthonormalBasis}
+    which::Symbol
     tol::Real
     eigentol::Union{Real,Nothing}
 
 
     function LanczosConfig(;
-                           rot=PolfedDefaults.rot, 
-                           tol::Real=PolfedDefaults.tol, 
-                           eigentol::Union{Real, Nothing}=PolfedDefaults.eigentol, 
+        rot=PolfedDefaults.rot, 
+        basistype::Type{<:OrthonormalBasis}=PolfedDefaults.basistype,
+        which::Symbol=PolfedDefaults.which,
+        tol::Real=PolfedDefaults.tol, 
+        eigentol::Union{Real, Nothing}=PolfedDefaults.eigentol, 
     )
-        new(rot, tol, eigentol)
+        new(rot, basistype, which, tol, eigentol)
     end
 
 end
@@ -22,7 +26,9 @@ mutable struct LanczosConfigFull
     x0::AbstractVecOrMat
     elmtype::Type
     maxdim::Integer
-    rot#::ReOrthTechnique
+    rot::ReOrthTechnique
+    basistype::Type{<:OrthonormalBasis}
+    which::Symbol
     tol::Real
     eigentol::Union{Real,Nothing}
 
@@ -41,6 +47,8 @@ mutable struct LanczosConfigFull
             T,
             PolfedDefaults.expectedkrylovdim(howmany, blocksize, spectral_transform.overestimate_iters),
             lanczos.rot,
+            lanczos.basistype,
+            lanczos.which,
             lanczos.tol,
             lanczos.eigentol,
         )

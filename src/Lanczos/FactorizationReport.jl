@@ -1,7 +1,7 @@
 mutable struct FactorizationReport
     # Factorization info
     factorizationtype::String
-    blockdim::Integer
+    blocksize::Integer
     # Basis related stuff
     basistype::Type{<:OrthonormalBasis}
     ncols_cpu_reserved::Integer
@@ -11,6 +11,7 @@ mutable struct FactorizationReport
     howmany::Integer
     itersneeded::Integer
     itersreserved::Integer
+    rot::ReOrthTechnique
     # Lanczos convergence
     tol::Real
     residual::Real
@@ -31,13 +32,14 @@ mutable struct FactorizationReport
     function FactorizationReport(
         convergenceinfo::ConvergenceInfo,
         factorization::KrylovFactorization,
+        iterator::LanczosIterator,
         walltimes::Vector{<:Real},
         cputimes::Vector{<:Real}
     )
         # Factorization details
         factorizationtype_ = string(typeof(factorization))
         factorizationtype  = split(first(split(factorizationtype_, "{")), ".")[end]
-        blockdim = isa(factorization, LanczosFactorization) ? 1 : factorization.blockdim
+        blocksize = isa(factorization, LanczosFactorization) ? 1 : factorization.blocksize
         basistype = typeof(factorization.basis)
 
         # Basis size info
@@ -66,15 +68,16 @@ mutable struct FactorizationReport
 
         new(
             factorizationtype,
-            blockdim,
+            blocksize,
             basistype,
             ncols_cpu_reserved,
             ncols_gpu_reserved,
             ncols_cpu_needed,
             ncols_gpu_needed,
             convergenceinfo.howmany,
-            convergenceinfo.numiter,          # itersneeded
-            convergenceinfo.maxiter,          # itersreserved
+            convergenceinfo.numiter,
+            convergenceinfo.maxiter, 
+            iterator.rot,
             convergenceinfo.tol,
             convergenceinfo.residual,
             convergenceinfo.converged,
@@ -121,7 +124,7 @@ function display_report(report::FactorizationReport; show_convergence_details=fa
 
 
     factorizationtype   = @sprintf("\e[1m%s\e[0m", report.factorizationtype)
-    blocksize           = @sprintf("\e[1m%d\e[0m", report.blockdim)
+    blocksize           = @sprintf("\e[1m%d\e[0m", report.blocksize)
     howmany             = @sprintf("\e[1;36m %d \e[0m", report.howmany)
     converged           = @sprintf("%s %d \e[0m", eig_tol_color, report.converged_eigentol) 
     lanczos_coverged    = @sprintf("%s %d \e[0m", lanczos_tol_color, report.converged_tol)
@@ -130,6 +133,9 @@ function display_report(report::FactorizationReport; show_convergence_details=fa
     eigentol            = @sprintf("\e[1;36m %.2e \e[0m", report.eigentol)
     residual            = @sprintf("\e[1;33m %.2e \e[0m", report.residual)
     eigrnresidual       = @sprintf("\e[1;33m %.2e \e[0m", report.eigenresidual)
+    basis_type          = @sprintf("\e[1;36m%s\e[0m", split(first(split(string(report.basistype), "{")), ".")[end])
+    rot                 = @sprintf("\e[1;36m%s\e[0m", split(string(report.rot), ".")[end])
+
 
     itersneeded         = @sprintf("%s %d \e[0m", remaining_color, report.itersneeded)
     itersreserved       = @sprintf("\e[1;36m %d \e[0m", report.itersreserved)
@@ -145,6 +151,7 @@ function display_report(report::FactorizationReport; show_convergence_details=fa
     println("- Lanczos convergence satisfied by: $lanczos_coverged (with tolerance $tol max residual was $residual)")
     println("- Eigen convergence satisfied by:   $eigen_coverged (with tolerance $eigentol max residual was $eigrnresidual)")
     println("- Iterations needed: $itersneeded  (out of $itersreserved reserved, overestimated by $iterspercantage)")
+    println("- Basis type: $basis_type and reorthogonalization technique: $rot")
 
     if show_timings
         println(  "\e[1;34mTimings:\e[0m Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)")
@@ -192,7 +199,7 @@ function print_report(report::FactorizationReport; show_convergence_details=fals
     formatted_percentages = join(["" * @sprintf("%.2f", p) * "" for p in percentages], ", ")
 
     factorizationtype   = @sprintf("%s", report.factorizationtype)
-    blocksize           = @sprintf("%d", report.blockdim)
+    blocksize           = @sprintf("%d", report.blocksize)
     howmany             = @sprintf(" %d ", report.howmany)
     converged           = @sprintf("%s %d ", eig_tol_color, report.converged_eigentol) 
     lanczos_coverged    = @sprintf("%s %d ", lanczos_tol_color, report.converged_tol)

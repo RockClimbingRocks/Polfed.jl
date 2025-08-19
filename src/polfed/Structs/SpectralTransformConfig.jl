@@ -7,7 +7,7 @@ mutable struct SpectralTransformConfig
     right::Union{Real, Nothing}
     order::Union{Int, Nothing}
     order_safety_factor::Real
-    parallelization::Parallelization
+    parallelization::Union{Parallelization,Nothing}
     f!_rescaled::Union{Nothing, Function}   
     clenshaw_recurrence::Union{Nothing, Function}
     clenshaw_finalsum::Union{Nothing, Function}
@@ -17,11 +17,11 @@ mutable struct SpectralTransformConfig
         coefficients::Function                          =   PolfedDefaults.coefficients, 
         normalization::Real                             =   PolfedDefaults.normalization, 
         cutoff::Real                                    =   PolfedDefaults.cutoff, 
-        left::Union{Real, Nothing}                     =   nothing,
-        right::Union{Real, Nothing}                    =   nothing,
+        left::Union{Real, Nothing}                      =   nothing,
+        right::Union{Real, Nothing}                     =   nothing,
         order::Union{Integer, Nothing}                  =   nothing,
         order_safety_factor::Real                       =   PolfedDefaults.order_safety_factor,
-        parallelization::Parallelization                =   PolfedDefaults.parallelization,
+        parallelization::Union{Parallelization,Nothing} =   PolfedDefaults.parallelization,
         f!_rescaled::Union{Nothing, Function}           =   nothing,
         clenshaw_recurrence::Union{Nothing, Function}   =   nothing,
         clenshaw_finalsum::Union{Nothing, Function}     =   nothing,
@@ -33,6 +33,11 @@ end
 
 
 
+
+
+"""
+    this struct has everything in rescaled units (target, left, right)
+"""
 mutable struct SpectralTransformConfigFull
     coefficients::Function
     normalization::Real
@@ -50,16 +55,19 @@ mutable struct SpectralTransformConfigFull
     f!_transformed::Union{Function,Nothing}
     clenshaw_recurrence::Union{Nothing, Function}
     clenshaw_finalsum::Union{Nothing, Function}
-    overestimate_iters::Real 
+    overestimate_iters::Real
+    Emin::Real
+    Emax::Real
 
 
     function SpectralTransformConfigFull(
         cfg::SpectralTransformConfig,
         f!::Function,
+        x0::AbstractVecOrMat{T},
         howmany::Integer,
         target::Real,
         pu::ProcessingUnit,
-    )
+    ) where {T<:Real}
         parallelization = nothing
         if isa(cfg.parallelization, Nothing)
             isa(pu, CPU) && (parallelization = MulColsParallel())
@@ -67,29 +75,22 @@ mutable struct SpectralTransformConfigFull
         else
             parallelization = cfg.parallelization
         end
+        
+        Emin = first(collect(lanczos(f!, x0, 1; which=:smallest, maxdim=1000)[1]))
+        Emax = last(collect(lanczos(f!, x0, 1; which=:largest,  maxdim=1000)[1]))
+        
+        a = (Emax-Emin)/2
+        b = (Emax+Emin)/2
 
-        f!_rescaled = nothing 
-        if isa(cfg.f!_rescaled, Nothing)
-
-
-            
-            println("THIS IS NOT OK YET!!!!")
-            Emin = lanczos(f!, x0, 1; which=:smallest, maxdim=100)
-            Emax = lanczos(f!, x0, 1; which=:largest,  maxdim=100)
-            # Emax = +400.
-            # Emin = -400.
-
-            a = (Emax-Emin)/2
-            b = (Emax+Emin)/2
-
-            f!_rescaled_fun(Y::AbstractVecOrMat,X::AbstractVecOrMat) = begin
-                f!(Y,X) 
-                @. Y *= 1/a
-                @. Y -= (b/a)*X
-            end
-
-            f!_rescaled = f!_rescaled_fun
+        f!_rescaled = !isa(cfg.f!_rescaled, Nothing) ? cfg.f!_rescaled : f!_rescaled_fun(Y::AbstractVecOrMat,X::AbstractVecOrMat) = begin
+            f!(Y,X) 
+            @. Y *= 1/a
+            @. Y -= (b/a)*X
         end
+
+        target_rescale  = isa(target, Nothing)      ? nothing : (target - b) / a
+        left_rescale    = isa(cfg.left, Nothing)    ? nothing : (cfg.left - b) / a
+        right_rescale   = isa(cfg.right, Nothing)   ? nothing : (cfg.right - b) / a
 
 
         new(
@@ -97,19 +98,21 @@ mutable struct SpectralTransformConfigFull
             cfg.normalization,
             PolfedDefaults.polynomialtype,
             cfg.cutoff,
-            target,
-            cfg.left,
-            cfg.right,
+            target_rescale,
+            left_rescale,
+            right_rescale,
             howmany,
             cfg.order,
             cfg.order_safety_factor,
-            cfg.parallelization,
+            parallelization,
             f!,
             f!_rescaled,
             nothing,
             cfg.clenshaw_recurrence,
             cfg.clenshaw_finalsum,
             cfg.overestimate_iters,
+            Emin,
+            Emax,
         )
     end
 end

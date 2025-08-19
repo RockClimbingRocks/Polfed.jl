@@ -2,7 +2,7 @@
 module PolfedDefaults
 using ..Polfed
 
-
+# Predict krylov dimension for polfed
 const expectedkrylovdim(howmany::Int, blocksize::Int, η::Real) = ceil(Int64, (20.427*blocksize + 1.696*howmany)*η)
 
 
@@ -15,17 +15,16 @@ const coefficients(λ::T, n::Int) where {T<:Real} = T((2 - ==(n,0)) * cos(n * ac
 const polynomialtype        = :Chebyshev
 const cutoff                = 0.17
 const normalization         = 1.00
-const order_safety_factor   = 0.95
-const parallelization       = Polfed.MulColsParallel()
+const order_safety_factor   = 0.97
+const parallelization       = nothing
 const overestimate_iters    = 1.25
 
 
 # Lanczos defaults 
 const rot       = Polfed.FullRO()
-const reorth    = Polfed.MatrixGramSchmidt()
 const basistype = Polfed.MatrixBasis
 const tol       = 1e-14
-const eigentol  = nothing
+const eigentol  = 1e-9
 const which     = :largest
 
 

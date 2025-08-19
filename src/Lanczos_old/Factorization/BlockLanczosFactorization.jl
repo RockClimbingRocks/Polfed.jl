@@ -1,7 +1,7 @@
 
 mutable struct BlockLanczosFactorization{E,P} <: KrylovFactorization{E,P}
     krylovdim::Int # current Krylov dimension
-    blockdim::Int # block dimension
+    blocksize::Int # block dimension
     basis::Basis # basis of length k
     mat::AbstractMatrix{E}
     r::  AbstractMatrix{E}
@@ -26,19 +26,19 @@ end
 # get factorization properties
 
 function getoverlap(fact::BlockLanczosFactorization)
-    blockdim = fact.blockdim
+    blocksize = fact.blocksize
     krylovdim = fact.krylovdim
 
-    α = view(fact.mat, krylovdim-blockdim+1:krylovdim, krylovdim-blockdim+1:krylovdim);
+    α = view(fact.mat, krylovdim-blocksize+1:krylovdim, krylovdim-blocksize+1:krylovdim);
     return α
     
 end
 
 function getnorm(fact::BlockLanczosFactorization)
-    blockdim = fact.blockdim
+    blocksize = fact.blocksize
     krylovdim = fact.krylovdim
 
-    β = view(fact.mat, krylovdim-blockdim+1:krylovdim, krylovdim-2blockdim+1:krylovdim-blockdim);
+    β = view(fact.mat, krylovdim-blocksize+1:krylovdim, krylovdim-2blocksize+1:krylovdim-blocksize);
     return β
     
 end
@@ -47,11 +47,11 @@ end
 # add factorization properties 
 
 function addnorm!(fact::BlockLanczosFactorization, β::AbstractMatrix)
-    blockdim = fact.blockdim
+    blocksize = fact.blocksize
     krylovdim = fact.krylovdim
 
-    β_  = view(fact.mat, krylovdim-blockdim+1:krylovdim   , krylovdim-2blockdim+1:krylovdim-blockdim);
-    β′_ = view(fact.mat, krylovdim-2blockdim+1:krylovdim-blockdim, krylovdim-blockdim+1:krylovdim   );
+    β_  = view(fact.mat, krylovdim-blocksize+1:krylovdim   , krylovdim-2blocksize+1:krylovdim-blocksize);
+    β′_ = view(fact.mat, krylovdim-2blocksize+1:krylovdim-blocksize, krylovdim-blocksize+1:krylovdim   );
 
     copyto!(β_, β)    
     copyto!(β′_, β')    
@@ -83,8 +83,8 @@ end
 
 function calcoverlap!(fact::BlockLanczosFactorization)
     krylovdim = fact.krylovdim; 
-    blockdim = fact.blockdim;
-    α_k = view(fact.mat, krylovdim-blockdim+1:krylovdim, krylovdim-blockdim+1:krylovdim);
+    blocksize = fact.blocksize;
+    α_k = view(fact.mat, krylovdim-blocksize+1:krylovdim, krylovdim-blocksize+1:krylovdim);
 
     vec = last(fact.basis)
     mul!(α_k, vec', fact.r);
@@ -94,13 +94,13 @@ end
 
 
 function tridiagonalization!(fact::BlockLanczosFactorization)
-    fact.krylovdim += fact.blockdim
+    fact.krylovdim += fact.blocksize
     
-    blockdim = fact.blockdim
+    blocksize = fact.blocksize
     krylovdim = fact.krylovdim
     
-    β_  = view(fact.mat, krylovdim-blockdim+1:krylovdim   , krylovdim-2blockdim+1:krylovdim-blockdim);
-    β′_ = view(fact.mat, krylovdim-2blockdim+1:krylovdim-blockdim, krylovdim-blockdim+1:krylovdim   );
+    β_  = view(fact.mat, krylovdim-blocksize+1:krylovdim   , krylovdim-2blocksize+1:krylovdim-blocksize);
+    β′_ = view(fact.mat, krylovdim-2blocksize+1:krylovdim-blocksize, krylovdim-blocksize+1:krylovdim   );
 
     QR = qr(fact.r)
     β = QR.R

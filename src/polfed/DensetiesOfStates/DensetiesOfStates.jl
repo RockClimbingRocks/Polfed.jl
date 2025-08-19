@@ -16,12 +16,12 @@ function getdos!(dosconfig::DoSConfigFull, spectral_transform::SpectralTransform
     # Tn = ChebyshevT(coeffs)
     Tn = Clenshaw(:Chebyshev, coeffs, N-1, (y,x)->*(y,x), 1, Float64)
     ρ_KPM(x) = Tn(x)/(π*√(1-x^2))
-
-    xs = LinRange(-0.99,0.99, 250)
-    println("---------")
-    println(ρ_KPM.(xs))
-    println(ρ_KPM(0.))
-    println("---------")
+    
+    # xs = LinRange(-0.99,0.99, 250)
+    # println("---------")
+    # println(ρ_KPM.(xs))
+    # println(ρ_KPM(0.))
+    # println("---------")
     
     dosconfig.ρ = ρ_KPM
 end

@@ -1,14 +1,14 @@
 mutable struct MatrixBasis{T,E} <: OrthonormalBasis 
     basis::AbstractMatrix{E}
     nvecs::Integer
-    blockdim::Integer
+    blocksize::Integer
 
     function MatrixBasis{E}(maxdim::Int, x0::T, pu::ProcessingUnit) where {T<:AbstractVecOrMat, E<:Real}
         hilbertspacedim = size(x0,1)
-        blockdim = size(x0,2)
+        blocksize = size(x0,2)
         basis = pu.Matrix{E}(undef, hilbertspacedim, maxdim)
         nvecs = 0
-        new{T,E}(basis, nvecs, blockdim)
+        new{T,E}(basis, nvecs, blocksize)
     end
 end
 
@@ -43,9 +43,9 @@ function all(basis::MatrixBasis)
 end
 
 function all_withoutlasttwo(basis::MatrixBasis)
-    blockdim = basis.blockdim
-    if basis.nvecs < 2*blockdim
+    blocksize = basis.blocksize
+    if basis.nvecs < 2*blocksize
         throw(ArgumentError("Not enough vectors in the basis"))
     end
-    return view(basis.basis, :, 1:basis.nvecs-2blockdim)
+    return view(basis.basis, :, 1:basis.nvecs-2blocksize)
 end

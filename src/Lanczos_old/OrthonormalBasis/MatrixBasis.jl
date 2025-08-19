@@ -1,14 +1,14 @@
 mutable struct MatrixBasis{T,E} <: OrthonormalBasis 
     basis::AbstractMatrix{E}
     nvecs::Int
-    blockdim::Int
+    blocksize::Int
 
     function MatrixBasis{E}(maxdim::Int, x0::T, pu::ProcessingUnit) where {T<:AbstractVecOrMat, E<:Real}
         hilbertspacedim = size(x0,1)
-        blockdim = size(x0,2)
+        blocksize = size(x0,2)
         basis = pu.mat{E}(undef, hilbertspacedim, maxdim)
         nvecs = 0
-        new{T,E}(basis, nvecs, blockdim)
+        new{T,E}(basis, nvecs, blocksize)
     end
 end
 
@@ -44,19 +44,19 @@ function add!(basis::MatrixBasis, v::AbstractMatrix)
 end
 
 function last(basis::MatrixBasis)
-    blockdim = basis.blockdim
-    if blockdim > basis.nvecs || blockdim <= 0
+    blocksize = basis.blocksize
+    if blocksize > basis.nvecs || blocksize <= 0
         throw(ArgumentError("Invalid number of vectors requested"))
     end
-    return blockdim == 1 ? view(basis.basis, :, basis.nvecs) : view(basis.basis, :, basis.nvecs-blockdim+1:basis.nvecs)
+    return blocksize == 1 ? view(basis.basis, :, basis.nvecs) : view(basis.basis, :, basis.nvecs-blocksize+1:basis.nvecs)
 end
 
 function secondlast(basis::MatrixBasis)
-    blockdim = basis.blockdim
-    if basis.nvecs < 2 * blockdim
+    blocksize = basis.blocksize
+    if basis.nvecs < 2 * blocksize
         throw(ArgumentError("Not enough vectors in the basis"))
     end
-    return blockdim == 1 ? view(basis.basis, :, basis.nvecs-1) : view(basis.basis, :, basis.nvecs-2blockdim+1:basis.nvecs-blockdim)
+    return blocksize == 1 ? view(basis.basis, :, basis.nvecs-1) : view(basis.basis, :, basis.nvecs-2blocksize+1:basis.nvecs-blocksize)
 end
 
 function all(basis::MatrixBasis)
@@ -67,9 +67,9 @@ function all(basis::MatrixBasis)
 end
 
 function all_withoutlasttwo(basis::MatrixBasis)
-    blockdim = basis.blockdim
-    if basis.nvecs < 2*blockdim
+    blocksize = basis.blocksize
+    if basis.nvecs < 2*blocksize
         throw(ArgumentError("Not enough vectors in the basis"))
     end
-    return view(basis.basis, :, 1:basis.nvecs-2blockdim)
+    return view(basis.basis, :, 1:basis.nvecs-2blocksize)
 end

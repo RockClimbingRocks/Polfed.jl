@@ -1,13 +1,19 @@
 
 abstract type ReOrthTechnique end
 struct FullRO <: ReOrthTechnique end
-struct PartialRO <:ReOrthTechnique end
+struct PartialRO <:ReOrthTechnique
+    skip::Integer
+
+    function PartialRO(skip::Integer)
+        new(skip)
+    end
+end
 struct SelectiveRO <:ReOrthTechnique end
 
 
-abstract type ReOrthogonalizer end
-struct ClassicalGramSchmidt <: ReOrthogonalizer end
-struct MatrixGramSchmidt <: ReOrthogonalizer end
+# abstract type ReOrthogonalizer end
+# struct ClassicalGramSchmidt <: ReOrthogonalizer end
+# struct MatrixGramSchmidt <: ReOrthogonalizer end
 
 # struct FullReorthogonalization <: Orthogonalizer end
 # struct PartialReorthogonalization <: Orthogonalizer end

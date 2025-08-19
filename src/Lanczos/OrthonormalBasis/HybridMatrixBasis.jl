@@ -4,20 +4,20 @@ mutable struct HybridMatrixBasis{T<:Real, MG<:AbstractMatrix{T}, MC<:AbstractMat
     cpu_basis::MC         # CPU storage
     nvecs_gpu::Integer        # number of vectors currently on GPU
     nvecs_cpu::Integer        # number of vectors currently on CPU
-    blockdim::Integer
+    blocksize::Integer
 
 
 
-    function HybridMatrixBasis(maxdim_gpu::Int, maxdim_cpu::Int, x0::AbstractMatrix{T}) where {T}
+    function HybridMatrixBasis(maxdim_gpu::Int, maxdim_cpu::Int, x0::AbstractVecOrMat{T}) where {T}
         hilbertspacedim = size(x0, 1)
-        blockdim        = size(x0, 2)
+        blocksize        = size(x0, 2)
 
         gpu_basis = CUDA.zeros(T, hilbertspacedim, maxdim_gpu)
         cpu_basis = zeros(T, hilbertspacedim, maxdim_cpu)
         MG = typeof(gpu_basis)
         MC = typeof(cpu_basis)
 
-        new{T, MG, MC}(gpu_basis, cpu_basis, 0, 0, blockdim)
+        new{T, MG, MC}(gpu_basis, cpu_basis, 0, 0, blocksize)
     end
 end
 
@@ -65,14 +65,14 @@ function all(B::HybridMatrixBasis)
 end
 
 function all_withoutlasttwo(B::HybridMatrixBasis)
-    blockdim = B.blockdim
+    blocksize = B.blocksize
     totalvecs = B.nvecs_gpu + B.nvecs_cpu
 
-    if totalvecs < 2 * blockdim
+    if totalvecs < 2 * blocksize
         throw(ArgumentError("Not enough vectors in the basis"))
     end
 
-    needed = totalvecs - 2blockdim
+    needed = totalvecs - 2blocksize
 
     if B.nvecs_cpu == 0
         # All still on GPU

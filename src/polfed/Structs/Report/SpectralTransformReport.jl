@@ -12,13 +12,15 @@ mutable struct SpectralTransformReport
     matrixvec_muls::Integer
     clenshaw_recurrence::Bool
 
-    function SpectralTransformReport(config::SpectralTransformConfigFull)
+    function SpectralTransformReport(config::SpectralTransformConfigFull, fact::FactorizationReport)
         target = isnothing(config.target) ? NaN : config.target
         left   = isnothing(config.left)   ? NaN : config.left
         right  = isnothing(config.right)  ? NaN : config.right
         polynomialtype = String(config.polynomialtype)
         order  = isnothing(config.order) ? 0 : config.order
         howmany = config.howmany
+        blocksize = fact.blocksize
+        num_vecmuls = order * blocksize * fact.itersneeded + howmany
 
         new(
             target,
@@ -30,7 +32,7 @@ mutable struct SpectralTransformReport
             config.parallelization,
             howmany,
             0,   # howmany_ininterval → to be updated later
-            0,   # matrixvec_muls     → to be updated later
+            num_vecmuls, 
             !isnothing(config.clenshaw_recurrence)
         )
     end
@@ -44,20 +46,22 @@ function display_report(report::SpectralTransformReport)
     target   = @sprintf("\e[1;36m%.6f\e[0m", report.target)
     left     = @sprintf("\e[1;36m%.6f\e[0m", report.left)
     right    = @sprintf("\e[1;36m%.6f\e[0m", report.right)
-    width        = @sprintf("\e[1;36mδ = %.5f\e[0m", report.right - report.left)
-    order        = @sprintf("\e[1;36m K = %d \e[0m", report.order)
+    width    = @sprintf("\e[1;36mδ = %.5f\e[0m", report.right - report.left)
+    order    = @sprintf("\e[1;36m K = %d \e[0m", report.order)
+    osf      = @sprintf("\e[1;36m%.2f\e[0m", report.order_safety_factor)
     howmany  = @sprintf("\e[1;36m %d \e[0m", report.howmany)
     num_mul  = @sprintf("\e[1;36m %s \e[0m", format_with_underscores(report.matrixvec_muls))
-    clenshaw = report.clenshaw_recurrence ? "enabled" : "disabled"
-    parall = String(report.parallelization) 
+    clenshaw = report.clenshaw_recurrence ? @sprintf("\e[1;36m %s \e[0m", "enabled") : @sprintf("\e[1;36m %s \e[0m", "disabled")
+    parall = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
 
+    
 
     println("\e[1;34mSpectral Transformation Report:\e[0m")
     println("- Targeted $howmany eigenpairs at energy $target")
     println("- Exposing ev's in the interval [$left, $right], with width $width")
-    println("- Performing '$(report.polynomialtype)' spectral transformation of order $order")
+    println("- Performing '$(report.polynomialtype)' spectral transformation of order $order (and order safety factor $osf)")
     println("- Matrix multiplication performed $num_mul times! With parallelization strategy: $parall")
-    println("- Optimization with Clenshaw recurrence is $clenshaw")
+    println("- Optimization with Clenshaw recurrence is $(clenshaw)!")
 end
 
 

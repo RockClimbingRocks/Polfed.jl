@@ -17,8 +17,8 @@
 
 # @inline function tridiagonalization!(factorization::BlockLanczosFactorization)
 
-#     factorization.krylovdim += factorization.blockdim
-#     tridiagonalization!(factorization.mat, factorization.basis, factorization.r, factorization.krylovdim, factorization.blockdim, factorization.pu)
+#     factorization.krylovdim += factorization.blocksize
+#     tridiagonalization!(factorization.mat, factorization.basis, factorization.r, factorization.krylovdim, factorization.blocksize, factorization.pu)
 
 # end
 

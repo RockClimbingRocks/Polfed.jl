@@ -6,7 +6,7 @@ end
 
 
 function next_checking!(convergenceinfo::ConvergenceInfo, k::Int64, fact::BlockLanczosFactorization)
-    next_checking!(convergenceinfo, k, fact.blockdim)
+    next_checking!(convergenceinfo, k, fact.blocksize)
 end
 
 
