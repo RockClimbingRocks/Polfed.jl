@@ -18,7 +18,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 CPUTime = "1.0.0"
-CUDA = "5.8.3"
+CUDA = "5.8"
 LinearAlgebra = "1.11.0"
 PrettyTables = "2.4.0"
 Printf = "1.11.0"
