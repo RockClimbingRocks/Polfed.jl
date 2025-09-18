@@ -3,3 +3,8 @@
 *.jl.mem
 /docs/Manifest*.toml
 /docs/build/
+
+
+
+*.h5
+*.ipynb

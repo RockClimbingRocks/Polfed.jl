@@ -3,6 +3,7 @@
     krylovbasis = all_withoutlasttwo(factorization.basis)
     # krylovbasis = all(factorization.basis)
 
+    size(krylovbasis, 2) == 0 && (return)
     reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
 end
 
@@ -15,7 +16,9 @@ end
     kryloviter = Integer(krylovdim ÷ blocksize)
     pro_condition = (kryloviter%(2+pro.skip)==0) || ((kryloviter-1)%(2+pro.skip)==0)
 
-    if pro_condition
+
+
+    if pro_condition && krylovdim > 2*blocksize
         # println("Performing reorthogonalization... (at iter ", kryloviter, ")")
         krylovbasis = all_withoutlasttwo(factorization.basis)
         reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
@@ -45,6 +48,8 @@ end
 end
 
 @inline function reorthogonalization!(krylovbasis::AbstractMatrix{T}, W::AbstractVecOrMat{T}, _::ProcessingUnit) where {T<:Number}
+
+
     W .-= krylovbasis * (krylovbasis' * W)
 end
 

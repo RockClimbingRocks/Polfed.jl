@@ -8,6 +8,7 @@ const expectedkrylovdim(howmany::Int, blocksize::Int, η::Real) = ceil(Int64, (2
 
 # produce report at the end of the polfed 
 const produce_report        = false
+const optimize_mapping      = false
 
 
 # spectral transformation defaults
@@ -16,7 +17,7 @@ const polynomialtype        = :Chebyshev
 const cutoff                = 0.17
 const normalization         = 1.00
 const order_safety_factor   = 0.97
-const parallelization       = nothing
+const parallelization       = Polfed.MulColsParallel()
 const overestimate_iters    = 1.25
 
 

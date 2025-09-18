@@ -5,6 +5,7 @@ include("PolfedDefaults.jl")
 include("polfed_algorithm.jl")
 include("DensetiesOfStates/DensetiesOfStates.jl")
 include("SpectralTransformation/SpectralTransformation.jl")
+include("Optimization/optimization.jl")
 
 
 
@@ -12,12 +13,15 @@ include("SpectralTransformation/SpectralTransformation.jl")
 
 function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Integer, target::Union{Real,Nothing};
     produce_report::Bool    = PolfedDefaults.produce_report,
+    optimize_mapping::Bool  = PolfedDefaults.optimize_mapping,
     spectral_transform      = SpectralTransformConfig(),
     lanczos                 = LanczosConfig(),
     dos                     = DoSConfig(),
 ) where {T<:Real}
 
-    f!(Y::AbstractVecOrMat, X::AbstractVecOrMat) = mul!(Y , mat, X)
+
+    f! = (Y,X) -> mul!(Y, mat, X)
+    optimize_mapping && (f! = optimize_spectral_transform(mat, spectral_transform))
 
     polfed(f!, x0, howmany, target; 
         produce_report      = produce_report,
@@ -36,6 +40,18 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
     lanczos                 = LanczosConfig(),
     dos                     = DoSConfig(),
 ) where {T<:Real}
+
+    if spectral_transform.parallelization isa TwoLevelParallel
+        nvecs = size(x0, 2)
+
+        println("nvecs = $nvecs")
+
+        set_workers(nvecs, spectral_transform.parallelization.nt_per_col)
+    else
+        println("im fucked.....")
+    end
+
+
 
     walltime = zeros(Float64, 1)
     cputime = zeros(Float64, 1)
@@ -59,6 +75,9 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
     produce_report && (return (vals, vecs, report))
     return (vals, vecs)
 end
+
+
+
 
 
 

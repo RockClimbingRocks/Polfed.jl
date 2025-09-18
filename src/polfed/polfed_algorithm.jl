@@ -4,11 +4,8 @@ function polfed_algorithm(
     dos::DoSConfigFull,
     pu::ProcessingUnit,
 )
-
     getdos!(dos, spectral_transform, lanczos_config, pu)
     getspectraltransform!(dos, spectral_transform, lanczos_config, pu)
-
-
 
     vals, vecs, fact_report = lanczos(
         spectral_transform.f!_transformed, lanczos_config.x0, spectral_transform.howmany;

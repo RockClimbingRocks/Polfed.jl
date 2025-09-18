@@ -75,7 +75,6 @@ function lanczos(
     iterator    = LanczosIterator(f!, x0, rot)
     convergence = ConvergenceInfo(howmany, blocksize, maxiter, tol, eigentol, which, mapvals)
 
-
     lanczos_method(iterator, convergence, basistype, pu)
 end
 

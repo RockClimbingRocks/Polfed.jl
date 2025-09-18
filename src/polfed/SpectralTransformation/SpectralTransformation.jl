@@ -2,7 +2,8 @@
 include("Bisection.jl")
 include("GetBounds.jl")
 include("GetOrderOfExpansion.jl")
-include("ClenshawParallization.jl")
+include("ParallelizationClenshaw.jl")
+include("ParallelizationMultiplication.jl")
 include("DefineTransformation.jl")
 # include("MultiplicationTypeClenshaw.jl")
 

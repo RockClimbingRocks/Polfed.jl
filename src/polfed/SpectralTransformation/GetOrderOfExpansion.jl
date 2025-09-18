@@ -40,8 +40,7 @@ function getorderofexapnsion_in_interval!(spectral_transform::SpectralTransformC
 
     spectral_transform.order = floor(Int64, K*order_safety_factor)
 
-    println("Before resetting: left = $left, right = $right")
-    (order_safety_factor < 1.) && (getbounds_from_K!(spectral_transform, :mean); 
-    println("After resetting: left = $(spectral_transform.left), right = $(spectral_transform.right)"))
+    # println("Before resetting: left = $left, right = $right")
+    (order_safety_factor < 1.) && (getbounds_from_K!(spectral_transform, :mean))
 
 end

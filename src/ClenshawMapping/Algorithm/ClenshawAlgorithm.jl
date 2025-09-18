@@ -35,17 +35,13 @@ end
     Y::AbstractVecOrMat{<:Number}
 )
 
-    @inbounds @fastmath for k in order:-1:1
-        CUDA.@sync begin
-            recurrencerelation_kernel!(b[1], b[2], b[3], coefficients(k), X)
-        end
+    @inbounds for k in order:-1:1
 
+        recurrencerelation_kernel!(b[1], b[2], b[3], coefficients(k), X)
         permute!(b, permutation);
     end
 
-    CUDA.@sync begin
-        finalsum_kernel!(b[2], b[3], coefficients(0), Y, X)
-    end 
+    finalsum_kernel!(b[2], b[3], coefficients(0), Y, X)
 end
 
 

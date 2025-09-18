@@ -30,9 +30,10 @@ end
 
 
 using SparseArrays, LinearAlgebra, CUDA
-using QSystem
+# using QSystem
 
 include("../src/Polfed.jl")
+using .Polfed
 
 
 function construct_xxz_spin_sector(L::Int, delta::Real, Nup::Int)
@@ -64,7 +65,7 @@ end
 
 function test_polfed() 
 
-    L =14
+    L =18
     mat = construct_xxz_spin_sector(L, 0.123, Int(L÷2)) # XXZ model with delta=0.0
 
     # display(mat)
@@ -72,19 +73,28 @@ function test_polfed()
 
     # x0_ = rand(D)
     # x0 = x0_ ./ norm(x0_)
+    # x0_ = rand(D,4)
+    # x0 = Matrix(qr(x0_).Q) # orthonormalize
+    # spectral_transform = Polfed.SpectralTransformConfig(
+    #     parallelization=Polfed.MulColsParallel()
+    # )
 
     x0_ = rand(D,4)
     x0 = Matrix(qr(x0_).Q) # orthonormalize
-    howmany = 100
+    spectral_transform = Polfed.SpectralTransformConfig(
+        parallelization=Polfed.TwoLevelParallel(1)
+    )
 
-    vals, vecs, report = Polfed.polfed(mat, x0, howmany, 0.; produce_report=true)
+
+    howmany = 500
+    vals, vecs, report = Polfed.polfed(mat, x0, howmany, 0.; produce_report=true, spectral_transform=spectral_transform)
     Polfed.display_report(report)
 
-    mat_dense = Matrix(mat)
-    vals_true = eigvals!(mat_dense)
+    # mat_dense = Matrix(mat)
+    # vals_true = eigvals!(mat_dense)
 
-    r = are_vals_in_true(vals, vals_true)
-    println("Are all values in true? ", r)
+    # r = are_vals_in_true(vals, vals_true)
+    # println("Are all values in true? ", r)
 
 
 
@@ -131,4 +141,4 @@ function test_lanczos_CUDA()
 end
 
 
-test_lanczos_CUDA()
+test_polfed()

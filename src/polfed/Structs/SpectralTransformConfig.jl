@@ -12,6 +12,8 @@ mutable struct SpectralTransformConfig
     clenshaw_recurrence::Union{Nothing, Function}
     clenshaw_finalsum::Union{Nothing, Function}
     overestimate_iters::Real
+    Emin::Union{Real, Nothing}
+    Emax::Union{Real, Nothing}
 
     function SpectralTransformConfig(; 
         coefficients::Function                          =   PolfedDefaults.coefficients, 
@@ -26,8 +28,10 @@ mutable struct SpectralTransformConfig
         clenshaw_recurrence::Union{Nothing, Function}   =   nothing,
         clenshaw_finalsum::Union{Nothing, Function}     =   nothing,
         overestimate_iters::Real                        =   PolfedDefaults.overestimate_iters,
+        Emin::Union{Real, Nothing}                      =   nothing,
+        Emax::Union{Real, Nothing}                      =   nothing,
     )
-        new(coefficients, normalization, cutoff, left, right, order, order_safety_factor, parallelization, f!_rescaled, clenshaw_recurrence, clenshaw_finalsum, overestimate_iters)
+        new(coefficients, normalization, cutoff, left, right, order, order_safety_factor, parallelization, f!_rescaled, clenshaw_recurrence, clenshaw_finalsum, overestimate_iters, Emin, Emax)
     end
 end
 
@@ -65,7 +69,7 @@ mutable struct SpectralTransformConfigFull
         f!::Function,
         x0::AbstractVecOrMat{T},
         howmany::Integer,
-        target::Real,
+        target::Union{Real, Nothing},
         pu::ProcessingUnit,
     ) where {T<:Real}
         parallelization = nothing
@@ -75,10 +79,11 @@ mutable struct SpectralTransformConfigFull
         else
             parallelization = cfg.parallelization
         end
-        
-        Emin = first(collect(lanczos(f!, x0, 1; which=:smallest, maxdim=1000)[1]))
-        Emax = last(collect(lanczos(f!, x0, 1; which=:largest,  maxdim=1000)[1]))
-        
+
+        v0 = pu.Vector(x0[:,1])        
+        Emin = isnothing(cfg.Emin) ? first(collect(lanczos(f!, v0, 1; which=:smallest, maxdim=1000)[1])) : cfg.Emin
+        Emax = isnothing(cfg.Emax) ? last(collect(lanczos(f!, v0, 1; which=:largest,  maxdim=1000)[1])) : cfg.Emax
+
         a = (Emax-Emin)/2
         b = (Emax+Emin)/2
 

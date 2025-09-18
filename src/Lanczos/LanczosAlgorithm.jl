@@ -14,6 +14,7 @@ function lanczos_algorithm!(
 
     walltimes = zeros(6)
     cputimes  = zeros(6)
+
     while true
         lanczositer!(iterator, factorization, walltimes, cputimes)
         @addtime! walltimes cputimes 6 getnumberofconvergedvecs!(convergenceinfo, factorization, vecs, vals)
