@@ -52,7 +52,20 @@ function display_report(report::SpectralTransformReport)
     howmany  = @sprintf("\e[1;36m %d \e[0m", report.howmany)
     num_mul  = @sprintf("\e[1;36m %s \e[0m", format_with_underscores(report.matrixvec_muls))
     clenshaw = report.clenshaw_recurrence ? @sprintf("\e[1;36m %s \e[0m", "enabled") : @sprintf("\e[1;36m %s \e[0m", "disabled")
-    parall = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
+    
+    parallel = nothing
+    if report.parallelization isa NoParallel
+        parallel = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
+    elseif report.parallelization isa MulColsParallel
+        parallel = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
+    elseif report.parallelization isa TwoLevelParallel
+        parallel = @sprintf("\e[1;36m %s \e[0m", "TwoLevelParallel($(report.parallelization.nt_per_col))")
+    else
+        throw(ArgumentError("Unknown parallelization strategy"))
+    end
+        
+
+    # parall = report.parallelization split(string(report.parallelization), ".")[end]
 
     
 
@@ -60,7 +73,7 @@ function display_report(report::SpectralTransformReport)
     println("- Targeted $howmany eigenpairs at energy $target")
     println("- Exposing ev's in the interval [$left, $right], with width $width")
     println("- Performing '$(report.polynomialtype)' spectral transformation of order $order (and order safety factor $osf)")
-    println("- Matrix multiplication performed $num_mul times! With parallelization strategy: $parall")
+    println("- Matrix multiplication performed $num_mul times! With parallelization strategy: $parallel")
     println("- Optimization with Clenshaw recurrence is $(clenshaw)!")
 end
 

@@ -134,12 +134,6 @@ end
 
 
 
-
-
-
-
-
-
 println("Benchmark POLFED with custom mapping with TwoLevelParallel($(nt_per_col)) with rescaled function (for L=$(L)): ")
 begin
     
@@ -161,22 +155,26 @@ begin
 end
 
 
-# Kill all worker processes except the main one (process 1)
-if nprocs() > 1
-    for pid in workers()
-        rmprocs(pid)
-    end
-end
+println("Proccesses: ", procs())
+println("Workers: ", workers())
+
+
+# # Kill all worker processes except the main one (process 1)
+# if nprocs() > 1
+#     for pid in workers()
+#         rmprocs(pid)
+#     end
+# end
+
+
 
 
 
 println("Benchmark POLFED with custom mapping with TwoLevelParallel($(nt_per_col)) with rescaled function (for L=$(L)): ")
 begin
-    
-    v0_ = rand(size(mat,1), ncols); v0 = Matrix(qr(v0_).Q)
-
     st = Polfed.SpectralTransformConfig(;parallelization=Polfed.TwoLevelParallel(nt_per_col))
     # st = Polfed.SpectralTransformConfig(;parallelization=Polfed.MulColsParallel())
     vals, vecs, report= @time Polfed.polfed(mat, v0, howmany, 0.; optimize_mapping=true, produce_report=true, spectral_transform=st)
     Polfed.display_report(report)
 end
+

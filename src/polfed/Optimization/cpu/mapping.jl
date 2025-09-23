@@ -18,7 +18,7 @@ function mapping!(
     loop::Function,   # the loop is injected
 )
     (val, offdiags_flatten, start_indices) = offdiagonals
-    loop(eachindex(X), i -> begin
+    loop(eachindex(X), @inline i -> begin
         Y_i = mapping_state_i(X, i, diagonals, val, offdiags_flatten, start_indices)
         @inbounds Y[i] = Y_i
     end)
@@ -36,7 +36,7 @@ function mapping!(
     @. Y = diagonals * X
     
     for (val, offdiags_flatten, start_indices) in offdiagonals
-        loop(eachindex(X), i -> begin
+        loop(eachindex(X), @inline i -> begin
             Y_off_val_i = mapping_offdiagonals_state_i(X, i, val, offdiags_flatten, start_indices)
             @inbounds Y[i] += Y_off_val_i
         end)

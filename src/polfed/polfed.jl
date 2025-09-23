@@ -6,10 +6,18 @@ include("polfed_algorithm.jl")
 include("DensetiesOfStates/DensetiesOfStates.jl")
 include("SpectralTransformation/SpectralTransformation.jl")
 include("Optimization/optimization.jl")
+include("workers.jl")
 
 
 
-##ALSO ADD THE ENTRYPOINT FOR without X0!! MAYBE? 
+
+
+
+
+
+
+
+
 
 function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Integer, target::Union{Real,Nothing};
     produce_report::Bool    = PolfedDefaults.produce_report,
@@ -40,18 +48,7 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
     lanczos                 = LanczosConfig(),
     dos                     = DoSConfig(),
 ) where {T<:Real}
-
-    if spectral_transform.parallelization isa TwoLevelParallel
-        nvecs = size(x0, 2)
-
-        println("nvecs = $nvecs")
-
-        set_workers(nvecs, spectral_transform.parallelization.nt_per_col)
-    else
-        println("im fucked.....")
-    end
-
-
+    set_workers(x0, spectral_transform.parallelization)
 
     walltime = zeros(Float64, 1)
     cputime = zeros(Float64, 1)
@@ -67,10 +64,11 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
         nothing
     end
 
+    remove_workers(spectral_transform.parallelization)
+
     spectral_transform_report = SpectralTransformReport(spectral_transform_config, factorization_report)
     benchmark_report = BenchmarkReport(factorization_report, walltime[1], cputime[1], x0, pu)
     report = Report(spectral_transform_report, factorization_report, benchmark_report)
-
 
     produce_report && (return (vals, vecs, report))
     return (vals, vecs)

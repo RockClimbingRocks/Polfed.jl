@@ -1,7 +1,9 @@
 
 using SparseArrays, LinearAlgebra, BenchmarkTools, Base.Threads
+using HDF5
 include("/home/rokpintar/projects/Polfed/src/Polfed.jl")
 using .Polfed
+
 
 function mapvec_with_xxz!(
     diags::Vector{Float64},
@@ -103,56 +105,6 @@ function extract_sparse_data(A::SparseMatrixCSC)
 end
 
 
-
-
-# function clenshaw_reocurence_relation_vec_kernel_spin_onehalf(b1::CuDeviceVector, b2::CuDeviceVector, b3::CuDeviceVector, c::Real, X::CuDeviceVector, hx::Float64, diags::CuDeviceVector, Leff::Int64, basis_length::Int64)
-#     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x 
-
-#     @inbounds @fastmath if i <= basis_length 
-#         d = diags[i]
-#         x = b2[i]
-
-#         offdiag_val = 0.0 
-#         @simd for j in 0:Leff
-#             newstate = (i-1) ⊻ (1 << j) 
-#             row = newstate + 1 
-#             offdiag_val += b2[row]
-#         end     
-#         yi = d*x + offdiag_val*hx
-
-#         b1[i] = c*X[i] + 2*yi - b3[i]
-#     end
-
-#     nothing
-# end
-
-
-# function clenshaw_finalsum_vec_kernel_spin_onehalf(b1::CuDeviceVector, b2::CuDeviceVector, c::Real, Y::CuDeviceVector, X::CuDeviceVector, hx::Float64, diags::CuDeviceVector, Leff::Int64, basis_length::Int64)
-#     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x 
-
-#     @inbounds @fastmath if i <= basis_length 
-#         d = diags[i]
-#         x = b1[i]
-#         # X here goes to b1
-
-#         offdiag_val = 0.0 
-#         @simd for j in 0:Leff
-#             newstate = (i-1) ⊻ (1 << j) 
-#             row = newstate + 1 
-#             offdiag_val += b1[row] 
-#         end     
-#         y = d*x + offdiag_val*hx
-
-#         Y[i] = c*X[i] + y - b2[i]
-#     end
-
-#     nothing
-# end
-
-
-
-
-
 function clenshaw_with_xxz!(
     diags::Vector{Float64},
     offdiags_flatten::Vector{Int},
@@ -249,32 +201,27 @@ end
 L = parse(Int, ARGS[1])
 howmany = parse(Int, ARGS[2])
 nt_per_col = parse(Int, ARGS[3])
+N = parse(Int, ARGS[4])
+benc_type = ARGS[5]  # "opt", "map", or "clenshaw"
+
 nt = Base.Threads.nthreads()
 ncols = nt ÷ nt_per_col
 J=1.
 
-mat = construct_xxz_spin_sector(L, 1.234, L÷2)
-diags, off_flat, start_inds = extract_sparse_data(mat)
-vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J)
-
-# Compare vmap and mul!()
-x = randn(size(mat,1))
-y1 = similar(x)
-y2 = similar(x)
-
-vmap(y1, x)
-mul!(y2, mat, x)
 
 
 println("L: ", L)
 println("howmany: ", howmany)
+println("benc_type: ", benc_type)
+println("N (number of runs for averaging): ", N)
 println("Number of threads: ", nt)
 println("Number of columns (workers): ", ncols)
 println("Number of threads per column: ", nt_per_col)
 
 
-println("Maximum absolute difference between vmap and mul!: ", maximum(abs.(y1 .- y2)))
-
+mat = construct_xxz_spin_sector(L, 1.234, L÷2)
+diags, off_flat, start_inds = extract_sparse_data(mat)
+vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J)
 
 
 v02 = rand(size(mat,1)); v02 = v02 / norm(v02)
@@ -283,55 +230,32 @@ Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:largest,  maxdim
 
 v0_ = rand(size(mat,1), ncols); v0 = Matrix(qr(v0_).Q)
 
+a, b = (Emax-Emin)/2, (Emax+Emin)/2
+d_r = @. (diags-b)/a
+J_r =  J/a
 
-println("Benchmark the clenshaw  reocurence relation (L=$(L)): ")
-begin
-
-
-    d_r = @. (diags - (Emax+Emin)/2) / ((Emax-Emin)/2)
-    J_r = J / ((Emax-Emin)/2)
-
-    vmap_r! = mapvec_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-    crr, cfs = clenshaw_with_xxz!(d_r, off_flat, start_inds, J_r)
-
-    x = rand(size(mat,1)); 
-    
-    y = similar(x)
-    b1 = zeros(size(x))
-    b2 = zeros(size(x))
-    b3 = zeros(size(x))
-    c = 1.123
-
-    @btime $crr($b1, $b2, $b3, $c, $x)
-end
+vmap_r! = mapvec_with_xxz_parallel!(d_r,off_flat, start_inds,J_r)
+crr, cfs = clenshaw_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
 
 
 
+input_mat_or_vec = nothing
+key_word_args = Dict{Symbol,Any}()
 
-
-
-println("Benchmark POLFED with OPTIMIZE_MAPPING=TRUE (L=$(L)): ")
-begin
+if benc_type == "map_res"
+    input_mat_or_vec = vmap
 
     st = Polfed.SpectralTransformConfig(;
         parallelization=Polfed.TwoLevelParallel(nt_per_col),
+        f!_rescaled=vmap_r!,
     )
-    vals, vecs, report = @time Polfed.polfed(mat, v0, howmany, 0.; optimize_mapping=true, produce_report=true, spectral_transform=st)
-    Polfed.display_report(report)
-end
+
+    key_word_args[:spectral_transform] = st
+    key_word_args[:produce_report] = true
 
 
-
-println("Benchmark polfed WITH CUSTOM CLENSHAW function (L=$(L)): ")
-begin
-    a, b = (Emax-Emin)/2, (Emax+Emin)/2
-    d_r = @. (diags-b)/a
-    J_r =  J/a
-
-    vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J) 
-    vmap_r! = mapvec_with_xxz_parallel!(d_r,off_flat, start_inds,J_r)
-    crr, cfs = clenshaw_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-
+elseif benc_type == "clenshaw"
+    input_mat_or_vec = vmap
 
     st = Polfed.SpectralTransformConfig(;
         parallelization=Polfed.TwoLevelParallel(nt_per_col), 
@@ -340,25 +264,60 @@ begin
         clenshaw_finalsum=cfs,
     )
 
-    vals, vecs, report = @time Polfed.polfed(vmap, v0, howmany, 0.; produce_report=true, spectral_transform=st)
-    Polfed.display_report(report)
-end
+    key_word_args[:spectral_transform] = st
+    key_word_args[:produce_report] = true
 
+elseif benc_type == "opt"
+    input_mat_or_vec = mat
 
+    st = Polfed.SpectralTransformConfig(;
+        parallelization=Polfed.TwoLevelParallel(nt_per_col),
+    )
 
+    key_word_args[:spectral_transform] = st
+    key_word_args[:optimize_mapping] = true
+    key_word_args[:produce_report] = true
 
-println("Benchmark POLFED with custom mapping with TwoLevelParallel($(nt_per_col)) (and $(ncols) workers) with rescaled function (for L=$(L)): ")
-begin
-
-    a, b = (Emax-Emin)/2, (Emax+Emin)/2
-    d_r = @. (diags-b)/a
-    J_r =  J/a
-
-    vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J) 
-    vmap_r! = mapvec_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-
+elseif benc_type == "opt_map_no_res_mulcols"
+    input_mat_or_vec = vmap
+    st = SpectralTransformConfig(;parallelization=MulColsParallel())
     
-    st = Polfed.SpectralTransformConfig(;parallelization=Polfed.TwoLevelParallel(nt_per_col), f!_rescaled=vmap_r!)
-    vals, vecs, report = @time Polfed.polfed(vmap, v0, howmany, 0.; produce_report=true, spectral_transform=st)
-    Polfed.display_report(report)
+    key_word_args[:spectral_transform] = st
+    key_word_args[:produce_report] = true
+
+else
+    error("Unknown benc_type: $benc_type. Use 'opt', 'map_res', or 'clenshaw'.")
 end
+
+
+times = zeros(Float64, N)
+for i in 1:N
+    time = @elapsed begin vals, vecs, report = @time Polfed.polfed(input_mat_or_vec, v0, howmany, 0.; key_word_args...) end
+    Polfed.display_report(report)
+
+    times[i] = time
+    println("Iteration $i / $N took $time seconds.")
+    println()
+    println()
+    println()
+    println()
+end
+
+
+h5file = h5open("$(benc_type)_L$(L)_N$(howmany)_nt$(nt)_ntpc$(nt_per_col)_avg$(N).h5", "w") do file
+    file["L"] = L
+    file["howmany"] = howmany
+    file["N"] = N
+    file["benc_type"] = benc_type
+    file["nt"] = nt
+    file["nt_per_col"] = nt_per_col
+    file["times"] = times
+    file["time_avg"] = mean(times)
+    file["time_std"] = std(times)
+    file["time_typ"] = exp(mean(log.(times)))
+end
+
+
+println("Results saved to HDF5 file.")
+
+

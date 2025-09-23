@@ -96,3 +96,4 @@ function get_diags_and_offdiagonals_by_value(mat::AbstractMatrix{T}; tol=1e-14, 
 end
 
 
+

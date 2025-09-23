@@ -1,0 +1,71 @@
+L: 20
+howmany: 1500
+Number of threads: 16
+Number of columns (workers): 4
+Number of threads per column: 4
+Maximum absolute difference between vmap and mul!: 7.105427357601002e-15
+Benchmark the clenshaw  reocurence relation (L=20): 
+  2.139 ms (0 allocations: 0 bytes)
+Benchmark POLFED with OPTIMIZE_MAPPING=TRUE (L=20): 
+Workers: [1]
+Workers: [2, 3, 4, 5]
+New workers: [2, 3, 4, 5]
+1099.700625 seconds (54.09 M allocations: 42.393 GiB, 0.27% gc time, 187 lock conflicts, 4.47% compilation time)
+[1;34mSpectral Transformation Report:[0m
+- Targeted [1;36m 1500 [0m eigenpairs at energy [1;36m0.276889[0m
+- Exposing ev's in the interval [[1;36m0.273855[0m, [1;36m0.279924[0m], with width [1;36mδ = 0.00607[0m
+- Performing 'Chebyshev' spectral transformation of order [1;36m K = 845 [0m (and order safety factor [1;36m0.97[0m)
+- Matrix multiplication performed [1;36m 2_337_080 [0m times! With parallelization strategy: [1;36m TwoLevelParallel(4) [0m
+- Optimization with Clenshaw recurrence is [1;36m disabled [0m!
+[1;34mFactorization Report:[0m ([1mBlockLanczosFactorization[0m with blocksize [1m4[0m)
+- Number of converged eigenpairs:   [1;32m 1500 [0m (out of [1;36m 1500 [0m requested)
+- Lanczos convergence satisfied by: [1;32m 1500 [0m (with tolerance [1;36m 1.00e-14 [0m max residual was [1;33m 4.37e-16 [0m)
+- Eigen convergence satisfied by:   [1;32m 1500 [0m (with tolerance [1;36m 1.00e-09 [0m max residual was [1;33m 3.26e-10 [0m)
+- Iterations needed: [1;31m 691 [0m  (out of [1;36m 821 [0m reserved, overestimated by [1;31m 15.83% [0m)
+- Basis type: [1;36mMatrixBasis[0m and reorthogonalization technique: [1;36mFullRO()[0m
+[1;34mTimings:[0m Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)
+- Total polfed run took: [1;36m 17.69 minutes [0m (walltime), [1;36m 79.18 minutes [0m (CPU time)
+- Walltime of factorization took: [1;36m 16.68 minutes [0m ([1;36m83.52%[0m, [1;36m9.61%[0m, [1;36m5.14%[0m, [1;36m1.73%[0m)
+- CPU time of factorization took: [1;36m 59.07 minutes [0m ([1;36m37.51%[0m, [1;36m42.77%[0m, [1;36m13.59%[0m, [1;36m6.13%[0m)
+Benchmark polfed WITH CUSTOM CLENSHAW function (L=20): 
+Workers: [1]
+Workers: [6, 7, 8, 9]
+New workers: [6, 7, 8, 9]
+956.685644 seconds (11.34 M allocations: 40.232 GiB, 0.17% gc time, 145 lock conflicts, 0.83% compilation time)
+[1;34mSpectral Transformation Report:[0m
+- Targeted [1;36m 1500 [0m eigenpairs at energy [1;36m0.276889[0m
+- Exposing ev's in the interval [[1;36m0.273856[0m, [1;36m0.279923[0m], with width [1;36mδ = 0.00607[0m
+- Performing 'Chebyshev' spectral transformation of order [1;36m K = 846 [0m (and order safety factor [1;36m0.97[0m)
+- Matrix multiplication performed [1;36m 2_339_844 [0m times! With parallelization strategy: [1;36m TwoLevelParallel(4) [0m
+- Optimization with Clenshaw recurrence is [1;36m enabled [0m!
+[1;34mFactorization Report:[0m ([1mBlockLanczosFactorization[0m with blocksize [1m4[0m)
+- Number of converged eigenpairs:   [1;32m 1500 [0m (out of [1;36m 1500 [0m requested)
+- Lanczos convergence satisfied by: [1;32m 1500 [0m (with tolerance [1;36m 1.00e-14 [0m max residual was [1;33m 7.54e-16 [0m)
+- Eigen convergence satisfied by:   [1;32m 1500 [0m (with tolerance [1;36m 1.00e-09 [0m max residual was [1;33m 2.89e-10 [0m)
+- Iterations needed: [1;31m 691 [0m  (out of [1;36m 821 [0m reserved, overestimated by [1;31m 15.83% [0m)
+- Basis type: [1;36mMatrixBasis[0m and reorthogonalization technique: [1;36mFullRO()[0m
+[1;34mTimings:[0m Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)
+- Total polfed run took: [1;36m 15.67 minutes [0m (walltime), [1;36m 86.05 minutes [0m (CPU time)
+- Walltime of factorization took: [1;36m 14.48 minutes [0m ([1;36m81.68%[0m, [1;36m10.37%[0m, [1;36m6.15%[0m, [1;36m1.81%[0m)
+- CPU time of factorization took: [1;36m 57.83 minutes [0m ([1;36m38.31%[0m, [1;36m41.17%[0m, [1;36m14.52%[0m, [1;36m6.01%[0m)
+Benchmark POLFED with custom mapping with TwoLevelParallel(4) (and 4 workers) with rescaled function (for L=20): 
+Workers: [1]
+Workers: [10, 11, 12, 13]
+New workers: [10, 11, 12, 13]
+1187.903637 seconds (8.07 M allocations: 40.064 GiB, 0.14% gc time, 182 lock conflicts)
+[1;34mSpectral Transformation Report:[0m
+- Targeted [1;36m 1500 [0m eigenpairs at energy [1;36m0.276889[0m
+- Exposing ev's in the interval [[1;36m0.273856[0m, [1;36m0.279923[0m], with width [1;36mδ = 0.00607[0m
+- Performing 'Chebyshev' spectral transformation of order [1;36m K = 846 [0m (and order safety factor [1;36m0.97[0m)
+- Matrix multiplication performed [1;36m 2_339_844 [0m times! With parallelization strategy: [1;36m TwoLevelParallel(4) [0m
+- Optimization with Clenshaw recurrence is [1;36m disabled [0m!
+[1;34mFactorization Report:[0m ([1mBlockLanczosFactorization[0m with blocksize [1m4[0m)
+- Number of converged eigenpairs:   [1;32m 1500 [0m (out of [1;36m 1500 [0m requested)
+- Lanczos convergence satisfied by: [1;32m 1500 [0m (with tolerance [1;36m 1.00e-14 [0m max residual was [1;33m 7.54e-16 [0m)
+- Eigen convergence satisfied by:   [1;32m 1500 [0m (with tolerance [1;36m 1.00e-09 [0m max residual was [1;33m 4.30e-10 [0m)
+- Iterations needed: [1;31m 691 [0m  (out of [1;36m 821 [0m reserved, overestimated by [1;31m 15.83% [0m)
+- Basis type: [1;36mMatrixBasis[0m and reorthogonalization technique: [1;36mFullRO()[0m
+[1;34mTimings:[0m Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)
+- Total polfed run took: [1;36m 19.52 minutes [0m (walltime), [1;36m 84.68 minutes [0m (CPU time)
+- Walltime of factorization took: [1;36m 18.34 minutes [0m ([1;36m85.48%[0m, [1;36m8.37%[0m, [1;36m4.70%[0m, [1;36m1.44%[0m)
+- CPU time of factorization took: [1;36m 57.82 minutes [0m ([1;36m38.30%[0m, [1;36m42.07%[0m, [1;36m13.55%[0m, [1;36m6.08%[0m)

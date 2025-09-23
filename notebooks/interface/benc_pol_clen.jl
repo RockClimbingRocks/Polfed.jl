@@ -1,7 +1,9 @@
 
 using SparseArrays, LinearAlgebra, BenchmarkTools, Base.Threads
+using HDF5
 include("/home/rokpintar/projects/Polfed/src/Polfed.jl")
 using .Polfed
+
 
 function mapvec_with_xxz!(
     diags::Vector{Float64},
@@ -249,32 +251,24 @@ end
 L = parse(Int, ARGS[1])
 howmany = parse(Int, ARGS[2])
 nt_per_col = parse(Int, ARGS[3])
+N = parse(Int, ARGS[4])
 nt = Base.Threads.nthreads()
 ncols = nt ÷ nt_per_col
 J=1.
-
-mat = construct_xxz_spin_sector(L, 1.234, L÷2)
-diags, off_flat, start_inds = extract_sparse_data(mat)
-vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J)
-
-# Compare vmap and mul!()
-x = randn(size(mat,1))
-y1 = similar(x)
-y2 = similar(x)
-
-vmap(y1, x)
-mul!(y2, mat, x)
-
 
 println("L: ", L)
 println("howmany: ", howmany)
 println("Number of threads: ", nt)
 println("Number of columns (workers): ", ncols)
 println("Number of threads per column: ", nt_per_col)
+println("Benchmark polfed WITH CUSTOM CLENSHAW function (L=$(L)): ")
 
 
-println("Maximum absolute difference between vmap and mul!: ", maximum(abs.(y1 .- y2)))
 
+
+mat = construct_xxz_spin_sector(L, 1.234, L÷2)
+diags, off_flat, start_inds = extract_sparse_data(mat)
+vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J)
 
 
 v02 = rand(size(mat,1)); v02 = v02 / norm(v02)
@@ -283,82 +277,47 @@ Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:largest,  maxdim
 
 v0_ = rand(size(mat,1), ncols); v0 = Matrix(qr(v0_).Q)
 
+a, b = (Emax-Emin)/2, (Emax+Emin)/2
+d_r = @. (diags-b)/a
+J_r =  J/a
 
-println("Benchmark the clenshaw  reocurence relation (L=$(L)): ")
-begin
-
-
-    d_r = @. (diags - (Emax+Emin)/2) / ((Emax-Emin)/2)
-    J_r = J / ((Emax-Emin)/2)
-
-    vmap_r! = mapvec_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-    crr, cfs = clenshaw_with_xxz!(d_r, off_flat, start_inds, J_r)
-
-    x = rand(size(mat,1)); 
-    
-    y = similar(x)
-    b1 = zeros(size(x))
-    b2 = zeros(size(x))
-    b3 = zeros(size(x))
-    c = 1.123
-
-    @btime $crr($b1, $b2, $b3, $c, $x)
-end
+vmap_r! = mapvec_with_xxz_parallel!(d_r,off_flat, start_inds,J_r)
+crr, cfs = clenshaw_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
 
 
+st = Polfed.SpectralTransformConfig(;
+    parallelization=Polfed.TwoLevelParallel(nt_per_col), 
+    f!_rescaled=vmap_r!,
+    clenshaw_recurrence=crr,
+    clenshaw_finalsum=cfs,
+)
 
-
-
-
-println("Benchmark POLFED with OPTIMIZE_MAPPING=TRUE (L=$(L)): ")
-begin
-
-    st = Polfed.SpectralTransformConfig(;
-        parallelization=Polfed.TwoLevelParallel(nt_per_col),
-    )
-    vals, vecs, report = @time Polfed.polfed(mat, v0, howmany, 0.; optimize_mapping=true, produce_report=true, spectral_transform=st)
+times = zeros(Float64, N)
+for i in 1:N
+    time = @elapsed begin vals, vecs, report = @time Polfed.polfed(vmap, v0, howmany, 0.; produce_report=true, spectral_transform=st) end
     Polfed.display_report(report)
+
+    times[i] = time
+    println("Iteration $i / $N took $time seconds.")
+    println()
+    println()
+    println()
+    println()
 end
 
 
-
-println("Benchmark polfed WITH CUSTOM CLENSHAW function (L=$(L)): ")
-begin
-    a, b = (Emax-Emin)/2, (Emax+Emin)/2
-    d_r = @. (diags-b)/a
-    J_r =  J/a
-
-    vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J) 
-    vmap_r! = mapvec_with_xxz_parallel!(d_r,off_flat, start_inds,J_r)
-    crr, cfs = clenshaw_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-
-
-    st = Polfed.SpectralTransformConfig(;
-        parallelization=Polfed.TwoLevelParallel(nt_per_col), 
-        f!_rescaled=vmap_r!,
-        clenshaw_recurrence=crr,
-        clenshaw_finalsum=cfs,
-    )
-
-    vals, vecs, report = @time Polfed.polfed(vmap, v0, howmany, 0.; produce_report=true, spectral_transform=st)
-    Polfed.display_report(report)
+h5file = h5open("bpc_L$(L)_N$(howmany)_nt$(nt)_ntpc$(nt_per_col)_avg$(N).h5", "w") do file
+    file["L"] = L
+    file["howmany"] = howmany
+    file["nt"] = nt
+    file["nt_per_col"] = nt_per_col
+    file["times"] = times
+    file["time_avg"] = mean(times)
+    file["time_std"] = std(times)
+    file["time_typ"] = exp(mean(log.(times)))
 end
 
 
+println("Results saved to HDF5 file.")
 
 
-println("Benchmark POLFED with custom mapping with TwoLevelParallel($(nt_per_col)) (and $(ncols) workers) with rescaled function (for L=$(L)): ")
-begin
-
-    a, b = (Emax-Emin)/2, (Emax+Emin)/2
-    d_r = @. (diags-b)/a
-    J_r =  J/a
-
-    vmap = mapvec_with_xxz_parallel!(diags, off_flat, start_inds, J) 
-    vmap_r! = mapvec_with_xxz_parallel!(d_r, off_flat, start_inds, J_r)
-
-    
-    st = Polfed.SpectralTransformConfig(;parallelization=Polfed.TwoLevelParallel(nt_per_col), f!_rescaled=vmap_r!)
-    vals, vecs, report = @time Polfed.polfed(vmap, v0, howmany, 0.; produce_report=true, spectral_transform=st)
-    Polfed.display_report(report)
-end

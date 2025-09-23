@@ -57,9 +57,8 @@ function clenshaw(
     @assert size(X) == size(Y) "Y and Ỹ must be of the same size!"
     @assert length(b) == nvecs "Length of b must be the same as the number of columns of Y!"
 
-
     Y_sh = SharedArray{eltype(Y)}(size(Y))
-    pmap(i -> transform(view(Y_sh, :, i), view(X, :, i), b[i]), 1:nvecs)
+    pmap(i -> transform(view(Y_sh, :, i), view(X, :, i), b[i]), parallelization.worker_pool, 1:nvecs)
     Y .= Y_sh
 end
 

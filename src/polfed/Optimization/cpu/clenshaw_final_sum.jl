@@ -26,7 +26,7 @@ function map_with_clenshaw_final_sum!(
 
     (val, offdiags_flatten, start_indices) = offdiagonals
 
-    loop(eachindex(X), i -> begin
+    loop(eachindex(X), @inline i -> begin
         yi = mapping_state_i(b1, i, diagonals, val, offdiags_flatten, start_indices)
         @inbounds Y[i] = c*X[i] + yi - b2[i]
     end)
@@ -47,7 +47,7 @@ function map_with_clenshaw_final_sum!(
 
     mapping!(Y, b1, diagonals, offdiagonals, loop)
 
-    loop(eachindex(X), i -> begin
+    loop(eachindex(X), @inline i -> begin
         @inbounds Y[i] = c*X[i] + Y[i] - b2[i]
     end)
 end

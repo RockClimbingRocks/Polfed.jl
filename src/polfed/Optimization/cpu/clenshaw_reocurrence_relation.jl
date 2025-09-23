@@ -28,11 +28,11 @@ function map_with_clenshaw_recurrence_relation!(
 
     (val, offdiags_flatten, start_indices) = offdiagonals
 
-    loop(eachindex(X), i -> begin
+    # println("Using optimized mapping clenshaw mapping TUPLED!!")
+    loop(eachindex(X), @inline i -> begin
         yi = mapping_state_i(b2, i, diagonals, val, offdiags_flatten, start_indices)
         @inbounds b1[i] = c*X[i] + 2*yi - b3[i]
     end)
-
 end
 
 
@@ -50,7 +50,7 @@ function map_with_clenshaw_recurrence_relation!(
 
     mapping!(b1,b2,diagonals,offdiagonals,loop)
 
-    loop(eachindex(X), i -> begin
+    loop(eachindex(X), @inline i -> begin
         @inbounds b1[i] = c*X[i] + 2*b1[i] - b3[i]
     end)
 end

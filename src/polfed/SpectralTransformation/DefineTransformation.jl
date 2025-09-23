@@ -66,36 +66,3 @@ end
 
 
 
-
-
-"""
-    set_workers(requested_workers::Int, threads_per_worker::Int)
-
-Configures the distributed environment to have an exact number of workers,
-each with a specific number of threads.
-
-It will remove existing workers if they do not match the desired thread count
-and create new ones. This ensures a clean and predictable environment.
-"""
-function set_workers(requested_workers::Int, threads_per_worker::Int)
-    nproc = nprocs()
-    nwork = nworkers()
-    println("Info: Current environment has $nproc process(es) and $nwork worker(s).")
-    println("Info: Adding $(requested_workers) new worker(s), each with $(threads_per_worker) threads.")
-
-
-    println("Workers: ", workers())
-    println("Process: ", procs())
-    addprocs(requested_workers; exeflags=["--project", "--threads=$threads_per_worker"])
-    println("Workers: ", workers())
-    println("Process: ", procs())
-
-
-    # main_module_file = joinpath(dirname(Base.active_project()), "src/Polfed.jl")
-    main_module_file = "/home/rokpintar/projects/Polfed/src/Polfed.jl"
-
-    println("Info: Loading module source code from `$(main_module_file)` on all workers...")
-    @everywhere workers() include($main_module_file)
-    println("Info: All workers are set up.")
-
-end
