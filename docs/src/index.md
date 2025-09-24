@@ -2,18 +2,6 @@
 CurrentModule = Polfed
 ```
 
-<!-- # Polfed
-
-Documentation for [Polfed](https://github.com/RockClimbingRocks/Polfed.jl).
-
-```@index
-
-```
-
-```@autodocs
-Modules = [Polfed]
-``` --> -->
-
 # Polfed.jl
 
 **Polfed.jl** is a Julia package for performing **Polynomial Filtering (PolFed)** simulations of quantum systems.  
