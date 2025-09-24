@@ -10,15 +10,20 @@ include("workers.jl")
 
 
 
+"""
+    polfed(mat, x0, howmany, target; kwargs...)
 
+Solve an eigenvalue problem using polynomial filtering.
 
+# Arguments
+- `mat`: A dense or sparse matrix.
+- `x0`: Initial vector(s).
+- `howmany`: Number of eigenvalues.
+- `target`: Spectral target.
 
-
-
-
-
-
-
+# Returns
+Eigenvalues and eigenvectors (optionally with report).
+"""
 function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Integer, target::Union{Real,Nothing};
     produce_report::Bool    = PolfedDefaults.produce_report,
     optimize_mapping::Bool  = PolfedDefaults.optimize_mapping,
@@ -40,8 +45,20 @@ function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Intege
 end
 
 
+"""
+    polfed(mat, x0, howmany, target; kwargs...)
 
+Solve an eigenvalue problem using polynomial filtering.
 
+# Arguments
+- `f!`: this is a function
+- `x0`: Initial vector(s).
+- `howmany`: Number of eigenvalues.
+- `target`: Spectral target.
+
+# Returns
+Eigenvalues and eigenvectors (optionally with report).
+"""
 function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target::Union{Real,Nothing};
     produce_report::Bool    = PolfedDefaults.produce_report,
     spectral_transform      = SpectralTransformConfig(),

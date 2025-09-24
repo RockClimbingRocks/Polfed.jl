@@ -1,8 +1,8 @@
-<!-- ```@meta
+```@meta
 CurrentModule = Polfed
 ```
 
-# Polfed
+<!-- # Polfed
 
 Documentation for [Polfed](https://github.com/RockClimbingRocks/Polfed.jl).
 
@@ -12,7 +12,7 @@ Documentation for [Polfed](https://github.com/RockClimbingRocks/Polfed.jl).
 
 ```@autodocs
 Modules = [Polfed]
-``` -->
+``` --> -->
 
 # Polfed.jl
 
@@ -28,4 +28,3 @@ Polfed.jl accepts general functions or callable objects as for example, any tipe
 The high level interface of Polfed is provided by the following functions:
 
 - [`polfed`](@ref): solves eigenvalue problem `H*v =E*v` at the targeted part of the spectrum
-<!-- - [`dos`](@ref): calulates denseties of states of the hamiltonian `ρ(E)=∑_i δ(E_i-E)` -->
