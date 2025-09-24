@@ -1,10 +1,10 @@
-```@meta
+````@meta
 CurrentModule = Polfed
-```
+
 
 # Polfed.jl
 
-**Polfed.jl** is a Julia package for performing **Polynomial Filtering (PolFed)** simulations of quantum systems.  
+**Polfed.jl** is a Julia package for performing **Polynomial Filtering (PolFed)** simulations of quantum systems.
 It provides efficient numerical routines for working with large-spare Hamiltonians, including support for eigenvalue filtering, kernel polynomial methods, and custom iterative algorithms.
 
 Polfed is designed for **high-performance simulations**, integrates smoothly with other Julia scientific computing packages, and includes GPU acceleration support.
@@ -16,3 +16,5 @@ Polfed.jl accepts general functions or callable objects as for example, any tipe
 The high level interface of Polfed is provided by the following functions:
 
 - [`polfed`](@ref): solves eigenvalue problem `H*v =E*v` at the targeted part of the spectrum
+```s
+````
