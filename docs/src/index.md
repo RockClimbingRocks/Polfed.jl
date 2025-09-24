@@ -1,4 +1,4 @@
-````@meta
+```@meta
 CurrentModule = Polfed
 
 
@@ -16,5 +16,4 @@ Polfed.jl accepts general functions or callable objects as for example, any tipe
 The high level interface of Polfed is provided by the following functions:
 
 - [`polfed`](@ref): solves eigenvalue problem `H*v =E*v` at the targeted part of the spectrum
-```s
-````
+```
