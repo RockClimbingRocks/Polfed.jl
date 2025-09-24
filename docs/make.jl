@@ -1,30 +1,3 @@
-# using Polfed
-# using Documenter
-# using Literate
-
-# DocMeta.setdocmeta!(Polfed, :DocTestSetup, :(using Polfed); recursive=true)
-
-# makedocs(;
-#     modules=[Polfed],
-#     authors="RockClimbingRocks <rok123.pintar2@gmail.com> and contributors",
-#     sitename="Polfed.jl",
-#     format=Documenter.HTML(;
-#         canonical="https://RockClimbingRocks.github.io/Polfed.jl",
-#         edit_link="main",
-#         assets=String[],
-#     ),
-#     pages=[
-#         "Home" => "index.md",
-#         "Examples" => "Examples/mwe.md",
-#     ],
-# )
-
-# deploydocs(;
-#     repo="github.com/RockClimbingRocks/Polfed.jl",
-#     devbranch="main",
-# )
-
-
 
 using Documenter, Literate, Polfed
 
@@ -54,11 +27,9 @@ makedocs(
         ],
 
         "Examples" => [
-            "Example 1" => "examples/mwe.md",
+            "Minimal Working Example" => "examples/mwe.md",
         ],
     ],
-    checkdocs = :none,   # 👈 disables missing docs errors
-    # warnonly  = [:cross_references, :example_block],  
 )
 
 deploydocs(

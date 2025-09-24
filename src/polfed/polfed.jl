@@ -10,6 +10,7 @@ include("workers.jl")
 
 
 
+
 """
     polfed(mat, x0, howmany, target; kwargs...)
 
@@ -90,20 +91,4 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
     produce_report && (return (vals, vecs, report))
     return (vals, vecs)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
