@@ -325,7 +325,7 @@ elseif benc_type == "type7"
     key_word_args[:optimize_mapping] = true
     key_word_args[:produce_report] = true
 
-elseif benc_type == "type7"
+elseif benc_type == "type8"
     input_mat_or_vec = mat
 
     st = Polfed.SpectralTransformConfig(;

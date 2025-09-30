@@ -1,6 +1,6 @@
 
 
-mutable struct LanczosConfig
+mutable struct FactorizationConfig
     rot::ReOrthTechnique
     basistype::Type{<:OrthonormalBasis}
     which::Symbol
@@ -8,7 +8,7 @@ mutable struct LanczosConfig
     eigentol::Union{Real,Nothing}
 
 
-    function LanczosConfig(;
+    function FactorizationConfig(;
         rot=PolfedDefaults.rot, 
         basistype::Type{<:OrthonormalBasis}=PolfedDefaults.basistype,
         which::Symbol=PolfedDefaults.which,
@@ -22,7 +22,7 @@ end
 
 
 
-mutable struct LanczosConfigFull
+mutable struct FactorizationConfigFull
     x0::AbstractVecOrMat
     elmtype::Type
     maxdim::Integer
@@ -33,8 +33,8 @@ mutable struct LanczosConfigFull
     eigentol::Union{Real,Nothing}
 
 
-    function LanczosConfigFull(
-        lanczos::LanczosConfig,
+    function FactorizationConfigFull(
+        fact::FactorizationConfig,
         spectral_transform::SpectralTransformConfigFull,
         x0::AbstractVecOrMat{T},
         howmany::Integer,
@@ -46,11 +46,11 @@ mutable struct LanczosConfigFull
             x0,
             T,
             PolfedDefaults.expectedkrylovdim(howmany, blocksize, spectral_transform.overestimate_iters),
-            lanczos.rot,
-            lanczos.basistype,
-            lanczos.which,
-            lanczos.tol,
-            lanczos.eigentol,
+            fact.rot,
+            fact.basistype,
+            fact.which,
+            fact.tol,
+            fact.eigentol,
         )
     end
 

@@ -56,6 +56,12 @@ howmany = 100
 # We can now call the [`polfed`](@ref) function to compute the eigenvalues and eigenvectors
 vals, vecs = @time Polfed.polfed(mat, v0, howmany, λ)
 display(vals)
-
-
+# The computed eigenvalues are displayed above. We can also check that the eigenpairs are correct by computing the residual norms $||H \vec{u} - E \vec{u}||$ for each eigenpair $(E, \vec{u})$, which we also verify inside the algorithm.
+# To better understand what happens during the run, one can enable the reporting option by setting the corresponding keyword argument to \texttt{true}. 
+vals, vecs, report = @time Polfed.polfed(mat, v0, howmany, λ; produce_report=true)
+Polfed.display_report(report)
+# The reporting system is flexible: you can include or exclude parts of the report (e.g., convergence details, benchmarks), see [`display_report`](@ref) for more details.
+# ```@docs
+# display_report
+# ```
 

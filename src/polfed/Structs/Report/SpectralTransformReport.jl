@@ -40,7 +40,7 @@ end
 
 
 
-function display_report(report::SpectralTransformReport)
+function display_spectral_report(report::SpectralTransformReport)
     format_with_underscores(n::Integer) = reverse(join(Iterators.partition(reverse(string(n)), 3), "_"))
 
     target   = @sprintf("\e[1;36m%.6f\e[0m", report.target)

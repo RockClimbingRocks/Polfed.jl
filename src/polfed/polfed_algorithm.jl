@@ -1,20 +1,20 @@
 function polfed_algorithm(
     spectral_transform::SpectralTransformConfigFull,
-    lanczos_config::LanczosConfigFull,
+    fact_config::FactorizationConfigFull,
     dos::DoSConfigFull,
     pu::ProcessingUnit,
 )
-    getdos!(dos, spectral_transform, lanczos_config, pu)
-    getspectraltransform!(dos, spectral_transform, lanczos_config, pu)
+    getdos!(dos, spectral_transform, fact_config, pu)
+    getspectraltransform!(dos, spectral_transform, fact_config, pu)
 
     vals, vecs, fact_report = lanczos(
-        spectral_transform.f!_transformed, lanczos_config.x0, spectral_transform.howmany;
-        rot         = lanczos_config.rot,
-        basistype   = lanczos_config.basistype, 
-        maxdim      = lanczos_config.maxdim, 
-        tol         = lanczos_config.tol, 
-        eigentol    = lanczos_config.eigentol, 
-        which       = lanczos_config.which,
+        spectral_transform.f!_transformed, fact_config.x0, spectral_transform.howmany;
+        rot         = fact_config.rot,
+        basistype   = fact_config.basistype, 
+        maxdim      = fact_config.maxdim, 
+        tol         = fact_config.tol, 
+        eigentol    = fact_config.eigentol, 
+        which       = fact_config.which,
         mapvals     = spectral_transform.f!
     ) 
 

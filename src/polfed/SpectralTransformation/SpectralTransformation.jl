@@ -11,13 +11,13 @@ include("DefineTransformation.jl")
 function getspectraltransform!(
     dos::DoSConfigFull, 
     spectral_transform::SpectralTransformConfigFull, 
-    lanczos::LanczosConfigFull, 
+    fact::FactorizationConfigFull, 
     pu::ProcessingUnit
 )
    
     getbounds!(spectral_transform, dos.ρ, :mean)
     getorderofexapnsion!(spectral_transform)
 
-    definetransformation!(spectral_transform, lanczos.x0, pu)
+    definetransformation!(spectral_transform, fact.x0, pu)
 end
 

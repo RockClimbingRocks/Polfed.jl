@@ -102,7 +102,7 @@ struct BenchmarkReport
 end
 
 
-function display_report(report::BenchmarkReport; show_timings::Bool=true, show_memory::Bool=false)
+function display_benchmark_report(report::BenchmarkReport; show_timings::Bool=true, show_memory::Bool=false)
 
     fact_tot_wt = sum(report.timings.fact_wt) 
     tot_wt = report.timings.total_wt

@@ -3,7 +3,7 @@ include("Moments.jl")
 include("Kernels.jl")
 
 
-function getdos!(dosconfig::DoSConfigFull, spectral_transform::SpectralTransformConfigFull, lanczos::LanczosConfigFull, pu::ProcessingUnit)
+function getdos!(dosconfig::DoSConfigFull, spectral_transform::SpectralTransformConfigFull, lanczos::FactorizationConfigFull, pu::ProcessingUnit)
     @unpack N, R, kernel = dosconfig
     @unpack f!_rescaled = spectral_transform
     @unpack elmtype, x0 = lanczos

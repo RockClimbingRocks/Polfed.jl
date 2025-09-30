@@ -29,7 +29,7 @@ function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Intege
     produce_report::Bool    = PolfedDefaults.produce_report,
     optimize_mapping::Bool  = PolfedDefaults.optimize_mapping,
     spectral_transform      = SpectralTransformConfig(),
-    lanczos                 = LanczosConfig(),
+    fact                    = FactorizationConfig(),
     dos                     = DoSConfig(),
 ) where {T<:Real}
 
@@ -40,7 +40,7 @@ function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Intege
     polfed(f!, x0, howmany, target; 
         produce_report      = produce_report,
         spectral_transform  = spectral_transform,
-        lanczos             = lanczos,
+        lanczos             = fact,
         dos                 = dos
     )
 end
@@ -63,7 +63,7 @@ Eigenvalues and eigenvectors (optionally with report).
 function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target::Union{Real,Nothing};
     produce_report::Bool    = PolfedDefaults.produce_report,
     spectral_transform      = SpectralTransformConfig(),
-    lanczos                 = LanczosConfig(),
+    fact                    = FactorizationConfig(),
     dos                     = DoSConfig(),
 ) where {T<:Real}
     set_workers(x0, spectral_transform.parallelization)
@@ -74,10 +74,10 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target:
         pu = isa(x0, CuArray) ? GPU() : CPU()
 
         spectral_transform_config = SpectralTransformConfigFull(spectral_transform, f!, x0, howmany, target, pu)
-        lanczos_config = LanczosConfigFull(lanczos, spectral_transform_config, x0, howmany)
+        fact_config = FactorizationConfigFull(fact, spectral_transform_config, x0, howmany)
         dos_config = DoSConfigFull(dos)
 
-        vals, vecs, factorization_report = polfed_algorithm(spectral_transform_config, lanczos_config, dos_config, pu)
+        vals, vecs, factorization_report = polfed_algorithm(spectral_transform_config, fact_config, dos_config, pu)
 
         nothing
     end

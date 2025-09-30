@@ -85,7 +85,7 @@ export GPU, CPU
 export lanczos
 export FactorizationReport
 export EigSorter
-export display_report, print_report
+export display_factorization_report, print_factorization_report
 
 end
 

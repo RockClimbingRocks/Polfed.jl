@@ -12,7 +12,7 @@ include("ClenshawMapping/ClenshawMapping.jl")
 include("Lanczos/Lanczos.jl")
 
 import .ClenshawMapping: Clenshaw, ClenshawKernel
-import .Lanczos: lanczos, FactorizationReport, display_report, print_report,
+import .Lanczos: lanczos, FactorizationReport, display_factorization_report, print_factorization_report,
                  @addtime!, FullRO, PartialRO, ReOrthTechnique,
                  MatrixBasis, HybridMatrixBasis, OrthonormalBasis
 
@@ -21,7 +21,6 @@ const main_module_file = abspath(@__FILE__)
 
 include("polfed/polfed.jl")
 
-
-export polfed
+export polfed, display_report
 
 end # module

@@ -95,7 +95,9 @@ mutable struct FactorizationReport
 end
 
 
-function display_report(report::FactorizationReport; show_convergence_details=false, show_timings=true)
+
+
+function display_factorization_report(report::FactorizationReport; show_convergence_details=false, show_timings=true)
 
 
     eig_tol_color = report.converged_eigentol == report.howmany ? "\e[1;32m" : "\e[1;31m"
@@ -180,7 +182,7 @@ function display_report(report::FactorizationReport; show_convergence_details=fa
 end
 
 
-function print_report(report::FactorizationReport; show_convergence_details=false)
+function print_factorization_report(report::FactorizationReport; show_convergence_details=false)
 
 
     eig_tol_color = report.converged_eigentol == report.howmany ? "" : ""

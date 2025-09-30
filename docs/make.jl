@@ -2,8 +2,11 @@
 using Documenter, Literate, Polfed
 
 # Convert Literate scripts into Markdown
-Literate.markdown("/home/rokpintar/projects/Polfed/examples/mwe.jl", "docs/src/examples")
+# Literate.markdown("/home/rokpintar/projects/Polfed/examples/mwe.jl", "docs/src/examples")
 # Literate.markdown("examples/example2.jl", "docs/src/examples")
+
+Literate.markdown("/home/rokpintar/projects/Polfed/docs/src/documentation/docs-polfed.jl", "src/documentation/generated", execute=false)
+
 
 makedocs(
     modules=[Polfed],
@@ -17,18 +20,20 @@ makedocs(
     pages = [
         "Home" => "index.md",
 
-        "Quick Start" => [
-            "Something1" => "quickstart/something1.md",
-            "Something2" => "quickstart/something2.md",
-        ],
-
         "Documentation" => [
-            "API Reference" => "documentation/api.md",
+            "Polfed docs" => "documentation/generated/docs-polfed.md",
+            # "Lanczos factorization" => "documentation/factorization.md",
+            # "Spectral Transformation" => "documentation/spectral_transformation.md",
         ],
 
-        "Examples" => [
-            "Minimal Working Example" => "examples/mwe.md",
-        ],
+        # "Quick Start" => [
+        #     "Something1" => "quickstart/something1.md",
+        #     "Something2" => "quickstart/something2.md",
+        # ],
+
+        # "Examples" => [
+        #     "Minimal Working Example" => "examples/mwe.md",
+        # ],
     ],
 )
 
