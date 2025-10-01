@@ -40,7 +40,7 @@ function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Intege
     polfed(f!, x0, howmany, target; 
         produce_report      = produce_report,
         spectral_transform  = spectral_transform,
-        lanczos             = fact,
+        fact                = fact,
         dos                 = dos
     )
 end
