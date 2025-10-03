@@ -39,19 +39,19 @@ Displays a comprehensive report for the given `Report` object. The function allo
 # Notes
 Each section is displayed by calling `display_report` on the corresponding subfield of the `Report` object. The `show_timings` option for the factorization section is always set to `false` in this function.
 """
-function display_report(report::Report;
+function display_report(report::Report, use_colors::Bool;
     include_spectral_transform::Bool=true,
     include_factorization::Bool=true,
     show_convergence_details=false, 
     include_benchmark::Bool=true,
 )
 
-    include_spectral_transform && display_spectral_report(report.spectral_transform)
+    include_spectral_transform && display_spectral_report(report.spectral_transform, use_colors)
 
-    include_factorization && display_factorization_report(report.factorization; 
+    include_factorization && display_factorization_report(report.factorization, use_colors; 
         show_convergence_details=show_convergence_details, 
         show_timings=false
     )
 
-    include_benchmark && display_benchmark_report(report.benchmark)
+    include_benchmark && display_benchmark_report(report.benchmark, use_colors)
 end

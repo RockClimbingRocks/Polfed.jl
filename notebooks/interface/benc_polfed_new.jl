@@ -343,7 +343,7 @@ end
 times = zeros(Float64, N)
 for i in 1:N
     time = @elapsed begin vals, vecs, report = @time Polfed.polfed(input_mat_or_vec, v0, howmany, 0.; key_word_args...) end
-    Polfed.display_report(report)
+    Polfed.display_report(report, true)
 
     times[i] = time
     println("Iteration $i / $N took $time seconds.")

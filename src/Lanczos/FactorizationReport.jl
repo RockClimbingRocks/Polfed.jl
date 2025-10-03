@@ -96,152 +96,96 @@ end
 
 
 
+"""
+    display_factorization_report(report::FactorizationReport; 
+        use_colors::Bool=true, 
+        show_convergence_details::Bool=false, 
+        show_timings::Bool=true)
 
-function display_factorization_report(report::FactorizationReport; show_convergence_details=false, show_timings=true)
+Pretty-prints a factorization report with optional ANSI colors.
+"""
+function display_factorization_report(report::FactorizationReport, use_colors::Bool; 
+                                      show_convergence_details::Bool=false, 
+                                      show_timings::Bool=true)
 
+    f = Formatter(use_colors)
 
-    eig_tol_color = report.converged_eigentol == report.howmany ? "\e[1;32m" : "\e[1;31m"
-    lanczos_tol_color = report.converged_tol == report.howmany ? "\e[1;32m" : "\e[1;31m"
+    eig_ok = report.converged_eigentol == report.howmany
+    lan_ok = report.converged_tol == report.howmany
+
+    eig_color = eig_ok ? green(f, string(report.converged_eigentol)) : red(f, string(report.converged_eigentol))
+    lan_color = lan_ok ? green(f, string(report.converged_tol)) : red(f, string(report.converged_tol))
+
     remaining_percentage = (1 - report.itersneeded / report.itersreserved) * 100
-    remaining_color = remaining_percentage <= 3 ? "\e[1;31m" :
-                      remaining_percentage <= 5 ? "\e[1;33m" :
-                      remaining_percentage <= 15 ? "\e[1;32m" : "\e[1;31m"
+    remaining_color = remaining_percentage <= 3   ? red(f, @sprintf("%.2f%%", remaining_percentage)) :
+                      remaining_percentage <= 5   ? yellow(f, @sprintf("%.2f%%", remaining_percentage)) :
+                      remaining_percentage <= 15  ? green(f, @sprintf("%.2f%%", remaining_percentage)) :
+                                                      red(f, @sprintf("%.2f%%", remaining_percentage))
 
-    total_walltime = sum(report.walltimes) 
-    walltime, units_wt =   total_walltime <= 60*2 ? (total_walltime, "seconds") :
-                        total_walltime <= 60*60*2 ? (total_walltime/60, "minutes") : (total_walltime/60/60, "hours")
-    percentages_wt = [t / total_walltime * 100 for t in report.walltimes]
-    percentages_ordered_grouped_wt = [percentages_wt[2], percentages_wt[5], percentages_wt[6], percentages_wt[1]+percentages_wt[3]+percentages_wt[4]]
-    formatted_percentages_wt = join(["\e[1;36m" * @sprintf("%.2f", p) * "%\e[0m" for p in percentages_ordered_grouped_wt], ", ")
+    # --- Timings ---
+    total_walltime = sum(report.walltimes)
+    walltime, units_wt = total_walltime <= 60*2       ? (total_walltime, "seconds") :
+                         total_walltime <= 60*60*2    ? (total_walltime/60, "minutes") :
+                                                       (total_walltime/3600, "hours")
 
+    total_cputime = sum(report.cputimes)
+    cputime, units_ct = total_cputime <= 60*2       ? (total_cputime, "seconds") :
+                        total_cputime <= 60*60*2    ? (total_cputime/60, "minutes") :
+                                                      (total_cputime/3600, "hours")
 
+    # percentages (grouping same as your code)
+    perc_wt = [t / total_walltime * 100 for t in report.walltimes]
+    perc_ct = [t / total_cputime * 100 for t in report.cputimes]
 
-    total_cputime = sum(report.cputimes) 
-    cputime, units_ct =   total_cputime <= 60*2 ? (total_cputime, "seconds") :
-                        total_cputime <= 60*60*2 ? (total_cputime/60, "minutes") : (total_cputime/60/60, "hours")
-    percentages_ct = [t / total_cputime * 100 for t in report.cputimes]
-    percentages_ordered_grouped_ct = [percentages_ct[2], percentages_ct[5], percentages_ct[6], percentages_ct[1]+percentages_ct[3]+percentages_ct[4]]
-    formatted_percentages_ct = join(["\e[1;36m" * @sprintf("%.2f", p) * "%\e[0m" for p in percentages_ordered_grouped_ct], ", ")
+    perc_wt_grouped = [perc_wt[2], perc_wt[5], perc_wt[6], perc_wt[1]+perc_wt[3]+perc_wt[4]]
+    perc_ct_grouped = [perc_ct[2], perc_ct[5], perc_ct[6], perc_ct[1]+perc_ct[3]+perc_ct[4]]
 
+    formatted_perc_wt = join([cyan(f, @sprintf("%.2f%%", p)) for p in perc_wt_grouped], ", ")
+    formatted_perc_ct = join([cyan(f, @sprintf("%.2f%%", p)) for p in perc_ct_grouped], ", ")
 
+    # --- Header info ---
+    fac_type = bold(f, string(report.factorizationtype))
+    blocksize = bold(f, string(report.blocksize))
+    howmany   = cyan(f, string(report.howmany))
+    tol       = cyan(f, @sprintf("%.2e", report.tol))
+    eigentol  = cyan(f, @sprintf("%.2e", report.eigentol))
+    residual  = yellow(f, @sprintf("%.2e", report.residual))
+    eigrnres  = yellow(f, @sprintf("%.2e", report.eigenresidual))
+    basis     = cyan(f, split(first(split(string(report.basistype), "{")), ".")[end])
+    rot       = cyan(f, split(string(report.rot), ".")[end])
 
-    factorizationtype   = @sprintf("\e[1m%s\e[0m", report.factorizationtype)
-    blocksize           = @sprintf("\e[1m%d\e[0m", report.blocksize)
-    howmany             = @sprintf("\e[1;36m %d \e[0m", report.howmany)
-    converged           = @sprintf("%s %d \e[0m", eig_tol_color, report.converged_eigentol) 
-    lanczos_coverged    = @sprintf("%s %d \e[0m", lanczos_tol_color, report.converged_tol)
-    eigen_coverged      = @sprintf("%s %d \e[0m", eig_tol_color, report.converged_eigentol) 
-    tol                 = @sprintf("\e[1;36m %.2e \e[0m", report.tol)
-    eigentol            = @sprintf("\e[1;36m %.2e \e[0m", report.eigentol)
-    residual            = @sprintf("\e[1;33m %.2e \e[0m", report.residual)
-    eigrnresidual       = @sprintf("\e[1;33m %.2e \e[0m", report.eigenresidual)
-    basis_type          = @sprintf("\e[1;36m%s\e[0m", split(first(split(string(report.basistype), "{")), ".")[end])
-    rot                 = @sprintf("\e[1;36m%s\e[0m", split(string(report.rot), ".")[end])
+    itersneeded   = bold(f, string(report.itersneeded))
+    itersreserved = cyan(f, string(report.itersreserved))
+    total_wt      = cyan(f, @sprintf("%.2f %s", walltime, units_wt))
+    total_ct      = cyan(f, @sprintf("%.2f %s", cputime, units_ct))
 
-
-    itersneeded         = @sprintf("%s %d \e[0m", remaining_color, report.itersneeded)
-    itersreserved       = @sprintf("\e[1;36m %d \e[0m", report.itersreserved)
-    iterspercantage     = @sprintf("%s %.2f%% \e[0m", remaining_color, remaining_percentage) 
-    total_wt            = @sprintf("\e[1;36m %.2f %s \e[0m", walltime, units_wt)
-    total_ct            = @sprintf("\e[1;36m %.2f %s \e[0m", cputime, units_ct)
-
-    numofchecks         = @sprintf("\e[1m%d\e[0m", report.numofchecks)
-
-    print(  "\e[1;34mFactorization Report:\e[0m")
-    isa(factorizationtype, LanczosFactorization) ? println(  " ($factorizationtype)") : println(" ($factorizationtype with blocksize $blocksize)")
-    println("- Number of converged eigenpairs:   $converged (out of ", howmany, " requested)")
-    println("- Lanczos convergence satisfied by: $lanczos_coverged (with tolerance $tol max residual was $residual)")
-    println("- Eigen convergence satisfied by:   $eigen_coverged (with tolerance $eigentol max residual was $eigrnresidual)")
-    println("- Iterations needed: $itersneeded  (out of $itersreserved reserved, overestimated by $iterspercantage)")
-    println("- Basis type: $basis_type and reorthogonalization technique: $rot")
+    # --- Printing ---
+    println(blue(f, "Factorization Report:"), " ($fac_type with blocksize $blocksize)")
+    println("- Number of converged eigenpairs:   $eig_color (out of $howmany requested)")
+    println("- Lanczos convergence satisfied by: $lan_color (with tolerance $tol, max residual $residual)")
+    println("- Eigen convergence satisfied by:   $eig_color (with tolerance $eigentol, max residual $eigrnres)")
+    println("- Iterations needed: $itersneeded (out of $itersreserved reserved, overestimated by $remaining_color)")
+    println("- Basis type: $basis and reorthogonalization technique: $rot")
 
     if show_timings
-        println(  "\e[1;34mTimings:\e[0m Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)")
-        println("- Walltime of factorization took: $total_wt ($formatted_percentages_wt)")
-        println("- CPU time of factorization took: $total_ct ($formatted_percentages_ct)")
-    end 
-
-    if show_convergence_details
-
-        header = (["Checking", "Krylov dim.", "Converged", "Residual"])
-        data = hcat(1:report.numofchecks, report.krylovbasisdim_history, report.converged_history, report.maxresidual_history);
-
-
-        println("- Convergence check was peerformed $(report.numofchecks) times, here is the table of results:")
-
-        pretty_table(
-               data;
-               formatters    = ft_printf("%d", 1:3),
-               header        = header,
-               header_crayon = crayon"blue bold",
-               tf            = tf_unicode_rounded
-               # formatters    = ft_printf("%5å.2f", 2:4),
-               # highlighters  = (hl_10, hl_p, hl_v),
-           )
+        println(blue(f, "Timings:"), " Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)")
+        println("- Walltime of factorization took: $total_wt ($formatted_perc_wt)")
+        println("- CPU time of factorization took: $total_ct ($formatted_perc_ct)")
     end
-end
-
-
-function print_factorization_report(report::FactorizationReport; show_convergence_details=false)
-
-
-    eig_tol_color = report.converged_eigentol == report.howmany ? "" : ""
-    lanczos_tol_color = report.converged_tol == report.howmany ? "" : ""
-    remaining_percentage = (1 - report.itersneeded / report.itersreserved) * 100
-    remaining_color = remaining_percentage <= 3 ? "" :
-                      remaining_percentage <= 5 ? "" :
-                      remaining_percentage <= 15 ? "" : ""
-
-    total_walltime = sum(report.walltimes) 
-    walltime, units =   total_walltime <= 60*2 ? (total_walltime, "seconds") :
-                        total_walltime <= 60*60*2 ? (total_walltime/60, "minutes") : (total_walltime/60/60, "hours")
-    
-
-    percentages = [t / total_walltime * 100 for t in report.walltimes]
-    formatted_percentages = join(["" * @sprintf("%.2f", p) * "" for p in percentages], ", ")
-
-    factorizationtype   = @sprintf("%s", report.factorizationtype)
-    blocksize           = @sprintf("%d", report.blocksize)
-    howmany             = @sprintf(" %d ", report.howmany)
-    converged           = @sprintf("%s %d ", eig_tol_color, report.converged_eigentol) 
-    lanczos_coverged    = @sprintf("%s %d ", lanczos_tol_color, report.converged_tol)
-    eigen_coverged      = @sprintf("%s %d ", eig_tol_color, report.converged_eigentol) 
-    tol                 = @sprintf(" %.2e ", report.tol)
-    eigentol            = @sprintf(" %.2e ", report.eigentol)
-    residual            = @sprintf(" %.2e ", report.residual)
-    eigrnresidual       = @sprintf(" %.2e ", report.eigrnresidual)
-
-    itersneeded         = @sprintf("%s %d ", remaining_color, report.itersneeded)
-    itersreserved       = @sprintf(" %d ", report.itersreserved)
-    iterspercantage     = @sprintf("%s %.2f%% ", remaining_color, remaining_percentage) 
-    totaltime           = @sprintf(" %.2f %s ", walltime, units)
-
-    numofchecks         = @sprintf("%d", report.numofchecks)
-
-    print(  "Convergence Information:")
-    isa(factorizationtype, LanczosFactorization) ? println(  " ($factorizationtype)") : println(" ($factorizationtype with blocksize $blocksize)")
-    println("- Number of converged eigenpairs:   $converged (out of ", howmany, " requested)")
-    println("- Lanczos convergence satisfied by: $lanczos_coverged (within tolerance $tol maximal residual was $residual)")
-    println("- Eigen convergence satisfied by:   $eigen_coverged (within tolerance $eigentol maximal residual was $eigrnresidual)")
-    println("- Iterations needed: $itersneeded  (out of $itersreserved reserved, overestimated by $iterspercantage)")
-    println("- Lanczos method took: $totaltime (distributed as: $formatted_percentages )")
 
     if show_convergence_details
+        header = ["Checking", "Krylov dim.", "Converged", "Residual"]
+        data = hcat(1:report.numofchecks, report.krylovbasisdim_history,
+                    report.converged_history, report.maxresidual_history)
 
-        header = (["Checking", "Krylov dim.", "Converged", "Residual"])
-        data = hcat(1:report.numofchecks, report.krylovbasisdim_history, report.converged_history, report.maxresidual_history);
-
-
-        println("- Convergence check was peerformed $(report.numofchecks) times, here is the table of results:")
+        println("- Convergence check was performed $(report.numofchecks) times, here is the table of results:")
 
         pretty_table(
-               data;
-               formatters    = ft_printf("%d", 1:3),
-               header        = header,
-               header_crayon = crayon"blue bold",
-               tf            = tf_unicode_rounded
-               # formatters    = ft_printf("%5å.2f", 2:4),
-               # highlighters  = (hl_10, hl_p, hl_v),
-           )
+            data;
+            formatters    = ft_printf("%d", 1:3),
+            header        = header,
+            header_crayon = crayon"blue bold",
+            tf            = tf_unicode_rounded
+        )
     end
 end

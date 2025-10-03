@@ -8,13 +8,16 @@ using LinearAlgebra, UnPack, Base.Threads, QuadGK, Printf, SharedArrays, SparseA
 using StaticArrays: SVector
 using CUDA, CUDA.CUSPARSE
 
+include("common/common.jl")
 include("ClenshawMapping/ClenshawMapping.jl")
 include("Lanczos/Lanczos.jl")
 
+import .Common: Formatter, fmt, bold, cyan, blue, green, red, yellow, @addtime!
 import .ClenshawMapping: Clenshaw, ClenshawKernel
-import .Lanczos: lanczos, FactorizationReport, display_factorization_report, print_factorization_report,
-                 @addtime!, FullRO, PartialRO, ReOrthTechnique,
-                 MatrixBasis, HybridMatrixBasis, OrthonormalBasis
+import .Lanczos: lanczos, FactorizationReport, display_factorization_report,
+        FullRO, PartialRO, ReOrthTechnique,
+        MatrixBasis, HybridMatrixBasis, OrthonormalBasis
+
 
 const main_module_file = abspath(@__FILE__)
 

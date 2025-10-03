@@ -1,18 +1,10 @@
 module Lanczos
 
 using LinearAlgebra, CUDA, CUDA.CUSPARSE
-using Printf, PrettyTables, CPUTime
+using Printf, PrettyTables
 
-macro addtime!(wallarr, cpuarr, idx, expr)
-    quote
-        walltime = @elapsed begin 
-            cputime = @CPUelapsed $(esc(expr)) 
-        end
-        $(esc(wallarr))[$(esc(idx))] += walltime
-        $(esc(cpuarr))[$(esc(idx))] += cputime
-    end
-end
-
+include("../common/common.jl")
+import .Common: Formatter, fmt, bold, cyan, blue, green, red, yellow, @addtime!
 
 include("ProcessingUnit.jl") 
 include("ReOrthTechnics/ReOrthTechnics.jl")

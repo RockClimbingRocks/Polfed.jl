@@ -40,43 +40,42 @@ end
 
 
 
-function display_spectral_report(report::SpectralTransformReport)
+"""
+    display_spectral_report(report::SpectralTransformReport; use_colors=true)
+
+Pretty-prints a Spectral Transformation Report with optional ANSI colors.
+"""
+function display_spectral_report(report::SpectralTransformReport, use_colors::Bool)
+    f = Formatter(use_colors)
+
     format_with_underscores(n::Integer) = reverse(join(Iterators.partition(reverse(string(n)), 3), "_"))
 
-    target   = @sprintf("\e[1;36m%.6f\e[0m", report.target)
-    left     = @sprintf("\e[1;36m%.6f\e[0m", report.left)
-    right    = @sprintf("\e[1;36m%.6f\e[0m", report.right)
-    width    = @sprintf("\e[1;36mδ = %.5f\e[0m", report.right - report.left)
-    order    = @sprintf("\e[1;36m K = %d \e[0m", report.order)
-    osf      = @sprintf("\e[1;36m%.2f\e[0m", report.order_safety_factor)
-    howmany  = @sprintf("\e[1;36m %d \e[0m", report.howmany)
-    num_mul  = @sprintf("\e[1;36m %s \e[0m", format_with_underscores(report.matrixvec_muls))
-    clenshaw = report.clenshaw_recurrence ? @sprintf("\e[1;36m %s \e[0m", "enabled") : @sprintf("\e[1;36m %s \e[0m", "disabled")
-    
-    parallel = nothing
-    if report.parallelization isa NoParallel
-        parallel = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
+    target   = cyan(f, @sprintf("%.6f", report.target))
+    left     = cyan(f, @sprintf("%.6f", report.left))
+    right    = cyan(f, @sprintf("%.6f", report.right))
+    width    = cyan(f, @sprintf("δ = %.5f", report.right - report.left))
+    order    = cyan(f, @sprintf("K = %d", report.order))
+    osf      = cyan(f, @sprintf("%.2f", report.order_safety_factor))
+    howmany  = cyan(f, string(report.howmany))
+    num_mul  = cyan(f, format_with_underscores(report.matrixvec_muls))
+    clenshaw = report.clenshaw_recurrence ? cyan(f, "enabled") : cyan(f, "disabled")
+
+    # Parallelization strategy formatting
+    parallel = if report.parallelization isa NoParallel
+        cyan(f, split(string(report.parallelization), ".")[end])
     elseif report.parallelization isa MulColsParallel
-        parallel = @sprintf("\e[1;36m %s \e[0m", split(string(report.parallelization), ".")[end])
+        cyan(f, split(string(report.parallelization), ".")[end])
     elseif report.parallelization isa TwoLevelParallel
-        parallel = @sprintf("\e[1;36m %s \e[0m", "TwoLevelParallel($(report.parallelization.nt_per_col))")
+        cyan(f, "TwoLevelParallel($(report.parallelization.nt_per_col))")
     else
         throw(ArgumentError("Unknown parallelization strategy"))
     end
-        
 
-    # parall = report.parallelization split(string(report.parallelization), ".")[end]
-
-    
-
-    println("\e[1;34mSpectral Transformation Report:\e[0m")
+    println(blue(f, "Spectral Transformation Report:"))
     println("- Targeted $howmany eigenpairs at energy $target")
     println("- Exposing ev's in the interval [$left, $right], with width $width")
     println("- Performing '$(report.polynomialtype)' spectral transformation of order $order (and order safety factor $osf)")
     println("- Matrix multiplication performed $num_mul times! With parallelization strategy: $parallel")
-    println("- Optimization with Clenshaw recurrence is $(clenshaw)!")
+    println("- Optimization with Clenshaw recurrence is $clenshaw")
 end
-
-
-
 
