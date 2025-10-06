@@ -43,7 +43,7 @@ function map_with_clenshaw_final_sum!(
     diagonals::AbstractVector,
     offdiagonals::Vector{<:Tuple{<:Number, Vector{Int}, Vector{Int}}},
     loop::Function,
-) where {T<:Number}
+) where {T<:Number} 
 
     mapping!(Y, b1, diagonals, offdiagonals, loop)
 

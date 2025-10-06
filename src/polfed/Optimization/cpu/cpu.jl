@@ -1,5 +1,5 @@
 
-include("state_kernels.jl")
+include("single_row_mappings.jl")
 include("make_loop.jl")
 include("mapping.jl")
 include("clenshaw_reocurrence_relation.jl")

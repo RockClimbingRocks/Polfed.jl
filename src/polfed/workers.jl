@@ -8,8 +8,10 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     threads_per_worker = parallel_strategy.nt_per_col
 
 
+    project_path = Base.active_project()
+    println("Project path: ", project_path)
     println("Workers: ", workers())
-    w = addprocs(requested_workers; exeflags=["--project" ,"--threads=$threads_per_worker"])
+    w = addprocs(requested_workers; exeflags=["--project=$(project_path)" ,"--threads=$threads_per_worker"])
     println("Workers: ", workers())
     println("New workers: ", w)
 
