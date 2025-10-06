@@ -19,6 +19,10 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     println("seronja")
     println("Main module file: ", main_module_file)
 
+    
+    println("Including files on workers...")
+    @everywhere w include("workers_using.jl")
+    println("Included workers_using.jl")
     @everywhere w include($project_path)
 
     parallel_strategy.worker_pool = WorkerPool(w)
