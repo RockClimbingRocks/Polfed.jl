@@ -23,7 +23,7 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     current_folder = dirname(@__FILE__)
     workers_using_path = joinpath(current_folder, "workers_using.jl")
     println("workers_using.jl path: ", workers_using_path)
-    @everywhere w include(workers_using_path)
+    @everywhere w include($workers_using_path)
     println("Included workers_using.jl")
     @everywhere w include($main_module_file)
 
