@@ -15,6 +15,9 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     println("Workers: ", workers())
     println("New workers: ", w)
 
+
+    println("seronja")
+
     @everywhere include($main_module_file)
 
     parallel_strategy.worker_pool = WorkerPool(w)
