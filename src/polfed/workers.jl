@@ -19,7 +19,7 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     println("seronja")
     println("Main module file: ", main_module_file)
 
-    @everywhere w include($main_module_file)
+    @everywhere w include($project_path)
 
     parallel_strategy.worker_pool = WorkerPool(w)
 end
