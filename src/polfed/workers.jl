@@ -25,7 +25,7 @@ function set_workers(x0::AbstractVecOrMat, parallel_strategy::TwoLevelParallel)
     println("workers_using.jl path: ", workers_using_path)
     @everywhere w include(workers_using_path)
     println("Included workers_using.jl")
-    @everywhere w include($project_path)
+    @everywhere w include($main_module_file)
 
     parallel_strategy.worker_pool = WorkerPool(w)
 end
