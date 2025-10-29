@@ -155,8 +155,8 @@ function run_benchmark()
         vmap = costum_map_serial!(diags, offdiags_flatten, start_indices, J)
 
         v0 = pu.Vector(x0[:,1])        
-        @time Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:smallest, maxdim=1000)[1]))
-        @time Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:largest,  maxdim=1000)[1]))
+        @time Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:SR, maxdim=1000)[1]))
+        @time Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:LR,  maxdim=1000)[1]))
         a = (Emax-Emin)/2
         b = (Emax+Emin)/2
         diags_rescaled =  @. diags / a - (b/a)
@@ -169,8 +169,8 @@ function run_benchmark()
         vmap = costum_map_threads!(diags, offdiags_flatten, start_indices, J)
         
         v02 = Vector(v0[:,1])        
-        @time Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:smallest, maxdim=1000)[1]))
-        @time Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:largest,  maxdim=1000)[1]))
+        @time Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:SR, maxdim=1000)[1]))
+        @time Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:LR,  maxdim=1000)[1]))
         a = (Emax-Emin)/2
         b = (Emax+Emin)/2
         diags_rescaled =  @. diags / a - (b/a)

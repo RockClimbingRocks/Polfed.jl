@@ -1,4 +1,30 @@
 
+
+"""
+    struct SpectralTransformReport
+
+Holds parameters and statistics for the spectral transformation phase of the computation.
+
+# Constructor
+    SpectralTransformReport(config::SpectralTransformConfigFull,
+                            fact::FactorizationReport)
+
+# Fields
+- `target::Real`: The target eigenvalue (if any).
+- `left::Real`: Left endpoint of the spectral interval.
+- `right::Real`: Right endpoint of the spectral interval.
+- `polynomialtype::String`: The polynomial type used (e.g., `"Chebyshev"`).
+- `order::Integer`: Order of the polynomial.
+- `order_safety_factor::Real`: Safety multiplier applied to the order.
+- `parallelization::Parallelization`: Parallelization strategy used.
+- `howmany::Integer`: Number of requested eigenpairs.
+- `howmany_ininterval::Integer`: Number of eigenvalues found in the target interval.
+- `matrixvec_muls::Integer`: Number of matrix–vector multiplications performed.
+- `clenshaw_recurrence::Bool`: Whether Clenshaw recurrence optimization was used.
+
+# Notes
+The field `howmany_ininterval` may be updated later, after results are known.
+"""
 mutable struct SpectralTransformReport
     target::Real
     left::Real
@@ -40,10 +66,23 @@ end
 
 
 
-"""
-    display_spectral_report(report::SpectralTransformReport; use_colors=true)
 
-Pretty-prints a Spectral Transformation Report with optional ANSI colors.
+
+"""
+    display_spectral_report(report::SpectralTransformReport; use_colors::Bool=true)
+
+Pretty-prints a [`SpectralTransformReport`](@ref) summarizing key parameters and statistics.
+
+# Keyword Arguments
+- `use_colors::Bool=true`: Enable or disable ANSI color formatting.
+
+# Output
+Displays:
+- Target energy and number of eigenpairs requested.
+- Spectral interval and width.
+- Polynomial type and order.
+- Number of matrix–vector multiplications performed.
+- Parallelization strategy and Clenshaw recurrence status.
 """
 function display_spectral_report(report::SpectralTransformReport, use_colors::Bool)
     f = Formatter(use_colors)
@@ -72,8 +111,8 @@ function display_spectral_report(report::SpectralTransformReport, use_colors::Bo
     end
 
     println(blue(f, "Spectral Transformation Report:"))
-    println("- Targeted $howmany eigenpairs at energy $target")
-    println("- Exposing ev's in the interval [$left, $right], with width $width")
+    println("- Targeted $howmany eigenpairs at rescaled energy $target")
+    println("- Exposing ev's in the rescaled interval [$left, $right], with width $width")
     println("- Performing '$(report.polynomialtype)' spectral transformation of order $order (and order safety factor $osf)")
     println("- Matrix multiplication performed $num_mul times! With parallelization strategy: $parallel")
     println("- Optimization with Clenshaw recurrence is $clenshaw")

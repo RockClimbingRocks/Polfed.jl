@@ -48,7 +48,8 @@ end
 end
 
 @inline function reorthogonalization!(krylovbasis::AbstractMatrix{T}, W::AbstractVecOrMat{T}, _::ProcessingUnit) where {T<:Number}
-
+    nvecs = size(krylovbasis,2)
+    iszero(nvecs) && (println("Skipping reorthogonalization (because nvecs == 0)..."); return nothing)
 
     W .-= krylovbasis * (krylovbasis' * W)
 end

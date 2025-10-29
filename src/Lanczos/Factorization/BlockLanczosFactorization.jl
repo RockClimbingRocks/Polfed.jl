@@ -53,7 +53,7 @@ function addnorm!(fact::BlockLanczosFactorization, β::AbstractMatrix)
     β_  = view(fact.mat, krylovdim-blocksize+1:krylovdim   , krylovdim-2blocksize+1:krylovdim-blocksize);
     β′_ = view(fact.mat, krylovdim-2blocksize+1:krylovdim-blocksize, krylovdim-blocksize+1:krylovdim   );
 
-    copyto!(β_, β)    
+    copyto!(β_, β)
     copyto!(β′_, β')    
 end
 

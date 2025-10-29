@@ -17,7 +17,7 @@ function lanczos_method(
 
     converged = min(convergenceinfo.converged, convergenceinfo.eigenconverged)
     vals_   = view(vals, 1:converged)
-    idxs    = sortvals(vals_, EigSorter(:smallest))
+    idxs    = sortvals(vals_, EigSorter(:SR))
     
     vals_converged_ordered = pu.Vector(view(vals,   idxs))
     vecs_converged_ordered = pu.Matrix(view(vecs, :,idxs))

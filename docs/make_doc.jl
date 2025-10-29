@@ -3,14 +3,10 @@ using Documenter, Literate, Polfed
 
 
 files_to_leterate = [
-    "src/documentation/0.Home.jl", 
-
     "src/documentation/1.Tutorial-1.My_first_POLFED_run.jl", 
     "src/documentation/1.Tutorial-2.Knowing_Your_Parallelization.jl",
     "src/documentation/1.Tutorial-3.Constructing_Optimized_Mapping.jl",
     "src/documentation/1.Tutorial-4.Reducing_Memory_Access.jl",
-    "src/documentation/1.Tutorial-5.Preoptimized_polfed.jl",
-
 
     "src/documentation/2.Docs-Reporting.jl",
     "src/documentation/2.Docs-Parallelization.jl",
@@ -29,21 +25,19 @@ makedocs(
     authors="RockClimbingRocks <rok123.pintar2@gmail.com> and contributors",
     sitename="Polfed.jl",
     checkdocs = :none,
-    doctest = false,  
     format=Documenter.HTML(;
         canonical="https://RockClimbingRocks.github.io/Polfed.jl",
         edit_link="main",
         assets=String[],
     ),
     pages = [
-        "Home" => "documentation/generated/0.Home.md",
+        "Home" => "index.md",
 
         "Tutorial" => [
             "My first POLFED run" => "documentation/generated/1.Tutorial-1.My_first_POLFED_run.md",
             "Knowing your parallelization" => "documentation/generated/1.Tutorial-2.Knowing_Your_Parallelization.md",
             "Constructing optimized mapping" => "documentation/generated/1.Tutorial-3.Constructing_Optimized_Mapping.md",
             "Reducing memory access" => "documentation/generated/1.Tutorial-4.Reducing_Memory_Access.md",
-            "Pre-Optimized polfed" => "documentation/generated/1.Tutorial-5.Preoptimized_polfed.md",
         ],
 
         "Documentation" => [

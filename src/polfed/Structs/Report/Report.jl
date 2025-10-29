@@ -3,49 +3,54 @@ include("BenchmarkReport.jl")
 include("SpectralTransformReport.jl")
 
 
+"""
+    struct Report
 
+A container for aggregating the main results of a simulation or computation. One can deisplay it with [`display_report`](@ref) function.
+
+# Fields
+- [`SpectralTransformReport`](@ref) - Tells you about spectral transformation parameter like rescaled targeted interval, order of polynomial, number of matrix-vector multiplications etc.
+- [`FactorizationReport`](@ref) - Provides insights into the factorization process, including convergence behavior, iteration counts and errors of obtained eigenpairs.
+- [`BenchmarkReport`](@ref) - Summarizes performance such as total walltime and CPU time, as well as the times spend in different parts of the factorization algorithm.
+"""
 mutable struct Report 
     spectral_transform::SpectralTransformReport
     factorization::FactorizationReport
     benchmark::BenchmarkReport
 
     function Report(spectral_transform, factorization, benchmark)
-  
-        new(
-            spectral_transform,
-            factorization,
-            benchmark
-        )
+        new(spectral_transform, factorization, benchmark)
     end
 end
 
 
 """
-    display_report(report::Report; 
+    display_report(report::Report;
+                   use_colors::Bool=true,
                    include_spectral_transform::Bool=true,
                    include_factorization::Bool=true,
-                   show_convergence_details=false, 
+                   show_convergence_details::Bool=false,
                    include_benchmark::Bool=true)
 
-Displays a comprehensive report for the given `Report` object. The function allows selective inclusion of different report sections via keyword arguments.
+Displays a comprehensive report for a [`Polfed.Report`](@ref) object.
 
-# Arguments
-- `report::Report`: The report object to display.
-- `include_spectral_transform::Bool=true`: If `true`, includes the spectral transform section in the report.
-- `include_factorization::Bool=true`: If `true`, includes the factorization section in the report.
-- `show_convergence_details=false`: If `true`, displays detailed convergence information in the factorization section.
-- `include_benchmark::Bool=true`: If `true`, includes the benchmark section in the report.
+# Keyword Arguments
+- `use_colors::Bool=true`: Enable or disable ANSI color formatting.
+- `include_spectral_transform::Bool=true`: Include the spectral transform section [`display_spectral_report`](@ref).
+- `include_factorization::Bool=true`: Include the factorization section [`display_factorization_report`](@ref).
+- `show_convergence_details::Bool=false`: If `true`, display detailed convergence information in the factorization report.
+- `include_benchmark::Bool=true`: Include the benchmark section [`display_benchmark_report`](@ref).
 
 # Notes
-Each section is displayed by calling `display_report` on the corresponding subfield of the `Report` object. The `show_timings` option for the factorization section is always set to `false` in this function.
+The `show_timings` flag for the factorization section is always set to `false` in this combined display function.
 """
-function display_report(report::Report, use_colors::Bool;
+function display_report(report::Report;
+    use_colors::Bool=true,
     include_spectral_transform::Bool=true,
     include_factorization::Bool=true,
-    show_convergence_details=false, 
+    show_convergence_details::Bool=false,
     include_benchmark::Bool=true,
 )
-
     include_spectral_transform && display_spectral_report(report.spectral_transform, use_colors)
 
     include_factorization && display_factorization_report(report.factorization, use_colors; 

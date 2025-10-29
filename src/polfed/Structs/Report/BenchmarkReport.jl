@@ -1,44 +1,70 @@
 
+
+"""
+    struct TimingReport
+
+Stores walltime and CPU time statistics for a factorization and overall simulation.
+
+# Fields
+- `total_wt::Float64`: Total walltime (seconds) of the overall simulation.
+- `total_ct::Float64`: Total CPU time (seconds) of the overall simulation.
+- `fact_wt::Vector{Float64}`: Per-stage walltime data for the factorization.
+- `fact_ct::Vector{Float64}`: Per-stage CPU time data for the factorization.
+"""
 mutable struct TimingReport
     total_wt::Float64
     total_ct::Float64
     fact_wt::AbstractVector{Float64}
     fact_ct::AbstractVector{Float64}
-
-    function TimingReport(total_wt::Float64, total_ct::Float64, fact_wt::AbstractVector{Float64}, fact_ct::AbstractVector{Float64})
-
-        new(
-            total_wt,
-            total_ct,
-            fact_wt,
-            fact_ct
-        )
-        
-    end
 end
 
+
+"""
+    struct MemoryReport
+
+Reports detailed memory usage for CPU and/or GPU computations.
+
+# Fields
+- `total_mem_used::Integer`: Total memory used during computation (bytes).
+- `total_mem_reserved::Integer`: Total memory reserved by the allocator (bytes).
+- `basis_mem_used::Integer`: Memory used by basis vectors (bytes).
+- `basis_mem_reserved::Integer`: Memory reserved for basis vectors (bytes).
+"""
 mutable struct MemoryReport
     total_mem_used::Integer
     total_mem_reserved::Integer
     basis_mem_used::Integer
     basis_mem_reserved::Integer
-
-    function MemoryReport(
-        total_mem_used::Integer,
-        total_mem_reserved::Integer,
-        basis_mem_used::Integer,
-        basis_mem_reserved::Integer,
-    )
-        new(
-            total_mem_used,
-            total_mem_reserved,
-            basis_mem_used,
-            basis_mem_reserved,
-        )
-    end
 end
 
 
+"""
+    struct BenchmarkReport
+
+Aggregates performance statistics from a single POLFED run, such as total walltime and CPU time, as well as the times spend in different parts of the factorization algorithm. It serves as a high-level summary of the computational efficiency of a
+[`polfed`](@ref).
+
+# Fields
+- `timings::TimingReport`: Stores walltime and CPU time statistics across the full simulation and individual factorization stages.
+- `memory_cpu::Union{MemoryReport, Nothing}`: Memory usage report for CPU computations (or `nothing` if not applicable).
+- `memory_gpu::Union{MemoryReport, Nothing}`: Memory usage report for GPU computations (or `nothing` if not applicable).
+
+# Constructors
+```julia
+BenchmarkReport(
+    fact_report::FactorizationReport,
+    total_wt::Real,
+    total_ct::Real,
+    x0::AbstractVecOrMat{T},
+    pu::ProcessingUnit
+) where {T<:Real}
+
+Constructs a new BenchmarkReport from a FactorizationReport, recording total walltime
+and CPU time along with detailed memory usage estimates.
+-   The TimingReport is created automatically from fact_report.walltimes and fact_report.cputimes.
+-   The MemoryReport entries are generated based on the basistype in fact_report and the given processing unit pu (CPU() or GPU()).
+-   If a HybridMatrixBasis is detected, both CPU and GPU memory usage are recorded.
+"""
 struct BenchmarkReport
     timings::TimingReport
     memory_cpu::Union{MemoryReport, Nothing}
@@ -102,10 +128,24 @@ struct BenchmarkReport
 end
 
 
-"""
-    display_benchmark_report(report::BenchmarkReport; show_timings=true, show_memory=false, use_colors=true)
 
-Pretty-prints a Benchmark Report with optional ANSI colors.
+"""
+    display_benchmark_report(report::BenchmarkReport;
+                             show_timings::Bool=true,
+                             show_memory::Bool=false,
+                             use_colors::Bool=true)
+
+Pretty-prints a [`BenchmarkReport`](@ref) with optional colorized output.
+
+# Keyword Arguments
+- `show_timings::Bool=true`: Display timing information (walltime and CPU time).
+- `show_memory::Bool=false`: Display memory usage details.
+- `use_colors::Bool=true`: Use ANSI colors in the printed output.
+
+# Output
+- Summarizes total walltime and CPU time.
+- Shows distribution of time across factorization stages.
+- Optionally displays memory usage for CPU and/or GPU computations.
 """
 function display_benchmark_report(report::BenchmarkReport, use_colors::Bool;
         show_timings::Bool=true,
@@ -175,3 +215,4 @@ function display_benchmark_report(report::BenchmarkReport, use_colors::Bool;
         println("- Basis memory used: $(report.memory_gpu.basis_mem_used/1e9) GB, reserved: $(report.memory_gpu.basis_mem_reserved/1e9) GB")
     end
 end
+

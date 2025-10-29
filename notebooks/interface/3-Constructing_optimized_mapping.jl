@@ -170,8 +170,8 @@ end
 println("Benchmark POLFED with custom mapping with TwoLevelParallel($(nt_per_col)) with rescaled function (for L=$(L)): ")
 begin
     v0 = rand(size(mat,1)); v0 = v0 / norm(v0)
-    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:smallest, maxdim=1000)[1]))
-    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:largest,  maxdim=1000)[1]))
+    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:SR, maxdim=1000)[1]))
+    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:LR,  maxdim=1000)[1]))
 
     a, b = (Emax-Emin)/2, (Emax+Emin)/2
     d_r = @. (diags-b)/a

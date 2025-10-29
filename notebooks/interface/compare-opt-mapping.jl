@@ -139,8 +139,8 @@ begin
     
     vmap = mapvec_with_xxz_parallel!(diags, offdiags_flatten, start_indices, J)
     
-    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0[:,1], 1; which=:smallest, maxdim=1000)[1]))
-    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0[:,1], 1; which=:largest,  maxdim=1000)[1]))
+    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0[:,1], 1; which=:SR, maxdim=1000)[1]))
+    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0[:,1], 1; which=:LR,  maxdim=1000)[1]))
 
     a, b = (Emax-Emin)/2, (Emax+Emin)/2
     d_r = @. (diags-b)/a

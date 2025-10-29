@@ -16,8 +16,8 @@ function optimize_spectral_transform(mat::AbstractMatrix{T}, spectral_transform:
     v0 = pu.rand(size(mat,1)); v0 ./= norm(v0)
     f!_opt = optimized_mapping!(diagonals, offdiagonals, parallel_strategy)
 
-    Emin = first(collect(lanczos(f!_opt, v0, 1; which=:smallest, maxdim=1000)[1]))
-    Emax = last(collect(lanczos(f!_opt, v0, 1; which=:largest,  maxdim=1000)[1]))
+    Emin = first(collect(lanczos(f!_opt, v0, 1; which=:SR, maxdim=1000)[1]))
+    Emax = last(collect(lanczos(f!_opt, v0, 1; which=:LR,  maxdim=1000)[1]))
     spread = (Emax-Emin)/(2-1e-12)
     center = (Emax+Emin)/2.
     # spread = (Emax-Emin)/2.
@@ -44,7 +44,7 @@ end
 
 
 
-function get_diags_and_offdiagonals_by_value(mat::AbstractMatrix{T}; tol=1e-14, round_digits=15) where {T<:Real}
+function get_diags_and_offdiagonals_by_value(mat::AbstractMatrix{T}; tol=1e-13, round_digits=15) where {T<:Real}
     dim = size(mat, 1)
 
     # Map: val => list of connections for each row

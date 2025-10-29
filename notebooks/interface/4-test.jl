@@ -263,8 +263,8 @@ begin
 
 
     v0 = rand(size(mat,1)); v0 = v0 / norm(v0)
-    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:smallest, maxdim=1000)[1]))
-    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:largest,  maxdim=1000)[1]))
+    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:SR, maxdim=1000)[1]))
+    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:LR,  maxdim=1000)[1]))
 
     d_r = @. (diags - (Emax+Emin)/2) / ((Emax-Emin)/2)
     J_r = J / ((Emax-Emin)/2)
@@ -316,8 +316,8 @@ begin
 
 
     v0 = rand(size(mat,1)); v0 = v0 / norm(v0)
-    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:smallest, maxdim=1000)[1]))
-    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:largest,  maxdim=1000)[1]))
+    Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:SR, maxdim=1000)[1]))
+    Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v0, 1; which=:LR,  maxdim=1000)[1]))
 
     d_r = @. (diags - (Emax+Emin)/2) / ((Emax-Emin)/2)
     J_r = J / ((Emax-Emin)/2)

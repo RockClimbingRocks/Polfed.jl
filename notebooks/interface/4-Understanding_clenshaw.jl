@@ -278,8 +278,8 @@ println("Maximum absolute difference between vmap and mul!: ", maximum(abs.(y1 .
 
 
 v02 = rand(size(mat,1)); v02 = v02 / norm(v02)
-Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:smallest, maxdim=1000)[1]))
-Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:largest,  maxdim=1000)[1]))
+Emin = first(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:SR, maxdim=1000)[1]))
+Emax = last(collect(Polfed.Lanczos.lanczos(vmap, v02, 1; which=:LR,  maxdim=1000)[1]))
 
 v0_ = rand(size(mat,1), ncols); v0 = Matrix(qr(v0_).Q)
 

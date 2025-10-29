@@ -23,7 +23,8 @@ const main_module_file = abspath(@__FILE__)
 
 
 include("polfed/polfed.jl")
-
 export polfed, display_report
+export SpectralTransformConfig, DoSConfig, FactorizationConfig
+export MulColsParallel, TwoLevelParallel, NoParallel
 
 end # module

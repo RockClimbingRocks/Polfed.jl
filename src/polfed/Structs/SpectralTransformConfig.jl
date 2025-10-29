@@ -1,4 +1,74 @@
+"""
+    SpectralTransformConfig(; kwargs...)
 
+Configuration structure for spectral transformations in POLFED.
+
+This type stores all settings controlling the polynomial-based spectral transformation used in POLFED.
+It determines how the Hamiltonian is rescaled, how the polynomial filter is constructed, and how
+parallelization and recurrence optimizations are applied.
+
+All fields can be set manually through keyword arguments, or left as `nothing`/defaults to use values from
+[`PolfedDefaults`](@ref).
+
+# Fields
+- `coefficients::Function`:  
+  Function returning polynomial coefficients. Must accept two arguments:
+  `(target::T, n::Int) where {T<:Real}`, and return the coefficient of the `n`-th order polynomial evaluated at `target`.
+
+- `normalization::Real`:  
+  Normalization factor of the polynomial. Defines the value to which `P_K(target)` is normalized.
+
+- `cutoff::Real`:  
+  Threshold above which eigenvalues of the transformed Hamiltonian are the largest within the targeted interval.
+
+- `left::Union{Real,Nothing}` / `right::Union{Real,Nothing}`:  
+  Optional spectral interval boundaries defining the target energy window.  
+  If `nothing`, the interval is inferred automatically.
+
+- `order::Union{Int,Nothing}`:  
+  Polynomial order of the spectral transformation.  
+  If `nothing`, the order is determined automatically from the target energy or interval.
+
+- `overestimate_iters::Real`:  
+  Safety factor used when estimating the required Krylov subspace size.  
+  The expected dimension is predicted via [`PolfedDefaults.expectedkrylovdim`](@ref) and multiplied by this factor to ensure convergence.  
+  Default: [`PolfedDefaults.overestimate_iters`](@ref).
+
+- `order_safety_factor::Real`:  
+  Factor applied to slightly reduce the polynomial order, ensuring that all `howmany` targeted eigenvalues are captured even if the estimated density of states is imperfect.
+
+- `parallelization::Union{Parallelization,Nothing}`:  
+  Parallelization strategy for matrix–vector operations.  
+  Available strategies are [`NoParallel`](@ref), [`MulColsParallel`](@ref), and [`TwoLevelParallel`](@ref) (see also [`Parallelization`](@ref)).  
+  If `nothing`, a default strategy is chosen based on the processing unit (`MulColsParallel` for CPU, `NoParallel` for GPU).
+
+- `f!_rescaled::Union{Nothing,Function}`:  
+  Optional rescaled operator function.  
+  Should have the signature `(Y::AbstractVecOrMat, X::AbstractVecOrMat)` and perform an in-place operation equivalent to `@. Y = H̃ * X`, where `H̃` is the rescaled Hamiltonian.
+
+- `clenshaw_recurrence::Union{Nothing,Function}`:  
+  Optional Clenshaw recurrence kernel to reduce memory access.  
+  Should have the signature `(b1::AbstractVector, b2::AbstractVector, b3::AbstractVector, c::Real, X::AbstractVector)`, performing an update equivalent to `@. b1 = 2c * H̃ * b2 - b3 + c * X`.
+
+- `clenshaw_finalsum::Union{Nothing,Function}`:  
+  Optional final summation function for the Clenshaw recurrence.  
+  Should have the signature `(b1::AbstractVector, b2::AbstractVector, c::Real, Y::AbstractVector, X::AbstractVector)`, performing an operation like `@. Y = c * X + H̃ * b1 - b2`.
+
+- `Emin::Union{Real,Nothing}` / `Emax::Union{Real,Nothing}`:  
+  Optional lower and upper spectral bounds.  
+  If left as `nothing`, they are automatically estimated using the Lanczos algorithm.
+
+# Constructor
+```julia
+SpectralTransformConfig(; kwargs...)
+```
+All keyword arguments correspond directly to the fields listed above.
+If a field is omitted, its default value is taken from PolfedDefaults.
+
+# Notes
+- This struct is typically passed as the spectral_transform argument to polfed.
+- Custom mappings and recurrence kernels can be supplied for specialized structured Hamiltonians.
+"""
 mutable struct SpectralTransformConfig
     coefficients::Function
     normalization::Real
@@ -37,11 +107,6 @@ end
 
 
 
-
-
-"""
-    this struct has everything in rescaled units (target, left, right)
-"""
 mutable struct SpectralTransformConfigFull
     coefficients::Function
     normalization::Real
@@ -81,8 +146,8 @@ mutable struct SpectralTransformConfigFull
         end
 
         v0 = pu.Vector(x0[:,1])        
-        Emin = isnothing(cfg.Emin) ? first(collect(lanczos(f!, v0, 1; which=:smallest, maxdim=1000)[1])) : cfg.Emin
-        Emax = isnothing(cfg.Emax) ? last(collect(lanczos(f!, v0, 1; which=:largest,  maxdim=1000)[1])) : cfg.Emax
+        Emin = isnothing(cfg.Emin) ? first(collect(lanczos(f!, v0, 1; which=:SR, maxdim=1000)[1])) : cfg.Emin
+        Emax = isnothing(cfg.Emax) ? last(collect(lanczos(f!, v0, 1; which=:LR,  maxdim=1000)[1])) : cfg.Emax
 
         a = (Emax-Emin)/2
         b = (Emax+Emin)/2
