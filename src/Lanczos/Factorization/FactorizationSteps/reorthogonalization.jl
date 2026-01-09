@@ -3,6 +3,7 @@
     krylovbasis = all_withoutlasttwo(factorization.basis)
     # krylovbasis = all(factorization.basis)
 
+    println("Performing full reorthogonalization... (krylov basis dim = ", size(krylovbasis,2), ")")
     size(krylovbasis, 2) == 0 && (return)
     reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
 end
@@ -48,9 +49,11 @@ end
 end
 
 @inline function reorthogonalization!(krylovbasis::AbstractMatrix{T}, W::AbstractVecOrMat{T}, _::ProcessingUnit) where {T<:Number}
+    println("Im innnnn....")
     nvecs = size(krylovbasis,2)
     iszero(nvecs) && (println("Skipping reorthogonalization (because nvecs == 0)..."); return nothing)
 
+    println("doing reorthogonalization")
     W .-= krylovbasis * (krylovbasis' * W)
 end
 
