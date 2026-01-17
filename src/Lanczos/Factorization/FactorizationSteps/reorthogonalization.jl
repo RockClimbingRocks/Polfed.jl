@@ -4,15 +4,15 @@
     # krylovbasis = all(factorization.basis)
 
 
-    display(krylovbasis)
+    # display(krylovbasis)
 
-    println()
-    println()
-    println()
+    # println()
+    # println()
+    # println()
 
-    display(factorization.r)
+    # display(factorization.r)
 
-    println("Performing full reorthogonalization... (krylov basis dim = ", size(krylovbasis,2), ")")
+    # println("Performing full reorthogonalization... (krylov basis dim = ", size(krylovbasis,2), ")")
     size(krylovbasis, 2) == 0 && (return)
     reorthogonalization!(krylovbasis, factorization.r, factorization.pu)
 end
