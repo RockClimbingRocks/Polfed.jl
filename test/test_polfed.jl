@@ -75,19 +75,19 @@ function test_polfed()
     # x0 = x0_ ./ norm(x0_)
     # x0_ = rand(D,4)
     # x0 = Matrix(qr(x0_).Q) # orthonormalize
-    # spectral_transform = Polfed.SpectralTransformConfig(
-    #     parallelization=Polfed.MulColsParallel()
+    # mapping = Polfed.MappingConfig(
+    #     parallel_strategy=Polfed.MulColsParallel()
     # )
 
     x0_ = rand(D,4)
     x0 = Matrix(qr(x0_).Q) # orthonormalize
-    spectral_transform = Polfed.SpectralTransformConfig(
-        parallelization=Polfed.TwoLevelParallel(1)
+    mapping = Polfed.MappingConfig(
+        parallel_strategy=Polfed.TwoLevelParallel(1)
     )
 
 
     howmany = 500
-    vals, vecs, report = Polfed.polfed(mat, x0, howmany, 0.; produce_report=true, spectral_transform=spectral_transform)
+    vals, vecs, report = Polfed.polfed(mat, x0, howmany, 0.; produce_report=true, mapping=mapping)
     Polfed.display_report(report)
 
     # mat_dense = Matrix(mat)

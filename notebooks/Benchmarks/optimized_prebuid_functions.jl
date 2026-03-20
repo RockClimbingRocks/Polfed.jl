@@ -3,7 +3,7 @@ using SparseArrays, LinearAlgebra, BenchmarkTools, Base.Threads
 include("/home/rokpintar/projects/Polfed/src/Polfed.jl")
 # using .Polfed
 
-using .Polfed: optimized_mapping!, optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!, SpectralTransformConfig, CPU, GPU, MulColsParallel, NoParallel, TwoLevelParallel
+using .Polfed: optimized_mapping!, optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!, CPU, GPU, MulColsParallel, NoParallel, TwoLevelParallel
 
 
 function construct_xxz_spin_sector(L::Int, delta::Real, Nup::Int)
@@ -295,7 +295,7 @@ b3 .= rand(length(diags))
 c = 0.5
 
 @btime $crr_custom($b1, $b2, $b3, $c, $x)
-@btime $crr_polfed($b1, $b2, $b3, $c, $x)
+@btime $crr_polfed($b1, $b2, $b3, $c, 1, $x)
 
 # Final sum
 Y1 = similar(x)
@@ -358,5 +358,3 @@ Y2 = similar(x)
 # @btime $map_new1_vec($y2, $x)
 # @btime $map_new1_tup($y3, $x)
 # @btime $map_new2_vec($y4, $x)
-
-

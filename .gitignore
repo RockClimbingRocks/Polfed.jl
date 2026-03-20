@@ -11,3 +11,17 @@
 
 
 .DS_Store
+**/.DS_Store
+.CondaPkg/
+notebooks/.CondaPkg/
+
+
+*.AppleDouble
+
+# Omit all AppleDouble metadata files (e.g. ._foo)
+._*
+**/._*
+
+# Temporary docs validation folders
+docs/build_tmp_validate*.pending_delete*/
+docs/build_locked_*/

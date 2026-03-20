@@ -4,7 +4,8 @@ using Test
 using SparseArrays
 using LinearAlgebra
 include("../src/Polfed.jl")
-using Polfed: get_diags_and_offdiagonals_by_value, optimized_mapping!, optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!, NoParallel, TwoLevelParallel
+using Polfed: optimized_mapping!, optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!, NoParallel, MulColsParallel, TwoLevelParallel
+using Polfed.PolfedCore: get_diags_and_offdiagonals_by_value
 
 # Helper function to create a test matrix.
 # This matrix has two distinct off-diagonal values (-2.0 and 0.5)
@@ -84,6 +85,16 @@ end
         @test Y_p_vec ≈ Y_expected_vec
         @test Y_p_mat ≈ Y_expected_mat
 
+        # --- Single-process threaded block execution ---
+        map_mt! = optimized_mapping!(diagonals, offdiagonals, MulColsParallel(2))
+        Y_mt_vec = similar(X_vec)
+        Y_mt_mat = similar(X_mat)
+        map_mt!(Y_mt_vec, X_vec)
+        map_mt!(Y_mt_mat, X_mat)
+
+        @test Y_mt_vec ≈ Y_expected_vec
+        @test Y_mt_mat ≈ Y_expected_mat
+
         # --- Ensure Serial and Parallel match ---
         @test Y_s_vec ≈ Y_p_vec
     end
@@ -102,16 +113,28 @@ end
         # --- Serial Execution ---
         crr_s! = optimized_clenshaw_recurrence_relation!(diagonals, offdiagonals, NoParallel())
         b1_s = similar(X)
-        crr_s!(b1_s, b2, b3, c, X)
+        crr_s!(b1_s, b2, b3, c, 1, X)
         
         @test b1_s ≈ b1_expected
 
         # --- Parallel Execution ---
         crr_p! = optimized_clenshaw_recurrence_relation!(diagonals, offdiagonals, TwoLevelParallel(1))
         b1_p = similar(X)
-        crr_p!(b1_p, b2, b3, c, X)
+        crr_p!(b1_p, b2, b3, c, 1, X)
 
         @test b1_p ≈ b1_expected
+
+        # --- Single-process threaded block execution ---
+        X_mat = hcat(X, 2 * X)
+        b2_mat = hcat(b2, 2 * b2)
+        b3_mat = hcat(b3, 3 * b3)
+        b1_expected_mat = c .* X_mat + 2 * (H * b2_mat) - b3_mat
+
+        crr_mt! = optimized_clenshaw_recurrence_relation!(diagonals, offdiagonals, MulColsParallel(2))
+        b1_mt = similar(X_mat)
+        crr_mt!(b1_mt, b2_mat, b3_mat, c, 1, X_mat)
+
+        @test b1_mt ≈ b1_expected_mat
     end
 
     @testset "4. Clenshaw Final Sum" begin
@@ -128,17 +151,29 @@ end
         # --- Serial Execution ---
         cfs_s! = optimized_clenshaw_final_sum!(diagonals, offdiagonals, NoParallel())
         Y_s = similar(X)
-        # Note: Your closure definition is (b1, b2, c, X, Y)
-        cfs_s!(b1, b2, c, X, Y_s) 
+        # Note: Closure definition is (b1, b2, c, Y, X)
+        cfs_s!(b1, b2, c, Y_s, X) 
         
         @test Y_s ≈ Y_expected
 
         # --- Parallel Execution ---
         cfs_p! = optimized_clenshaw_final_sum!(diagonals, offdiagonals, TwoLevelParallel(1))
         Y_p = similar(X)
-        cfs_p!(b1, b2, c, X, Y_p)
+        cfs_p!(b1, b2, c, Y_p, X)
 
         @test Y_p ≈ Y_expected
+
+        # --- Single-process threaded block execution ---
+        X_mat = hcat(X, 2 * X)
+        b1_mat = hcat(b1, 2 * b1)
+        b2_mat = hcat(b2, 3 * b2)
+        Y_expected_mat = c .* X_mat + (H * b1_mat) - b2_mat
+
+        cfs_mt! = optimized_clenshaw_final_sum!(diagonals, offdiagonals, MulColsParallel(2))
+        Y_mt = similar(X_mat)
+        cfs_mt!(b1_mat, b2_mat, c, Y_mt, X_mat)
+
+        @test Y_mt ≈ Y_expected_mat
     end
     
     @testset "5. Test Single Off-diagonal Case" begin
@@ -167,6 +202,11 @@ end
         Y_p = similar(X)
         map_p!(Y_p, X)
         @test Y_p ≈ Y_expected
+
+        map_mt! = optimized_mapping!(d_single, o_single_tuple, MulColsParallel(2))
+        Y_mt = similar(X)
+        map_mt!(Y_mt, X)
+        @test Y_mt ≈ Y_expected
     end
 end
 end

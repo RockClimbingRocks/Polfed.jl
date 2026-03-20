@@ -1,61 +1,89 @@
 
 using Documenter, Literate, Polfed
 
+files_to_literate = [
+    "src/documentation/0.Home.jl",
+    "src/documentation/1.Getting_Started.jl",
 
-files_to_leterate = [
-    "src/documentation/0.Home.jl", 
+    # Beginner tutorials
+    "src/documentation/2.Tutorial-2.Choosing_Target.jl",
+    "src/documentation/2.Tutorial-8.Reporting.jl",
+    "src/documentation/2.Tutorial-3.Parallelization_Basics.jl",
+    "src/documentation/2.Tutorial-4.Optimized_Mapping.jl",
+    "src/documentation/2.Tutorial-5.Reducing_Memory_Access.jl",
+    "src/documentation/2.Tutorial-7.Hermitian_matrices.jl",
+    "src/documentation/2.Tutorial-6.Working_with_GPUs.jl",
 
-    "src/documentation/1.Tutorial-1.My_first_POLFED_run.jl", 
-    "src/documentation/1.Tutorial-2.Knowing_Your_Parallelization.jl",
-    "src/documentation/1.Tutorial-3.Constructing_Optimized_Mapping.jl",
-    "src/documentation/1.Tutorial-4.Reducing_Memory_Access.jl",
-    "src/documentation/1.Tutorial-5.Preoptimized_polfed.jl",
+    # Advanced tutorials (XXZ)
+    "src/documentation/3.Advanced-Optimization_XXZ.jl",
+    "src/documentation/3.Advanced-1.XXZ_Baseline.jl",
+    "src/documentation/3.Advanced-2.XXZ_Custom_Mapping.jl",
+    "src/documentation/3.Advanced-3.XXZ_Rescaled_Clenshaw.jl",
+    "src/documentation/3.Guidelines.jl",
+    "src/documentation/4.Quantum_Sun_QSun.jl",
 
+    # Documentation section (docstrings)
+    "src/documentation/5.Docs-1.Functions.jl",
+    "src/documentation/5.Docs-2.Configs_Parallelization.jl",
+    "src/documentation/5.Docs-3.Reports.jl",
 
-    "src/documentation/2.Docs-Reporting.jl",
-    "src/documentation/2.Docs-Parallelization.jl",
-    "src/documentation/2.Docs-Polfed.jl",
-    "src/documentation/2.Docs-PolfedDefaults.jl",
+    "src/documentation/6.FAQ.jl",
 ]
-for file in files_to_leterate
-    # Convert Literate scripts into Markdown
+
+for file in files_to_literate
     Literate.markdown(file, "src/documentation/generated")
 end
-
-
 
 makedocs(
     modules=[Polfed],
     authors="RockClimbingRocks <rok123.pintar2@gmail.com> and contributors",
     sitename="Polfed.jl",
-    checkdocs = :none,
-    doctest = false,  
-    format=Documenter.HTML(;
+    remotes=nothing,
+    checkdocs=:none,
+    doctest=false,
+    pagesonly=true,
+    format=Documenter.HTML(
         canonical="https://RockClimbingRocks.github.io/Polfed.jl",
-        edit_link="main",
+        edit_link=nothing,
         assets=String[],
     ),
-    pages = [
+    pages=[
+        hide("index.md"),
         "Home" => "documentation/generated/0.Home.md",
+        "Getting Started" => "documentation/generated/1.Getting_Started.md",
 
-        "Tutorial" => [
-            "My first POLFED run" => "documentation/generated/1.Tutorial-1.My_first_POLFED_run.md",
-            "Knowing your parallelization" => "documentation/generated/1.Tutorial-2.Knowing_Your_Parallelization.md",
-            "Constructing optimized mapping" => "documentation/generated/1.Tutorial-3.Constructing_Optimized_Mapping.md",
-            "Reducing memory access" => "documentation/generated/1.Tutorial-4.Reducing_Memory_Access.md",
-            "Pre-Optimized polfed" => "documentation/generated/1.Tutorial-5.Preoptimized_polfed.md",
+        "Tutorials" => [
+            "Beginner" => [
+                "Choosing Target" => "documentation/generated/2.Tutorial-2.Choosing_Target.md",
+                "Reporting" => "documentation/generated/2.Tutorial-8.Reporting.md",
+                "Parallelization" => "documentation/generated/2.Tutorial-3.Parallelization_Basics.md",
+                "Optimized Mapping" => "documentation/generated/2.Tutorial-4.Optimized_Mapping.md",
+                "Reducing Memory Access" => "documentation/generated/2.Tutorial-5.Reducing_Memory_Access.md",
+                "Hermitian matrices" => "documentation/generated/2.Tutorial-7.Hermitian_matrices.md",
+                "Working with GPUs" => "documentation/generated/2.Tutorial-6.Working_with_GPUs.md",
+            ],
+            "Advanced" => [
+                "Optimization of the XXZ Model" => "documentation/generated/3.Advanced-Optimization_XXZ.md",
+                "Custom Mapping" => "documentation/generated/3.Advanced-2.XXZ_Custom_Mapping.md",
+                "Automatic Optimization" => "documentation/generated/3.Advanced-1.XXZ_Baseline.md",
+                "GPU Implementation" => "documentation/generated/3.Advanced-3.XXZ_Rescaled_Clenshaw.md",
+            ],
         ],
+
+        "Guidelines" => "documentation/generated/3.Guidelines.md",
+        "Quantum Sun (QSun)" => "documentation/generated/4.Quantum_Sun_QSun.md",
 
         "Documentation" => [
-            "Polfed" => "documentation/generated/2.Docs-Polfed.md",
-            "Polfed defaults" => "documentation/generated/2.Docs-PolfedDefaults.md",
-            "Reporting" => "documentation/generated/2.Docs-Reporting.md",
-            "Parallelization" => "documentation/generated/2.Docs-Parallelization.md",
+            "Core Functions" => "documentation/generated/5.Docs-1.Functions.md",
+            "Configs and Parallelization Types" => "documentation/generated/5.Docs-2.Configs_Parallelization.md",
+            "Reports, Logging, and Defaults" => "documentation/generated/5.Docs-3.Reports.md",
         ],
+
+        "FAQ / Troubleshooting" => "documentation/generated/6.FAQ.md",
     ],
 )
 
 deploydocs(
-    repo = "github.com/RockClimbingRocks/Polfed.jl.git",
+    repo="github.com/RockClimbingRocks/Polfed.jl.git",
     devbranch="main",
 )
