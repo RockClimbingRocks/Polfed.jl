@@ -1,33 +1,39 @@
-const COMPARISON_HELPERS = (
-    :benchmark_dataset_path,
-    Symbol("apply_benchmark_style!"),
-    :build_color_map,
-    :load_polfed_benchmark,
-    :loglog_power_fit,
-    Symbol("add_benchmark_legends!"),
-    Symbol("validate_models!"),
-)
+if !isdefined(@__MODULE__, :COMPARISON_HELPERS)
+    const COMPARISON_HELPERS = (
+        :benchmark_dataset_path,
+        Symbol("apply_benchmark_style!"),
+        :build_color_map,
+        :load_polfed_benchmark,
+        :loglog_power_fit,
+        Symbol("add_benchmark_legends!"),
+        Symbol("validate_models!"),
+    )
+end
 
 if !all(name -> isdefined(@__MODULE__, name), COMPARISON_HELPERS)
     include(joinpath(@__DIR__, "benchmark_scaling_plot.jl"))
 end
 
-const COMPARISON_MODEL_ORDER = [
-    "xxz",
-    "syk4-d2",
-    "syk4-d3",
-    "j1-j2",
-    "j1-j2-j3",
-    "syk4-d4",
-    "syk4-d5",
-]
+if !isdefined(@__MODULE__, :COMPARISON_MODEL_ORDER)
+    const COMPARISON_MODEL_ORDER = [
+        "xxz",
+        "syk4-d2",
+        "syk4-d3",
+        "j1-j2",
+        "j1-j2-j3",
+        "syk4-d4",
+        "syk4-d5",
+    ]
+end
 
-const COMPARISON_MARKERS = merge(
-    BENCHMARK_MARKERS,
-    Dict(
-        "syk4-d2" => "*",
-    ),
-)
+if !isdefined(@__MODULE__, :COMPARISON_MARKERS)
+    const COMPARISON_MARKERS = merge(
+        BENCHMARK_MARKERS,
+        Dict(
+            "syk4-d2" => "*",
+        ),
+    )
+end
 
 
 function shiftinvert_dataset_path(dataset)
@@ -104,6 +110,8 @@ function overlay_benchmark_method!(
     line_width::Real,
     alpha::Real,
     Lmin::Union{Nothing, Integer}=18,
+    line_style="-",
+    filled_markers::Bool=true,
 )
     model_rank = Dict(model => idx for (idx, model) in enumerate(COMPARISON_MODEL_ORDER))
     local_df = filter_by_Lmin(copy(df), Lmin)
@@ -125,23 +133,37 @@ function overlay_benchmark_method!(
             yfit;
             color=color,
             linewidth=line_width,
-            linestyle="--",
+            linestyle=line_style,
             alpha=alpha,
             zorder=1,
         )
 
         for idx in eachindex(xs)
-            ax.scatter(
-                [xs[idx]],
-                [ys[idx]];
-                s=marker_size,
-                marker=COMPARISON_MARKERS[models[idx]],
-                color=color,
-                edgecolors="white",
-                linewidths=0.5,
-                alpha=alpha,
-                zorder=4,
-            )
+            if filled_markers
+                ax.scatter(
+                    [xs[idx]],
+                    [ys[idx]];
+                    s=marker_size,
+                    marker=COMPARISON_MARKERS[models[idx]],
+                    color=color,
+                    edgecolors="white",
+                    linewidths=0.5,
+                    alpha=alpha,
+                    zorder=4,
+                )
+            else
+                ax.scatter(
+                    [xs[idx]],
+                    [ys[idx]];
+                    s=marker_size,
+                    marker=COMPARISON_MARKERS[models[idx]],
+                    facecolors="none",
+                    edgecolors=color,
+                    linewidths=1.0,
+                    alpha=alpha,
+                    zorder=4,
+                )
+            end
         end
     end
 end
@@ -174,8 +196,10 @@ function plot_benchmark_comparison(;
         color_map=color_map,
         marker_size=marker_size,
         line_width=line_width,
-        alpha=0.95,
+        alpha=1.0,
         Lmin=effective_Lmin,
+        line_style="-",
+        filled_markers=true,
     )
     overlay_benchmark_method!(
         ax,
@@ -183,20 +207,21 @@ function plot_benchmark_comparison(;
         color_map=color_map,
         marker_size=marker_size,
         line_width=line_width,
-        alpha=0.5,
+        alpha=1.0,
         Lmin=effective_Lmin,
+        line_style="--",
+        filled_markers=false,
     )
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel(raw"$N_{\mathrm{OFF}}\ \mathrm{per\ row}$")
     ax.set_ylabel(raw"$t_{\mathrm{cpu}}$")
-    ax.set_title("CPU time - POLFED VS shift-and-invert")
+    ax.set_title("CPU time - POLFED VS Shift-And-Invert")
     ax.xaxis.label.set_size(10)
     ax.yaxis.label.set_size(11)
     ax.xaxis.labelpad = 1.5
-    ax.grid(false; which="major", alpha=0.16, linewidth=0.5)
-    ax.grid(false; which="minor", alpha=0.06, linewidth=0.35)
+    ax.grid(false)
     ax.tick_params(which="both", direction="in")
 
     add_benchmark_legends!(
@@ -221,30 +246,74 @@ function plot_benchmark_comparison(;
             label=model,
         ) for model in model_order
     ]
-    ax.legend(
+    legend_models = ax.legend(
         model_handles,
         [model_legend_label(model) for model in model_order];
         title="Model",
         loc="upper left",
-        bbox_to_anchor=(1.02, 0.5),
+        bbox_to_anchor=(1.02, 0.6),
         frameon=false,
         borderaxespad=0.0,
         labelspacing=0.45,
         handletextpad=0.5,
         fontsize=6,
     )
+    ax.add_artist(legend_models)
+
+    method_handles = Any[
+        line2d(
+            [0],
+            [0];
+            color="#4a4a4a",
+            linestyle="-",
+            linewidth=line_width,
+            alpha=1.0,
+            marker="o",
+            markerfacecolor="#4a4a4a",
+            markeredgecolor="#4a4a4a",
+            markersize=4,
+            label="POLFED",
+        ),
+        line2d(
+            [0],
+            [0];
+            color="#4a4a4a",
+            linestyle="--",
+            linewidth=line_width,
+            alpha=1.0,
+            marker="o",
+            markerfacecolor="none",
+            markeredgecolor="#4a4a4a",
+            markersize=4,
+            label="Shift-and-invert",
+        ),
+    ]
+    legend_method = ax.legend(
+        method_handles,
+        ["POLFED", "Shift-And-Invert"];
+        title="Method",
+        loc="upper left",
+        bbox_to_anchor=(1.02, 0.075),
+        frameon=false,
+        borderaxespad=0.0,
+        labelspacing=0.45,
+        handlelength=2.0,
+        handletextpad=0.6,
+        fontsize=6,
+    )
+    legend_method.get_title().set_ha("left")
+    legend_method.get_title().set_position((-150.0, 0.0))
 
     fig.tight_layout(rect=(0.0, 0.0, 0.72, 1.0))
 
     if savepath !== nothing
-        println("dwlijfwohdqhwldw")
         fig.savefig(savepath; bbox_inches="tight")
     end
     if show_plot
         display(fig)
         fig.show()
     end
-    # return fig, ax, plot_polfed_df, plot_shift_df
+    return fig, ax, plot_polfed_df, plot_shift_df
 end
 
 

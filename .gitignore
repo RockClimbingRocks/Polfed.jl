@@ -6,6 +6,9 @@
 
 
 
+*.pdf
+*.png
+*.jpeg  
 *.h5
 *.ipynb
 

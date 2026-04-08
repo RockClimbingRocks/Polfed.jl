@@ -2,6 +2,22 @@
 
 const permutation = SVector{3,Int64}(2,3,1)
 
+"""
+    _thread_slots() -> Int
+
+Return the number of valid storage slots needed for indexing by `Threads.threadid()`.
+
+On Julia versions with separate interactive and default thread pools, `threadid()`
+is global across pools, so `Threads.nthreads()` alone is not a safe upper bound.
+"""
+function _thread_slots()
+    try
+        return Threads.nthreads(:default) + Threads.nthreads(:interactive)
+    catch
+        return Threads.nthreads()
+    end
+end
+
 # ==============================================================================
 # 1. Main dispatcher function
 # This is the function you will call from your `getdos!` script.
@@ -69,38 +85,25 @@ CPU-oriented threaded implementation of DoS moment accumulation.
 Uses per-thread local accumulators and reduces them at the end.
 """
 function _dos_moments_impl(f!::Function, N::Int, R::Int, hilbertspacedim::Int, E::Type{<:Number}, pu::CPU)
-    
-    # Create a separate moment accumulator for each thread to prevent race conditions.
     S = real(E)
-    μs_per_thread = [zeros(S, N) for _ in 1:Threads.nthreads()]
+    nslots = _thread_slots()
+    μs_per_thread = [zeros(S, N) for _ in 1:nslots]
+    vecs_per_thread = [[Vector{E}(undef, hilbertspacedim) for _ in 1:3] for _ in 1:nslots]
+    r_per_thread = [Vector{E}(undef, hilbertspacedim) for _ in 1:nslots]
 
-    # The main loop is now parallelized.
-    # Each thread will execute a portion of the `1:R` iterations.
-    Threads.@threads for _ in 1:R
-        # --- Thread-Local Storage ---
-        # Get the current thread's ID
+    # Use static scheduling so each worker reuses its dedicated scratch buffers.
+    Threads.@threads :static for _ in 1:R
         tid = Threads.threadid()
-        # Get the dedicated moment vector for this thread
-        μs_local = μs_per_thread[tid] 
-        
-        # Each thread needs its own temporary vectors to avoid conflicts.
-        # This is crucial for correctness.
-        vecs_local = [Vector{E}(undef, hilbertspacedim) for _ in 1:3]
-        r_local = Vector{E}(undef, hilbertspacedim)
-        # --- End Thread-Local Storage ---
+        μs_local = μs_per_thread[tid]
+        vecs_local = vecs_per_thread[tid]
+        r_local = r_per_thread[tid]
 
-        # The core calculation is the same as before, but on local variables.
         r_local .= randn(E, hilbertspacedim)
-        r_local .*= 1/norm(r_local)
-        
-        # The `trace!` function is UNCHANGED, but now operates on thread-local data.
+        r_local .*= inv(norm(r_local))
         trace!(f!, r_local, μs_local, vecs_local)
     end
 
-    # --- Reduction Step ---
-    # After the parallel loop, sum the results from all threads into one final vector.
-    μs = sum(μs_per_thread)
-
+    μs = reduce(+, μs_per_thread; init=zeros(S, N))
     μs .*= hilbertspacedim/R
     return μs
 end
