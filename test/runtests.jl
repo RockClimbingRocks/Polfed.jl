@@ -2,5 +2,5 @@ using Polfed
 using Test
 
 @testset "Polfed.jl" begin
-    # Write your tests here.
+    include("test_polfed.jl")
 end

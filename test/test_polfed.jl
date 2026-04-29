@@ -1,144 +1,131 @@
+using LinearAlgebra
+using Random
+using Test
 
+using Polfed
 
-
-"""
-    are_vals_in_true(vals, vals_true; atol=1e-8)
-
-Check whether the sequence `vals` appears (within tolerance `atol`) 
-as a consecutive subsequence of `vals_true`.
-
-Returns `true` if all values match within tolerance, otherwise `false`.
-"""
-function are_vals_in_true(vals::AbstractVector, vals_true::AbstractVector; atol=1e-8)
-    # Find the closest index in `vals_true` to vals[1]
-    i_min = findmin(abs.(vals_true .- vals[1]))[2]
-    i_max = i_min + length(vals) - 1
-
-    # Ensure the slice fits inside vals_true
-    if i_max > length(vals_true)
-        return false
+const CUDA_TEST_AVAILABLE = let
+    try
+        @eval import CUDA
+        Polfed.CUDA_AVAILABLE && CUDA.functional()
+    catch
+        false
     end
-
-    display(abs.(vals .- view(vals_true, i_min:i_max)))
-
-    # Check all values with broadcasting
-    return all(abs.(vals .- view(vals_true, i_min:i_max)) .< atol)
 end
 
+function check_ordered_eigenpairs(mat::AbstractMatrix, vals::AbstractVector, vecs::AbstractMatrix; atol=1e-6)
+    vals_cpu = Vector(vals)
+    vecs_cpu = Matrix(vecs)
 
+    @test issorted(vals_cpu)
 
-
-
-using SparseArrays, LinearAlgebra, CUDA
-# using QSystem
-
-include("../src/Polfed.jl")
-using .Polfed
-
-
-function construct_xxz_spin_sector(L::Int, delta::Real, Nup::Int)
-    basis = [b for b in 0:2^L-1 if count_ones(b) == Nup] # generate basis
-    dim = length(basis)
-    bmap = Dict(b => i for (i, b) in enumerate(basis))  # state index map
-    rows, cols, vals = Int[], Int[], Float64[]
-    for (col, state) in enumerate(basis)
-        for i in 1:L
-            j = i % L + 1  # PBC
-            si = (state >> (i - 1)) & 1
-            sj = (state >> (j - 1)) & 1
-            # --- S^z_i S^z_j diagonal term ---
-            SzSz = (0.5 - si) * (0.5 - sj)  # spin-½: Sz = ±½
-            push!(rows, col); push!(cols, col); push!(vals, delta * SzSz)
-            # --- S⁺_i S⁻_j + h.c. (flip-flop term) ---
-            if si != sj
-                flipped = state ⊻ (1 << (i - 1)) ⊻ (1 << (j - 1))
-                if haskey(bmap, flipped) 
-                    push!(rows, bmap[flipped]); push!(cols, col); push!(vals, 0.5)
-                end
-            end
-        end
+    for j in eachindex(vals_cpu)
+        v = view(vecs_cpu, :, j)
+        residual = norm(mat * v - vals_cpu[j] * v)
+        @test residual <= atol * max(1, abs(vals_cpu[j]))
     end
-    return sparse(rows, cols, vals, dim, dim)
 end
 
+function small_polfed_problem(; use_gpu::Bool=false)
+    mat_cpu = Matrix(Diagonal([-3.0, -1.25, -0.2, 0.55, 1.8, 3.2]))
+    blocksize = 2
+    howmany = 3
 
+    rng = MersenneTwister(1234)
+    q = Matrix(qr(randn(rng, size(mat_cpu, 1), blocksize)).Q)[:, 1:blocksize]
 
-function test_polfed() 
+    mat = use_gpu ? CUDA.CuArray(mat_cpu) : mat_cpu
+    x0 = use_gpu ? CUDA.CuArray(q) : q
 
-    L =18
-    mat = construct_xxz_spin_sector(L, 0.123, Int(L÷2)) # XXZ model with delta=0.0
-
-    # display(mat)
-    D = size(mat, 1)
-
-    # x0_ = rand(D)
-    # x0 = x0_ ./ norm(x0_)
-    # x0_ = rand(D,4)
-    # x0 = Matrix(qr(x0_).Q) # orthonormalize
-    # mapping = Polfed.MappingConfig(
-    #     parallel_strategy=Polfed.MulColsParallel()
-    # )
-
-    x0_ = rand(D,4)
-    x0 = Matrix(qr(x0_).Q) # orthonormalize
     mapping = Polfed.MappingConfig(
-        parallel_strategy=Polfed.TwoLevelParallel(1)
+        parallel_strategy=Polfed.NoParallel(),
+        Emin=minimum(diag(mat_cpu)),
+        Emax=maximum(diag(mat_cpu)),
+    )
+    transform = Polfed.TransformConfig(order=12)
+    fact = Polfed.FactorizationConfig(tol=1e-11, eigentol=1e-7, overestimate_iters=1.0)
+    dos = Polfed.DoSConfig(N=8, R=2)
+
+    vals, vecs = Polfed.polfed(
+        mat,
+        x0,
+        howmany,
+        0.0;
+        mapping=mapping,
+        transform=transform,
+        fact=fact,
+        dos=dos,
     )
 
-
-    howmany = 500
-    vals, vecs, report = Polfed.polfed(mat, x0, howmany, 0.; produce_report=true, mapping=mapping)
-    Polfed.display_report(report)
-
-    # mat_dense = Matrix(mat)
-    # vals_true = eigvals!(mat_dense)
-
-    # r = are_vals_in_true(vals, vals_true)
-    # println("Are all values in true? ", r)
-
-
-
-    # vals, vecs = Lanczos.lanczos(mat, x0, howmany; maxdim=1000, tol=1e-14, eigentol=1e-10)
-    # println("Computed eigenvalues:\n", vals)
-    # println("Corresponding eigenvectors:\n")
-    # println(vecs)
+    return mat_cpu, vals, vecs
 end
 
+@testset "in-place column permutation" begin
+    A0 = reshape(collect(1:20), 5, 4)
+    p = [3, 1, 4, 2]
 
-function test_lanczos_CUDA() 
-    L =22
-    mat = construct_xxz_spin_sector(L, 0.123, Int(L÷2)) 
-    mat_cu = CUDA.CUSPARSE.CuSparseMatrixCSR(mat) # convert to CuMatrix for GPU
-    f!(Y,X) = mul!(Y, mat_cu, X)
-    D = size(mat, 1)
+    A = copy(A0)
+    returned = Polfed.Lanczos.permute_columns_inplace!(A, p, length(p))
 
-    x0_ = CUDA.rand(Float64, D,4)
-    x0 = CuMatrix(qr(x0_).Q) # orthonormalize
-    howmany = 500
+    @test returned === A
+    @test A == A0[:, p]
+    @test A isa Matrix
+    @test !(A isa Base.SubArray)
 
+    B0 = reshape(collect(1:30), 5, 6)
+    q = [1, 5, 3, 6, 2, 4]
 
-    vals, vecs, report = Polfed.polfed(f!, x0, howmany, 0.; produce_report=true)
-    # Polfed.lanczos(f!, x0, howmany; maxdim=1000, tol=1e-14, eigentol=1e-8, basistype=Lanczos.HybridMatrixBasis)
-    Polfed.display_report(report)
+    B = copy(B0)
+    Polfed.Lanczos.permute_columns_inplace!(B, q, length(q))
 
+    @test B == B0[:, q]
 
+    C0 = reshape(collect(1:30), 5, 6)
+    r = [4, 1, 3, 2]
+    expected = copy(C0)
+    expected[:, 1:length(r)] .= C0[:, r]
 
-    # vals_true, vecs_true = Lanczos2.lanczosmethod(f!, x0, howmany; maxdim = 1000, tol = 1e-14, eigentol = 1e-8)
+    C = copy(C0)
+    Polfed.Lanczos.permute_columns_inplace!(C, r, length(r))
 
-    # println(Vector(vals_true) ≈ Vector(vals))
-    # println(Matrix(vecs_true) ≈ Matrix(vecs))
-
-    # errs = abs.(Matrix(vecs_true) - Matrix(vecs))
-
-
-    # # println(errs)
-    # for col in eachcol(errs)
-    #     println("Error norm for column: ", norm(col))
-    #     println("Max error: ", maximum(col))
-    # end
-    # println("Max error (norm): ", maximum(errs))
-    # println("Max error (norm): ", norm(errs))
+    @test C == expected
 end
 
+@testset "small CPU polfed ordering" begin
+    mat, vals, vecs = small_polfed_problem()
 
-test_polfed()
+    @test vals isa Vector
+    @test vecs isa Matrix
+    @test !(vals isa Base.SubArray)
+    @test !(vecs isa Base.SubArray)
+    @test size(vecs, 2) == length(vals)
+
+    check_ordered_eigenpairs(mat, vals, vecs)
+end
+
+@testset "small GPU polfed ordering" begin
+    if CUDA_TEST_AVAILABLE
+        A0 = reshape(collect(Float64, 1:20), 5, 4)
+        p = [3, 1, 4, 2]
+
+        A = CUDA.CuArray(A0)
+        returned = Polfed.Lanczos.permute_columns_inplace!(A, p, length(p))
+
+        @test returned === A
+        @test Array(A) == A0[:, p]
+        @test typeof(A) <: CUDA.CuArray{<:Any,2}
+        @test !(A isa Base.SubArray)
+
+        mat, vals, vecs = small_polfed_problem(use_gpu=true)
+
+        @test typeof(vals) <: CUDA.CuArray{<:Any,1}
+        @test typeof(vecs) <: CUDA.CuArray{<:Any,2}
+        @test !(vals isa Base.SubArray)
+        @test !(vecs isa Base.SubArray)
+        @test size(vecs, 2) == length(vals)
+
+        check_ordered_eigenpairs(mat, vals, vecs; atol=1e-5)
+    else
+        @test_skip "CUDA is not functional in this environment."
+    end
+end

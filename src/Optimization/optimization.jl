@@ -1,9 +1,34 @@
 
-const Offdiagonal   = Tuple{<:Number, Vector{Int}, Vector{Int}}
+const Offdiagonal = Tuple{<:Number, <:AbstractVector{<:Integer}, <:AbstractVector{<:Integer}}
 const Offdiagonals = Union{Offdiagonal, Vector{<:Offdiagonal}}
 
 
 include("cpu/cpu.jl")
+if CUDA_AVAILABLE
+    include("gpu/gpu.jl")
+end
+
+@inline is_gpu_matrix(mat) = is_gpu_array(mat) || (CUDA_AVAILABLE && mat isa CUDA.CUSPARSE.AbstractCuSparseMatrix)
+
+function materialize_host_matrix(mat::CUDA.CUSPARSE.AbstractCuSparseMatrix{T}) where {T<:Number}
+    I_gpu, J_gpu, V_gpu = findnz(mat)
+    I = Int.(collect(I_gpu))
+    J = Int.(collect(J_gpu))
+    V = collect(V_gpu)
+    return sparse(I, J, V, size(mat, 1), size(mat, 2))
+end
+
+materialize_host_matrix(mat::AbstractMatrix{T}) where {T<:Number} = mat
+
+function materialize_host_matrix(mat::CuMatrix{T}) where {T<:Number}
+    return Array(mat)
+end
+
+function move_packed_mapping_to_gpu(diagonals::AbstractVector{T}, offdiagonals::Vector{<:Offdiagonal}) where {T<:Number}
+    diagonals_gpu = CuArray(diagonals)
+    offdiagonals_gpu = [(val, CuArray(flat), CuArray(starts)) for (val, flat, starts) in offdiagonals]
+    return diagonals_gpu, offdiagonals_gpu
+end
 
 """
     round_key(x, digits) -> Number
@@ -63,18 +88,22 @@ This function:
 - Unscaled optimized mapping callback `f!_opt`.
 """
 function optimize_spectral_transform(mat::AbstractMatrix{T}, mapping::MappingConfig) where {T<:Number}
-    # Implement optimization logic here
-    if is_gpu_array(mat) && !(eltype(mat) <: Real)
+    gpu_matrix = is_gpu_matrix(mat)
+    if gpu_matrix && !(eltype(mat) <: Real)
         error("Complex GPU optimization is not supported yet. Current GPU optimization kernels are real-only. Use CPU arrays.")
     end
     parallel_strategy = mapping.parallel_strategy
-    if parallel_strategy === nothing
-        parallel_strategy = is_gpu_array(mat) ? NoParallel() : MulColsParallel()
+    if gpu_matrix
+        parallel_strategy = NoParallel()
+        mapping.parallel_strategy = parallel_strategy
+    elseif parallel_strategy === nothing
+        parallel_strategy = MulColsParallel()
         mapping.parallel_strategy = parallel_strategy
     end
-    diagonals, offdiagonals = get_diags_and_offdiagonals_by_value(mat)
+    diagonals_host, offdiagonals_host = get_diags_and_offdiagonals_by_value(materialize_host_matrix(mat))
+    diagonals, offdiagonals = gpu_matrix ? move_packed_mapping_to_gpu(diagonals_host, offdiagonals_host) : (diagonals_host, offdiagonals_host)
 
-    pu = is_gpu_array(mat) ? GPU() : CPU()
+    pu = gpu_matrix ? GPU() : CPU()
     v0 = pu.randn(eltype(mat), size(mat, 1))
     v0 ./= norm(v0)
     f!_opt = optimized_mapping!(diagonals, offdiagonals, parallel_strategy)

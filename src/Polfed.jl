@@ -41,6 +41,7 @@ module CUDAStub
     memory_status() = _unavailable()
 
     module CUSPARSE
+        abstract type AbstractCuSparseMatrix{T} <: AbstractMatrix{T} end
     end
 end
 

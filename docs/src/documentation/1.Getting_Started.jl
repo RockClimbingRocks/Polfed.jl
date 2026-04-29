@@ -52,6 +52,9 @@
 # - Both entry modes are handled by the same [`polfed`](@ref Polfed.polfed)
 #   interface.
 #
+# For a more detailed comparison, see
+# [Lanczos and Block Lanczos Factorization](@ref tutorial_lanczos_block).
+#
 # ## First Diagnostics
 #
 # Reporting is the fastest way to understand runtime behavior:

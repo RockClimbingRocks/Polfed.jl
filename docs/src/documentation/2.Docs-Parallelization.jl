@@ -1,7 +1,0 @@
-#
-# ```@docs
-# Polfed.Parallelization
-# Polfed.MulColsParallel
-# Polfed.TwoLevelParallel
-# Polfed.NoParallel
-# ```

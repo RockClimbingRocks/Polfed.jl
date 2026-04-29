@@ -606,14 +606,18 @@ function plot_spectral_transform_figure(;
     if !isnothing(save_png)
         mkpath(dirname(save_png))
         fig.savefig(save_png, bbox_inches = "tight")
+        println("Saved plot: ", abspath(save_png))
     end
     if !isnothing(save_pdf)
         mkpath(dirname(save_pdf))
         fig.savefig(save_pdf, bbox_inches = "tight")
+        println("Saved plot: ", abspath(save_pdf))
     end
     show_plot && display(fig)
     return fig, (ax_a, ax_b, ax_c, ax_d, ax_e)
 end
 
 
-plot_spectral_transform_figure()
+plot_spectral_transform_figure(
+    save_pdf = joinpath(@__DIR__, "..", "..", "..", "plots", "SpectralTransformationOfEigenvalues.pdf"),
+)

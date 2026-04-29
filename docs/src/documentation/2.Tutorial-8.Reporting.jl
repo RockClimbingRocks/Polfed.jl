@@ -28,6 +28,9 @@
 #   and eigen residuals, reserved vs used iterations, basis type, and
 #   reorthogonalization strategy
 #   ([`FactorizationReport`](@ref Polfed.Lanczos.FactorizationReport)).
+#
+# The difference between standard Lanczos and Block Lanczos is explained in
+# [Lanczos and Block Lanczos Factorization](@ref tutorial_lanczos_block).
 # - Timing summary:
 #   walltime/CPU-time breakdown across mapping, reorthogonalization, convergence
 #   checking, and other operations

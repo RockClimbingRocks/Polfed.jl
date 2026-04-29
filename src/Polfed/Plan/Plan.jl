@@ -61,8 +61,11 @@ If `mapping.parallel_strategy` is `nothing`, the default is:
 - [`NoParallel`](@ref) on GPU
 """
 function resolve_parallelization(mapping::MappingConfig, pu::ProcessingUnit)
+    if isa(pu, GPU)
+        return NoParallel()
+    end
     if mapping.parallel_strategy === nothing
-        return isa(pu, CPU) ? MulColsParallel() : NoParallel()
+        return MulColsParallel()
     end
     return mapping.parallel_strategy
 end

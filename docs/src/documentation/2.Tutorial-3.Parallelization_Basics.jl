@@ -40,6 +40,9 @@
 #
 # ## Factorization Interaction
 #
+# The factorization choice itself is explained in
+# [Lanczos and Block Lanczos Factorization](@ref tutorial_lanczos_block).
+#
 # - `x0::AbstractVector` -> Lanczos.
 # - `x0::AbstractMatrix` -> Block Lanczos.
 #

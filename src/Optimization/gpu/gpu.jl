@@ -1,8 +1,3 @@
-if CUDA_AVAILABLE
-    using CUDA
-else
-    @warn "CUDA not available; GPU optimizations are disabled."
-end
+using CUDA
 
-
-include("kernels/kernels.jl")
+include("vector_dispatch.jl")

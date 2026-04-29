@@ -8,6 +8,7 @@ files_to_literate = [
     # Beginner tutorials
     "src/documentation/2.Tutorial-2.Choosing_Target.jl",
     "src/documentation/2.Tutorial-8.Reporting.jl",
+    "src/documentation/2.Tutorial-9.Lanczos_Block_Lanczos.jl",
     "src/documentation/2.Tutorial-3.Parallelization_Basics.jl",
     "src/documentation/2.Tutorial-4.Optimized_Mapping.jl",
     "src/documentation/2.Tutorial-5.Reducing_Memory_Access.jl",
@@ -30,8 +31,11 @@ files_to_literate = [
     "src/documentation/6.FAQ.jl",
 ]
 
+generated_dir = "src/documentation/generated"
+mkpath(generated_dir)
+
 for file in files_to_literate
-    Literate.markdown(file, "src/documentation/generated")
+    Literate.markdown(file, generated_dir)
 end
 
 makedocs(
@@ -56,6 +60,7 @@ makedocs(
             "Beginner" => [
                 "Choosing Target" => "documentation/generated/2.Tutorial-2.Choosing_Target.md",
                 "Reporting" => "documentation/generated/2.Tutorial-8.Reporting.md",
+                "Lanczos and Block Lanczos Factorization" => "documentation/generated/2.Tutorial-9.Lanczos_Block_Lanczos.md",
                 "Parallelization" => "documentation/generated/2.Tutorial-3.Parallelization_Basics.md",
                 "Optimized Mapping" => "documentation/generated/2.Tutorial-4.Optimized_Mapping.md",
                 "Reducing Memory Access" => "documentation/generated/2.Tutorial-5.Reducing_Memory_Access.md",
