@@ -17,10 +17,14 @@
 #
 # ```julia
 # using Polfed
-# using Polfed.QSun: quantum_sun_hamiltonian
+# using Polfed.QSun: qsun_hamiltonian
 # using LinearAlgebra
 #
-# mat_cpu = quantum_sun_hamiltonian(12, 2; sparse=true)
+# L_loc = 12
+# L_grain = 2
+# g0 = 1.0
+# α = 0.5
+# mat_cpu = qsun_hamiltonian(L_loc, L_grain, g0, α; use_sparse=true)
 # x0_cpu = rand(size(mat_cpu, 1)); x0_cpu ./= norm(x0_cpu)
 #
 # howmany = 80

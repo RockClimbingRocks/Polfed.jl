@@ -178,7 +178,13 @@ function density_panel!(
     nbins::Int,
     line_y::Union{Nothing, AbstractVector{<:Real}} = nothing,
     line_x::Union{Nothing, AbstractVector{<:Real}} = nothing,
+    print_hist_count::Bool = true,
+    xscale::AbstractString = "log",
 )
+    if print_hist_count
+        println("In histogram $(panel_label) $(length(rawvals)) points were used.")
+    end
+
     h = ax.hist(
         rawvals;
         bins = nbins,
@@ -210,7 +216,10 @@ function density_panel!(
     ax.set_xlabel(xlabel)
     ax.set_ylim(y0, y1)
     # ax.set_xlim(x0, x1)
-    ax.set_xscale("log")
+    ax.set_xscale(xscale)
+    if xscale == "log"
+        ax.set_xticks([1e-1, 1e0])
+    end
     ax.text(0.70, 0.78, panel_label, transform = ax.transAxes, fontsize = 14)
     ax.tick_params(direction = "in")
 end
@@ -225,7 +234,7 @@ function plot_spectral_transform_figure(;
     style_name::String = "rok-custom",
     use_tex::Bool = true,
     save_png::Union{Nothing, String} = nothing,
-    save_pdf::Union{Nothing, String} = nothing,
+    save_pdf = joinpath(@__DIR__, "..", "..", "..", "plots", "SpectralTransformationOfEigenvalues.pdf"),
     show_plot::Bool = true,
     kpm_moment_main::Int = 100,
     Ks_inset::AbstractVector{<:Integer} = Int.(collect(LinRange(10,1000,100)).÷1),
@@ -249,12 +258,14 @@ function plot_spectral_transform_figure(;
     panel_spacing_ab::Float64 = 0.025,
     panel_spacing_right::Float64 = 0.01,
     panel_spacing::Union{Nothing, Float64} = nothing,
-    scatter_L::Union{Nothing, Int} = 12,
+    scatter_L::Union{Nothing, Int} = 10,
     scatter_L_size::Real = 8,
     scatter_L_sizes_by_order::NTuple{3, Float64} = (1.0, 0.875, 0.75),
     scatter_L_alpha::Real = 0.95,
     normalize_kpm_untransformed::Bool = true,
     normalize_kpm_transformed::Bool = true,
+    print_hist_counts::Bool = true,
+    density_xscale::AbstractString = "linear",
 )
     setup_matplotlib!(use_tex = use_tex, apply_style = apply_style, style_name = style_name)
     mpl = PythonPlot.matplotlib
@@ -436,6 +447,9 @@ function plot_spectral_transform_figure(;
     ax_e = fig.add_axes([x_e, y_b, width_cde, h_b], sharey = ax_c)
     ax_a.tick_params(labelbottom = false)
 
+    if print_hist_counts
+        println("In histogram (a) $(length(main_eigvals_rescaled)) points were used.")
+    end
     ax_a.hist(
         main_eigvals_rescaled;
         bins = bins_main,
@@ -446,7 +460,7 @@ function plot_spectral_transform_figure(;
         linewidth = 0.5,
     )
     ax_a.plot(main_kpm_x, main_kpm_plot, color = "black", linewidth = 1.6)
-    ax_a.set_ylabel(raw"$\rho(\varepsilon)$")
+    ax_a.set_ylabel(raw"$\rho(\tilde{E})$")
     ax_a.set_xlim(eps_xlim...)
     ax_a.text(0.03, 0.78, raw"$(a)$", transform = ax_a.transAxes, fontsize = 14)
 
@@ -478,7 +492,7 @@ function plot_spectral_transform_figure(;
         end
     end
 
-    ax_b.axhline(omega, color = "black", linewidth = 1.6, label = raw"$\Omega$")
+    ax_b.axhline(omega, color = "black", linewidth = 1.6, label = raw"$\Omega=0.17$")
     if x_right > x_left
         y_dashed_bottom = -0.25
         y_arrow = -0.25
@@ -495,10 +509,10 @@ function plot_spectral_transform_figure(;
     end
 
     ax_b.legend(loc = "upper right", frameon = false)
-    ax_b.set_xlabel(raw"$\varepsilon$", fontsize = 18)
-    ax_b.set_ylabel(raw"$P_0^{K}(\varepsilon)$")
+    ax_b.set_xlabel(raw"$\tilde{E}$", fontsize = 18)
+    ax_b.set_ylabel(raw"$P_0^{K}(\tilde{E})$")
     ax_b.set_xlim(eps_xlim...)
-    ax_b.set_xticks([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75])
+    ax_b.set_xticks([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5])
     ax_b.text(0.85, 0.5, raw"$(b)$", transform = ax_b.transAxes, fontsize = 14)
 
     right_ylim_use = isnothing(right_ylim) ? ax_b.get_ylim() : right_ylim
@@ -564,39 +578,45 @@ function plot_spectral_transform_figure(;
         ax_c,
         order_data[orders[1]].eig_tr;
         color = order_colors[orders[1]],
-        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[1])}(\\varepsilon)\\right)\$",
+        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[1])}(\\tilde{E})\\right)\$",
         panel_label = raw"$(c)$",
         ylim = right_ylim_use,
         xlim = dens_xlim,
         nbins = bins_transformed[1],
         line_y = line_y_c,
         line_x = line_x_c,
+        print_hist_count = print_hist_counts,
+        xscale = density_xscale,
     )
 
     density_panel!(
         ax_d,
         order_data[orders[2]].eig_tr;
         color = order_colors[orders[2]],
-        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[2])}(\\varepsilon)\\right)\$",
+        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[2])}(\\tilde{E})\\right)\$",
         panel_label = raw"$(d)$",
         ylim = right_ylim_use,
         xlim = dens_xlim,
         nbins = bins_transformed[2],
         line_y = line_y_d,
         line_x = line_x_d,
+        print_hist_count = print_hist_counts,
+        xscale = density_xscale,
     )
 
     density_panel!(
         ax_e,
         order_data[orders[3]].eig_tr;
         color = order_colors[orders[3]],
-        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[3])}(\\varepsilon)\\right)\$",
+        xlabel = "\$\\rho\\!\\left(P_0^{$(orders[3])}(\\tilde{E})\\right)\$",
         panel_label = raw"$(e)$",
         ylim = right_ylim_use,
         xlim = dens_xlim,
         nbins = bins_transformed[3],
         line_y = line_y_e,
         line_x = line_x_e,
+        print_hist_count = print_hist_counts,
+        xscale = density_xscale,
     )
 
     for ax in (ax_a, ax_b, ax_c, ax_d, ax_e)
@@ -618,6 +638,4 @@ function plot_spectral_transform_figure(;
 end
 
 
-plot_spectral_transform_figure(
-    save_pdf = joinpath(@__DIR__, "..", "..", "..", "plots", "SpectralTransformationOfEigenvalues.pdf"),
-)
+plot_spectral_transform_figure()

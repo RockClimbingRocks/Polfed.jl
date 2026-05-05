@@ -223,9 +223,6 @@ function display_factorization_report(report::FactorizationReport, use_colors::B
     eigentol  = cyan(f, @sprintf("%.2e", report.eigentol))
     residual  = yellow(f, @sprintf("%.2e", report.residual))
     eigrnres  = yellow(f, @sprintf("%.2e", report.eigenresidual))
-    basis     = cyan(f, split(first(split(string(report.basistype), "{")), ".")[end])
-    rot       = cyan(f, split(string(report.rot), ".")[end])
-
     itersneeded   = bold(f, string(report.itersneeded))
     itersreserved = cyan(f, string(report.itersreserved))
     total_wt      = cyan(f, @sprintf("%.2f %s", walltime, units_wt))
@@ -237,7 +234,6 @@ function display_factorization_report(report::FactorizationReport, use_colors::B
     println("- Lanczos convergence satisfied by: $lan_color (with tolerance $tol, max residual $residual)")
     println("- Eigen convergence satisfied by:   $eig_color (with tolerance $eigentol, max residual $eigrnres)")
     println("- Iterations needed: $itersneeded (out of $itersreserved reserved, overestimated by $remaining_color)")
-    println("- Basis type: $basis and reorthogonalization technique: $rot")
 
     if show_timings
         println(blue(f, "Timings:"), " Percentages are distributed as: (Mapping, Reorthogonalization, Convergence check, others)")

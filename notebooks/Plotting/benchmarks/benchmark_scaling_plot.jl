@@ -46,15 +46,13 @@ end
 function benchmark_dataset_path(dataset)
     dataset_key = dataset isa Symbol ? dataset : lowercase(String(dataset))
 
-    if dataset_key in (:plain, :base, :extracted, "plain", "base", "extracted", "extracted_curves.csv")
-        return joinpath(@__DIR__, "extracted_curves.csv")
-    elseif dataset_key in (:with_guesses, :guesses, :guessed, "with_guesses", "guesses", "guessed", "extracted_curves_with_guesses.csv")
-        return joinpath(@__DIR__, "extracted_curves_with_guesses.csv")
+    if dataset_key in (:polfed, :benchmark, :base, "polfed", "benchmark", "base", "benchmark_polfed.csv")
+        return joinpath(@__DIR__, "benchmark_polfed.csv")
     elseif dataset isa AbstractString
         return isabspath(dataset) ? dataset : joinpath(@__DIR__, dataset)
     end
 
-    throw(ArgumentError("Unknown dataset selector '$dataset'. Use :plain or :with_guesses, or pass a CSV filename/path."))
+    throw(ArgumentError("Unknown dataset selector '$dataset'. Use :polfed, :benchmark, or pass a CSV filename/path."))
 end
 
 
@@ -237,7 +235,7 @@ end
 
 
 function plot_benchmark_scaling(;
-    dataset::Union{Symbol, AbstractString}=:with_guesses,
+    dataset::Union{Symbol, AbstractString}=:polfed,
     savepath::Union{Nothing, AbstractString}=nothing,
     show_plot::Bool=true,
     marker_size::Real=30,

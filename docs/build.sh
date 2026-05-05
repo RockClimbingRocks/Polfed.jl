@@ -13,7 +13,7 @@ VOLUME_ROOT="$(df -P . | awk 'NR==2 {print $6}')"
 CLEANUP_ROOT="${DOCS_CLEANUP_DIR:-$VOLUME_ROOT/.polfed_docs_cleanup}"
 
 move_appledouble() {
-  find . -name '._*' | while IFS= read -r apple_file; do
+  find . -name '._*' 2>/dev/null | while IFS= read -r apple_file; do
     rel="${apple_file#./}"
     dest="$CLEANUP_ROOT/appledouble/$rel"
     mkdir -p "$(dirname "$dest")"

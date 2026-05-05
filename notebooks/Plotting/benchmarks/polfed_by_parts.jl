@@ -148,7 +148,7 @@ function plot_left_panel!(ax, df::DataFrame; parts_to_plot::Vector{String}=XXZ_P
     # ax.set_xlim(15.8, 22.3)
     # ax.set_xticks(collect(16:24))
     ax.set_xlabel("L")
-    ax.set_ylabel("time [s]")
+    ax.set_ylabel(raw"$t_{\mathrm{CPU}}\,[\mathrm{s}]$")
     ax.grid(false)
 end
 
@@ -176,7 +176,7 @@ function plot_right_panel!(ax, df::DataFrame; parts_to_plot::Vector{String}=XXZ_
     ax.set_yscale("log")
     ax.set_ylim(bottom=1e-2)
     ax.set_xlabel("Nev")
-    ax.set_ylabel("time [s]")
+    ax.set_ylabel(raw"$t_{\mathrm{CPU}}\,[\mathrm{s}]$")
     ax.grid(false)
 end
 
@@ -206,6 +206,19 @@ function build_right_legend(ax; parts_to_plot::Vector{String}=XXZ_PART_ORDER, co
 end
 
 
+function add_panel_label!(ax, label::AbstractString; x::Real, y::Real, ha::AbstractString, va::AbstractString)
+    ax.text(
+        x,
+        y,
+        label;
+        transform=ax.transAxes,
+        ha=ha,
+        va=va,
+        fontsize=16,
+    )
+end
+
+
 function plot_xxz_profiling(;
     left_csv::AbstractString=joinpath(@__DIR__, "benchamrks_parts_vs_L_xxz.csv"),
     right_csv::AbstractString=joinpath(@__DIR__, "benchmarks_parts_vs_nev_L=22_xxz.csv"),
@@ -230,18 +243,21 @@ function plot_xxz_profiling(;
 
     plot_left_panel!(ax_left, left_df; parts_to_plot=selected_parts, color_map=selected_color_map)
     plot_right_panel!(ax_right, right_df; parts_to_plot=selected_parts, color_map=selected_color_map)
+    add_panel_label!(ax_left, "(a)"; x=0.04, y=0.94, ha="left", va="top")
+    add_panel_label!(ax_right, "(b)"; x=0.96, y=0.06, ha="right", va="bottom")
     build_right_legend(ax_right; parts_to_plot=selected_parts, color_map=selected_color_map)
 
     fig.tight_layout()
     fig.savefig(pdf_path; bbox_inches="tight")
+    println("Saved PDF: ", abspath(pdf_path))
     fig.savefig(png_path; bbox_inches="tight")
+    println("Saved PNG: ", abspath(png_path))
 
     if show_plot
         display(fig)
         fig.show()
     end
 
-    return fig, axs, left_df, right_df
 end
 
 

@@ -10,39 +10,45 @@ const INPUT_CSV = joinpath(@__DIR__, "benchmarks_nev_cpu_by_L.csv")
 const OUTPUT_BASENAME = joinpath(@__DIR__, "benchmarks_nev_cpu_by_L")
 const L_VALUES = [14, 16, 18, 20, 22]
 
-const LINE_COLORS = Dict(
-    14 => "tab:blue",
-    16 => "tab:orange",
-    18 => "tab:green",
-    20 => "tab:red",
-    22 => "tab:purple",
-)
-
 const LINE_STYLES = Dict(
-    14 => "-",
-    16 => "--",
+    22 => "-",
+    20 => "--",
     18 => "-.",
-    20 => ":",
-    22 => (0, (5, 1.5)),
+    16 => ":",
+    14 => (0, (5, 1.5)),
 )
 
 
-function apply_publication_style!()
+function apply_publication_style!(; use_custom_style::Bool=true)
+    if use_custom_style
+        try
+            pyplot.style.use(["rok-custom"])
+        catch
+        end
+    end
     matplotlib.rcParams["figure.dpi"] = 300
     matplotlib.rcParams["savefig.dpi"] = 300
     matplotlib.rcParams["font.family"] = "serif"
     matplotlib.rcParams["mathtext.fontset"] = "cm"
     matplotlib.rcParams["axes.grid"] = false
-    matplotlib.rcParams["axes.labelsize"] = 12
-    matplotlib.rcParams["axes.titlesize"] = 12
-    matplotlib.rcParams["xtick.labelsize"] = 10
-    matplotlib.rcParams["ytick.labelsize"] = 10
-    matplotlib.rcParams["legend.fontsize"] = 10
+    matplotlib.rcParams["axes.labelsize"] = 20
+    matplotlib.rcParams["axes.titlesize"] = 20
+    matplotlib.rcParams["xtick.labelsize"] = 16
+    matplotlib.rcParams["ytick.labelsize"] = 16
+    matplotlib.rcParams["legend.fontsize"] = 14
+    matplotlib.rcParams["legend.title_fontsize"] = 16
     matplotlib.rcParams["axes.linewidth"] = 0.8
     matplotlib.rcParams["xtick.direction"] = "in"
     matplotlib.rcParams["ytick.direction"] = "in"
     matplotlib.rcParams["xtick.minor.visible"] = true
     matplotlib.rcParams["ytick.minor.visible"] = true
+end
+
+
+function build_line_color_map(L_values::Vector{Int})
+    colors = matplotlib.rcParams["axes.prop_cycle"].by_key()["color"]
+    ordered_L = sort(unique(L_values))
+    return Dict(L => colors[(i - 1) % length(colors)] for (i, L) in enumerate(ordered_L))
 end
 
 
@@ -61,7 +67,7 @@ function load_data(csv_path::AbstractString, L_values::Vector{Int})::DataFrame
 end
 
 
-function plot_panel!(ax, df::DataFrame, ycol::Symbol, ylabel::AbstractString, L_values::Vector{Int})
+function plot_panel!(ax, df::DataFrame, ycol::Symbol, ylabel::AbstractString, L_values::Vector{Int}; color_map::Dict)
     for L in L_values
         subdf = df[Int.(df.L) .== L, :]
         isempty(subdf) && continue
@@ -69,9 +75,9 @@ function plot_panel!(ax, df::DataFrame, ycol::Symbol, ylabel::AbstractString, L_
         ax.plot(
             Float64.(subdf.n_ev),
             Float64.(subdf[!, ycol]);
-            color=LINE_COLORS[L],
+            color=color_map[L],
             linestyle=LINE_STYLES[L],
-            linewidth=1.8,
+            linewidth=2.4,
             label="L = $(L)",
         )
     end
@@ -84,15 +90,15 @@ function plot_panel!(ax, df::DataFrame, ycol::Symbol, ylabel::AbstractString, L_
 end
 
 
-function build_right_legend!(ax, L_values::Vector{Int})
+function build_right_legend!(ax, L_values::Vector{Int}; color_map::Dict)
     line2d = matplotlib.lines.Line2D
     handles = Any[
         line2d(
             [0],
             [0];
-            color=LINE_COLORS[L],
+            color=color_map[L],
             linestyle=LINE_STYLES[L],
-            linewidth=1.8,
+            linewidth=2.4,
             label="L = $(L)",
         ) for L in L_values
     ]
@@ -106,37 +112,57 @@ function build_right_legend!(ax, L_values::Vector{Int})
 end
 
 
+function add_panel_label!(ax, label::AbstractString)
+    ax.text(
+        0.96,
+        0.06,
+        label;
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=20,
+    )
+end
+
+
 function plot_nev_cpu_by_L(;
     input_csv::AbstractString=INPUT_CSV,
     output_basename::AbstractString=OUTPUT_BASENAME,
     L_values::Vector{Int}=copy(L_VALUES),
-    figure_size::Tuple{<:Real, <:Real}=(10.5, 4.0),
+    figure_size::Tuple{<:Real, <:Real}=(12.5, 4.0),
+    use_custom_style::Bool=true,
     show_plot::Bool=true,
 )
     isfile(input_csv) || throw(ArgumentError("CSV file not found: $input_csv"))
 
-    apply_publication_style!()
+    apply_publication_style!(; use_custom_style=use_custom_style)
+    color_map = build_line_color_map(L_values)
     df = load_data(input_csv, L_values)
 
     fig, axs = pyplot.subplots(1, 2; figsize=figure_size)
     ax_left = axs[0]
     ax_right = axs[1]
 
-    plot_panel!(ax_left, df, :cpu_time, raw"$t_{\mathrm{cpu}}$", L_values)
-    plot_panel!(ax_right, df, :cpu_time_per_nev, raw"$t_{\mathrm{cpu}} / N_{\mathrm{ev}}$", L_values)
-    build_right_legend!(ax_right, L_values)
+    plot_panel!(ax_left, df, :cpu_time, raw"$t_{\mathrm{CPU}}\,[\mathrm{s}]$", L_values; color_map=color_map)
+    plot_panel!(ax_right, df, :cpu_time_per_nev, raw"$t_{\mathrm{CPU}} / N_{\mathrm{ev}}\,[\mathrm{s}]$", L_values; color_map=color_map)
+    add_panel_label!(ax_left, "(a)")
+    add_panel_label!(ax_right, "(b)")
+    build_right_legend!(ax_right, L_values; color_map=color_map)
 
     fig.subplots_adjust(wspace=0.16)
     fig.tight_layout()
-    fig.savefig("$(output_basename).pdf"; bbox_inches="tight")
-    fig.savefig("$(output_basename).png"; bbox_inches="tight")
+    pdf_path = "$(output_basename).pdf"
+    png_path = "$(output_basename).png"
+    fig.savefig(pdf_path; bbox_inches="tight")
+    println("Saved PDF: ", abspath(pdf_path))
+    fig.savefig(png_path; bbox_inches="tight")
+    println("Saved PNG: ", abspath(png_path))
 
     if show_plot
         display(fig)
         fig.show()
     end
 
-    return fig, axs, df
 end
 
 

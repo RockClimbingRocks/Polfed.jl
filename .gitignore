@@ -1,6 +1,7 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
+/Manifest.toml
 /docs/Manifest*.toml
 /docs/build/
 
@@ -11,6 +12,7 @@
 *.jpeg  
 *.h5
 *.ipynb
+!notebooks/QSun/QuantumSun_Playground.ipynb
 
 
 .DS_Store

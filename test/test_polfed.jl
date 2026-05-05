@@ -103,8 +103,8 @@ end
     check_ordered_eigenpairs(mat, vals, vecs)
 end
 
-@testset "small GPU polfed ordering" begin
-    if CUDA_TEST_AVAILABLE
+if CUDA_TEST_AVAILABLE
+    @testset "small GPU polfed ordering" begin
         A0 = reshape(collect(Float64, 1:20), 5, 4)
         p = [3, 1, 4, 2]
 
@@ -125,7 +125,5 @@ end
         @test size(vecs, 2) == length(vals)
 
         check_ordered_eigenpairs(mat, vals, vecs; atol=1e-5)
-    else
-        @test_skip "CUDA is not functional in this environment."
     end
 end

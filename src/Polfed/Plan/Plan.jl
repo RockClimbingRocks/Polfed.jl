@@ -10,6 +10,7 @@ derived from `Emin`/`Emax`.
 """
 mutable struct MappingPlan{Fmap,Frescaled,Fcrr,Fcfs}
     parallel_strategy::Parallelization
+    optimize_mapping::Bool
     f!::Fmap
     f!_rescaled::Frescaled
     clenshaw_recurrence::Union{Nothing, Fcrr}
@@ -177,6 +178,7 @@ function build_mapping_plan(mapping::MappingConfig, f!::Fmap, x0::AbstractVecOrM
 
     return MappingPlan{Fmap, typeof(f!_rescaled), typeof(mapping.clenshaw_recurrence), typeof(mapping.clenshaw_finalsum)}(
         parallel_strategy,
+        mapping.optimize_mapping,
         f!,
         f!_rescaled,
         mapping.clenshaw_recurrence,

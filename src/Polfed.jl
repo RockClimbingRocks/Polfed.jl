@@ -61,6 +61,7 @@ Return `true` when CUDA is available and `x` is a CUDA array.
 is_gpu_array(x) = CUDA_AVAILABLE && x isa CuArray
 
 include("Common/common.jl")
+include("QSun/QSun.jl")
 include("Clenshaw/ClenshawMapping.jl")
 include("Lanczos/Lanczos.jl")
 

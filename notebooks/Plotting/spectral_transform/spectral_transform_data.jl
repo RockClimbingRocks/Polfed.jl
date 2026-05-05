@@ -11,9 +11,15 @@ using .Polfed
 const PolfedCore = Polfed.PolfedCore
 
 
-function construct_xxz_spin_sector(L::Int, delta::Real, Nup::Int)
+function construct_xxz_spin_sector(
+    L::Int,
+    delta::Real,
+    Nup::Int;
+    disorder::AbstractVector{<:Real} = zeros(Float64, L),
+)
     2 <= L || throw(ArgumentError("L must be >= 2."))
     0 <= Nup <= L || throw(ArgumentError("Nup must satisfy 0 <= Nup <= L."))
+    length(disorder) == L || throw(ArgumentError("Disorder vector must have length L."))
 
     basis = [b for b in 0:(2^L - 1) if count_ones(b) == Nup]
     dim = length(basis)
@@ -25,11 +31,12 @@ function construct_xxz_spin_sector(L::Int, delta::Real, Nup::Int)
             j = mod1(i + 1, L)
             si = (state >> (i - 1)) & 1
             sj = (state >> (j - 1)) & 1
+            szi = 0.5 - si
 
-            szsz = (0.5 - si) * (0.5 - sj)
+            szsz = szi * (0.5 - sj)
             push!(rows, col)
             push!(cols, col)
-            push!(vals, float(delta) * szsz)
+            push!(vals, float(delta) * szsz + float(disorder[i]) * szi)
 
             if si != sj
                 flipped = state ⊻ (1 << (i - 1)) ⊻ (1 << (j - 1))
@@ -140,8 +147,7 @@ function build_transformed_mapping(
     coeffs_norm::Vector{Float64},
 )
     K = length(coeffs_norm) - 1
-    buffers = Vector{Any}(undef, Threads.nthreads())
-    fill!(buffers, nothing)
+    buffers = Vector{Any}(nothing, Threads.maxthreadid())
 
     h_rescaled_mul! = (Y, X) -> begin
         mul!(Y, mat, X)
@@ -187,7 +193,8 @@ end
 function run_spectral_tranform_data(;
     L_primary::Int = 18,
     L_secondary::AbstractVector{<:Integer} = Int[10, 12, 14],
-    delta::Float64 = 1.0,
+    delta::Float64 = 0.55,
+    W::Float64 = 2.0,
     moments_list::Vector{Int} = [25, 50, 75, 100, 125, 150, 200],
     transform_orders::Vector{Int} = [10, 20, 50, 75],
     R::Int = 500,
@@ -204,10 +211,13 @@ function run_spectral_tranform_data(;
     orders_sorted = unique(sort(transform_orders))
     all(m -> m >= 2, moments_sorted) || throw(ArgumentError("All moments must be >= 2."))
     all(k -> k >= 1, orders_sorted) || throw(ArgumentError("All transform orders must be >= 1."))
+    W >= 0 || throw(ArgumentError("Disorder strength W must be >= 0."))
 
     Nup = L_primary ÷ 2
-    println("Building XXZ Hamiltonian for L_primary=$L_primary, Nup=$Nup, delta=$delta")
-    mat_sparse = construct_xxz_spin_sector(L_primary, delta, Nup)
+    rng_main = MersenneTwister(seed)
+    disorder_main = W .* (rand(rng_main, L_primary) .- 0.5)
+    println("Building disordered XXZ Hamiltonian for L_primary=$L_primary, Nup=$Nup, delta=$delta, W=$W")
+    mat_sparse = construct_xxz_spin_sector(L_primary, delta, Nup; disorder = disorder_main)
     dim = size(mat_sparse, 1)
     println("Hilbert-space dimension: $dim")
 
@@ -229,6 +239,7 @@ function run_spectral_tranform_data(;
         h5["L_primary"] = L_primary
         h5["L_secondary"] = secondary_sorted
         h5["delta"] = delta
+        h5["W"] = W
         h5["R"] = R
         h5["moments_list"] = moments_sorted
         h5["transform_orders"] = orders_sorted
@@ -239,6 +250,8 @@ function run_spectral_tranform_data(;
         grp_main = create_group(h5, "main")
         grp_main["L"] = L_primary
         grp_main["Nup"] = Nup
+        grp_main["disorder"] = disorder_main
+        grp_main["disorder_seed"] = seed
         grp_main["hilbert_dim"] = dim
         grp_main["nnz"] = nnz(mat_sparse)
         grp_main["Emin"] = Emin
@@ -322,26 +335,33 @@ function run_spectral_tranform_data(;
         grp_secondary = create_group(h5, "secondary_eigenvalues")
         for Ls in secondary_sorted
             Nup_s = Ls ÷ 2
-            eig_s = if Ls == L_primary
+            disorder_s, disorder_seed_s, eig_s = if Ls == L_primary
                 println("  -> Reusing primary exact eigenvalues for L=$Ls")
-                copy(eigvals_main)
+                copy(disorder_main), seed, copy(eigvals_main)
             else
-                println("  -> Computing reference eigenvalues for L=$Ls at half filling")
-                mat_s = construct_xxz_spin_sector(Ls, delta, Nup_s)
+                disorder_seed_s = seed + 1_000_000 + Ls
+                rng_s = MersenneTwister(disorder_seed_s)
+                disorder_s = W .* (rand(rng_s, Ls) .- 0.5)
+                println("  -> Computing reference eigenvalues for L=$Ls at half filling with W=$W")
+                mat_s = construct_xxz_spin_sector(Ls, delta, Nup_s; disorder = disorder_s)
                 eig_tmp = real(eigvals(Matrix(mat_s)))
                 sort!(eig_tmp)
-                eig_tmp
+                disorder_s, disorder_seed_s, eig_tmp
             end
 
             grp_L = create_group(grp_secondary, "L_$(Ls)")
             grp_L["L"] = Ls
             grp_L["Nup"] = Nup_s
+            grp_L["disorder"] = disorder_s
+            grp_L["disorder_seed"] = disorder_seed_s
             grp_L["eigvals_exact"] = eig_s
 
             if Ls == 10
                 grp_l10 = create_group(h5, "L10_reference")
                 grp_l10["L"] = Ls
                 grp_l10["Nup"] = Nup_s
+                grp_l10["disorder"] = disorder_s
+                grp_l10["disorder_seed"] = disorder_seed_s
                 grp_l10["eigvals_exact"] = eig_s
             end
         end

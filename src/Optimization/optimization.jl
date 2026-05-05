@@ -156,12 +156,14 @@ function get_diags_and_offdiagonals_by_value(mat::SparseMatrixCSC{T}; tol=1e-13,
     rows = rowvals(mat)
     nz = nonzeros(mat)
 
-    # First pass: collect diagonals and per-row counts for each unique off-diagonal value.
     @inbounds for i in 1:dim
         diagonals[i] = round_key(mat[i, i], round_digits)
+    end
 
-        for col in nzrange(mat, i)
-            j = rows[col]
+    # First pass: collect diagonals and per-row counts for each unique off-diagonal value.
+    @inbounds for j in 1:dim
+        for col in nzrange(mat, j)
+            i = rows[col]
             i == j && continue
             v = nz[col]
             abs(v) < tol && continue
@@ -176,9 +178,9 @@ function get_diags_and_offdiagonals_by_value(mat::SparseMatrixCSC{T}; tol=1e-13,
     value_to_flat, value_to_starts = allocate_offdiagonal_buffers(value_to_counts, dim)
 
     # Second pass: fill flattened indices in preallocated buffers.
-    @inbounds for i in 1:dim
-        for col in nzrange(mat, i)
-            j = rows[col]
+    @inbounds for j in 1:dim
+        for col in nzrange(mat, j)
+            i = rows[col]
             i == j && continue
             v = nz[col]
             abs(v) < tol && continue

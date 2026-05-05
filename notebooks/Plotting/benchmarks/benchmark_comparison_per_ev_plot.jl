@@ -30,6 +30,18 @@ if !isdefined(@__MODULE__, :BENCHMARK_2P_MARKERS)
     )
 end
 
+if !isdefined(@__MODULE__, :BENCHMARK_2P_MODEL_LABELS)
+    const BENCHMARK_2P_MODEL_LABELS = Dict(
+        "xxz" => raw"$\mathrm{XXZ}$",
+        "syk4-d2" => raw"$\mathrm{SYK}_4\mathrm{d}2$",
+        "syk4-d3" => raw"$\mathrm{SYK}_4\mathrm{d}3$",
+        "J_1-J_2" => raw"$J_1$-$J_2$",
+        "J_1-J_2-J_3" => raw"$J_1$-$J_2$-$J_3$",
+        "syk4-d4" => raw"$\mathrm{SYK}_4\mathrm{d}4$",
+        "syk4-d5" => raw"$\mathrm{SYK}_4\mathrm{d}5$",
+    )
+end
+
 
 function apply_two_panel_style!(; use_custom_style::Bool=true)
     if use_custom_style
@@ -119,7 +131,8 @@ end
 
 
 function model_legend_label(model::AbstractString)
-    return uppercase(model)
+    model_key = lowercase(String(model))
+    return get(BENCHMARK_2P_MODEL_LABELS, model_key, uppercase(model_key))
 end
 
 
@@ -257,11 +270,25 @@ function add_legends!(
     color_map::Dict,
     model_order::Vector{String},
     line_width::Real,
-)
-    line2d = PythonPlot.matplotlib.lines.Line2D
+	)
+	line2d = PythonPlot.matplotlib.lines.Line2D
+	legend_fontsize = 8
+	legend_title_fontsize = 10
+	legend_title_indent = "   "
 
-    ordered_L = sort(collect(keys(color_map)))
-    size_handles = Any[
+	function align_legend_title!(legend)
+		legend.get_title().set_fontsize(legend_title_fontsize)
+		legend.get_title().set_ha("left")
+		try
+			legend._legend_box.align = "left"
+		catch
+			nothing
+		end
+		return legend
+	end
+
+	ordered_L = sort(collect(keys(color_map)))
+	size_handles = Any[
         line2d(
             [0],
             [0];
@@ -274,17 +301,19 @@ function add_legends!(
     legend_sizes = ax.legend(
         size_handles,
         ["L = $(L)" for L in ordered_L];
-        title="Sizes",
+	        title=legend_title_indent * "Sizes",
         loc="upper left",
-        bbox_to_anchor=(1.02, 1.0),
+        bbox_to_anchor=(1.02, 1.025),
         frameon=false,
         borderaxespad=0.0,
-        labelspacing=0.45,
-        handlelength=2.0,
-        handletextpad=0.6,
-        fontsize=6,
-    )
-    ax.add_artist(legend_sizes)
+		labelspacing=0.45,
+		handlelength=2.0,
+		handletextpad=0.6,
+		fontsize=legend_fontsize,
+		title_fontsize=legend_title_fontsize,
+	)
+	align_legend_title!(legend_sizes)
+	ax.add_artist(legend_sizes)
 
     model_handles = Any[
         line2d(
@@ -301,21 +330,23 @@ function add_legends!(
     legend_models = ax.legend(
         model_handles,
         [model_legend_label(model) for model in model_order];
-        title="Model",
-        loc="upper left",
-        bbox_to_anchor=(1.02, 0.6),
-        frameon=false,
-        borderaxespad=0.0,
-        labelspacing=0.45,
-        handletextpad=0.5,
-        fontsize=6,
-    )
-    ax.add_artist(legend_models)
+			title=legend_title_indent * "Models",
+		loc="upper left",
+		bbox_to_anchor=(1.02, 0.625),
+		frameon=false,
+		borderaxespad=0.0,
+		labelspacing=0.45,
+		handletextpad=0.5,
+		fontsize=legend_fontsize,
+		title_fontsize=legend_title_fontsize,
+	)
+	align_legend_title!(legend_models)
+	ax.add_artist(legend_models)
 
-    method_handles = Any[
-        line2d(
-            [0],
-            [0];
+	method_handles = Any[
+		line2d(
+			[0],
+			[0];
             color="#4a4a4a",
             linestyle="-",
             linewidth=line_width,
@@ -339,36 +370,38 @@ function add_legends!(
             markersize=4,
             label="Shift-and-invert",
         ),
-    ]
-    legend_method = ax.legend(
-        method_handles,
-        ["POLFED", "Shift-And-Invert"];
-        title="Method",
-        loc="upper left",
-        bbox_to_anchor=(1.02, 0.075),
-        frameon=false,
-        borderaxespad=0.0,
-        labelspacing=0.45,
-        handlelength=2.0,
-        handletextpad=0.6,
-        fontsize=6,
-    )
-    legend_method.get_title().set_ha("left")
-    legend_method.get_title().set_position((-150.0, 0.0))
+	]
+	legend_method = ax.legend(
+		method_handles,
+		["POLFED", "Shift-And-Invert"];
+			title=legend_title_indent * "Method",
+		loc="upper left",
+		bbox_to_anchor=(1.02, 0.075),
+		frameon=false,
+		borderaxespad=0.0,
+		labelspacing=0.45,
+		handlelength=2.0,
+		handletextpad=0.6,
+		fontsize=legend_fontsize,
+		title_fontsize=legend_title_fontsize,
+	)
+	align_legend_title!(legend_method)
 end
 
 
 function format_panel!(ax, ylabel::AbstractString; title::Union{Nothing, AbstractString}=nothing)
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel(raw"$N_{\mathrm{OFF}}\ \mathrm{per\ row}$")
+    ax.set_xlabel(raw"$n_{\rm{nz}}$")
     ax.set_ylabel(ylabel)
     if title !== nothing
         ax.set_title(title)
     end
-    ax.xaxis.label.set_size(10)
-    ax.yaxis.label.set_size(11)
-    ax.xaxis.labelpad = 1.5
+    ax.xaxis.label.set_size(18)
+    ax.yaxis.label.set_size(14)
+    ax.xaxis.labelpad = -7.5
+    ax.set_xlim(right=110.0)
+    ax.set_xticks([10.0, 100.0])
     ax.grid(false)
     ax.tick_params(which="both", direction="in")
 end
@@ -384,7 +417,7 @@ function plot_benchmark_comparison_per_ev(;
     show_plot::Bool=true,
     marker_size::Real=30,
     line_width::Real=1.2,
-    figure_size::Tuple{<:Real, <:Real}=(7.2, 2.8),
+    figure_size::Tuple{<:Real, <:Real}=(10.2, 2.8),
     use_custom_style::Bool=true,
 )
     apply_two_panel_style!(; use_custom_style=use_custom_style)
@@ -428,11 +461,12 @@ function plot_benchmark_comparison_per_ev(;
         line_style="--",
         filled_markers=false,
     )
-    format_panel!(
-        ax_left,
-        "";
-        title="CPU time",
-    )
+	format_panel!(
+		ax_left,
+		raw"$t_{\rm{CPU}}\,[\rm{s}]$",
+	)
+    ax_left.yaxis.set_label_coords(-0.1, 0.5)
+    ax_left.text(0.04, 0.94, "(a)"; transform=ax_left.transAxes, ha="left", va="top")
 
     overlay_method!(
         ax_right,
@@ -456,11 +490,12 @@ function plot_benchmark_comparison_per_ev(;
         line_style="--",
         filled_markers=false,
     )
-    format_panel!(
-        ax_right,
-        "";
-        title="CPU time per eigenvalue",
-    )
+	format_panel!(
+		ax_right,
+		raw"$t_{\rm{CPU}}/N_{\rm{ev}}\,[\rm{s}]$",
+	)
+    ax_right.yaxis.set_label_coords(-0.1, 0.5)
+    ax_right.text(0.04, 0.94, "(b)"; transform=ax_right.transAxes, ha="left", va="top")
 
     add_legends!(
         ax_right;
@@ -474,19 +509,20 @@ function plot_benchmark_comparison_per_ev(;
         line_width=line_width,
     )
 
-    # fig.tight_layout(rect=(0.0, 0.0, 0.8, 0.93))
-    # fig.tight_layout(rect=(0.0, 0.0, 0., 0.))
-    fig.tight_layout()
-    fig.subplots_adjust(wspace=0.28)
+    fig.tight_layout(rect=(0.0, 0.0, 0.78, 1.0))
+    fig.subplots_adjust(wspace=0.20)
 
     if savepath !== nothing
+        mkpath(dirname(savepath))
         fig.savefig(savepath; bbox_inches="tight")
+        println("Saved plot: ", abspath(savepath))
     end
     if show_plot
         display(fig)
         fig.show()
     end
-    return fig, axs, polfed_total_df, shift_total_df, polfed_per_ev_df, shift_per_ev_df
+
+
 end
 
 

@@ -10,10 +10,14 @@
 #
 # ```julia
 # using Polfed
-# using Polfed.QSun: quantum_sun_hamiltonian
+# using Polfed.QSun: qsun_hamiltonian
 # using LinearAlgebra
 #
-# mat = quantum_sun_hamiltonian(12, 2; sparse=true)
+# L_loc = 12
+# L_grain = 2
+# g0 = 1.0
+# α = 0.5
+# mat = qsun_hamiltonian(L_loc, L_grain, g0, α; use_sparse=true)
 # howmany = 100
 # target = 0.0
 #

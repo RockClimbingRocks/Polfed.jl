@@ -120,7 +120,7 @@ function plot_rescaled_dos_with_kpm(;
     filepath::String = joinpath(@__DIR__, "disordered_j1j2_dos_L20_N5.h5"),
     N::Int = 5,
     moments::Int = 100,
-    nbins::Int = 45,
+    nbins::Int = 50,
     normalize_kpm::Bool = true,
     apply_style::Bool = true,
     style_name::String = "rok-custom",
@@ -300,8 +300,8 @@ function plot_rescaled_dos_with_kpm(;
         )
     end
 
-    ax.set_xlabel(L"\varepsilon", fontsize=axis_label_fontsize)
-    ax.set_ylabel(L"\rho(\varepsilon)", fontsize=axis_label_fontsize)
+    ax.set_xlabel(L"\tilde{E}", fontsize=axis_label_fontsize)
+    ax.set_ylabel(L"\rho(\tilde{E})", fontsize=axis_label_fontsize)
     ax.set_xlim(-1.0, 1.0)
     ax.set_ylim(0.0, y_axis_top)
     ax.legend(frameon=false, fontsize=6, loc="upper right")
@@ -311,6 +311,7 @@ function plot_rescaled_dos_with_kpm(;
     if !isnothing(savepath)
         mkpath(dirname(savepath))
         fig.savefig(savepath, bbox_inches="tight")
+        println("Saved plot: ", abspath(savepath))
     end
     if !isnothing(savepath_png)
         mkpath(dirname(savepath_png))

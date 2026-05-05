@@ -222,8 +222,8 @@ function plot_rescaled_dos_with_kpm(;
         )
     end
 
-    ax.set_xlabel(L"\varepsilon", fontsize=9)
-    ax.set_ylabel(L"\rho(\varepsilon)", fontsize=9)
+    ax.set_xlabel(L"\tilde{E}", fontsize=9)
+    ax.set_ylabel(L"\rho(\tilde{E})", fontsize=9)
     ax.set_xlim(-1.0, 1.0)
     ax.set_ylim(bottom=0.0)
     # ax.grid(false, alpha=0.25)
