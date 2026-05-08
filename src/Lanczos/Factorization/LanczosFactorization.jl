@@ -50,7 +50,7 @@ matrix construction, and tridiagonalization updates.
 
 # other functions
 """Construct projected tridiagonal matrix from stored Lanczos coefficients."""
-@inline constructfactorizedmat(fact::LanczosFactorization) = begin isa(fact.pu, GPU) ? CuMatrix(SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])) : Matrix(SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])) end
+@inline constructfactorizedmat(fact::LanczosFactorization) = begin isa(fact.pu, GPU) ? gpu_matrix(SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])) : Matrix(SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])) end
 """Normalize residual vector and return its norm."""
 @inline calc_norm_krylovvec!(fact::LanczosFactorization) = begin β = LinearAlgebra.norm(fact.r); fact.r ./= β; return β; end
 

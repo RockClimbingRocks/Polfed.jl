@@ -83,7 +83,7 @@ function constructfactorizedmat(fact::BlockLanczosFactorization)
     factmat = view(fact.mat, 1:krylovdim, 1:krylovdim)
     # display(factmat)
 
-    return isa(fact.pu, GPU) ? CuMatrix(factmat) : Hermitian(factmat)
+    return isa(fact.pu, GPU) ? gpu_matrix(factmat) : Hermitian(factmat)
 end
 
 """Normalize residual block via QR and return `R` factor."""

@@ -1,8 +1,10 @@
 module Lanczos
 
 using LinearAlgebra, Printf, PrettyTables, Logging, Random
-import ..CUDA_AVAILABLE, ..CuArray, ..CuVector, ..CuMatrix, ..is_gpu_array
-import ..CUDA
+import ..cuda_available, ..is_gpu_array, ..is_gpu_sparse_matrix
+import ..gpu_array, ..gpu_matrix, ..gpu_matrix_type, ..gpu_vector_type
+import ..gpu_zeros, ..gpu_ones, ..gpu_randn, ..gpu_available_memory, ..gpu_total_memory
+import ..gpu_synchronize, ..gpu_reclaim, ..gpu_allowscalar
 
 import ..Common: Formatter, fmt, bold, cyan, blue, green, red, yellow, @addtime!,
                  POLFED_SILENT_LEVEL, POLFED_WARN_LEVEL, POLFED_INFO_LEVEL, POLFED_DEBUG_LEVEL,
@@ -141,7 +143,7 @@ function lanczos(
 end
 
 @inline _is_lanczos_gpu_matrix(mat::AbstractMatrix) =
-    is_gpu_array(mat) || (CUDA_AVAILABLE && mat isa CUDA.CUSPARSE.AbstractCuSparseMatrix)
+    is_gpu_array(mat) || is_gpu_sparse_matrix(mat)
 
 function _normalize_extrema_seed(x0::AbstractVector)
     seed = convert.(float(eltype(x0)), x0)
@@ -153,7 +155,7 @@ end
 
 function _default_extrema_seed(mat::AbstractMatrix)
     T = float(eltype(mat))
-    seed = _is_lanczos_gpu_matrix(mat) ? CUDA.randn(T, size(mat, 1)) : randn(T, size(mat, 1))
+    seed = _is_lanczos_gpu_matrix(mat) ? gpu_randn(T, size(mat, 1)) : randn(T, size(mat, 1))
     return _normalize_extrema_seed(seed)
 end
 

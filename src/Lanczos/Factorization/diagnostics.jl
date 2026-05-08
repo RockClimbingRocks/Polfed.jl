@@ -8,7 +8,9 @@ Return `true` if any element of `x` is `NaN` or `Inf`.
 """
 @inline function has_nonfinite(x::AbstractArray)
     if is_gpu_array(x)
-        return CUDA.@allowscalar any(v -> !_isfinite_number(v), x)
+        return gpu_allowscalar() do
+            any(v -> !_isfinite_number(v), x)
+        end
     end
 
     @inbounds for v in x

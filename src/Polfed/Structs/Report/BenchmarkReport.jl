@@ -88,7 +88,7 @@ struct BenchmarkReport
                 total_mem_used     = Base.summarysize(fact_report)   # approximation
                 total_mem_reserved = total_mem_used                  # no real notion of "reserved" on CPU
             else
-                free, total = CUDA.memory_info()
+                free, total = gpu_memory_info()
                 total_mem_used     = total - free
                 total_mem_reserved = total
             end

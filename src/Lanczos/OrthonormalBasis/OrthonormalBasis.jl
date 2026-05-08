@@ -17,14 +17,14 @@ function createbasis(maxdim::Int, x0::AbstractVecOrMat{E},
                      basistype::Type{<:OrthonormalBasis}, pu::ProcessingUnit) where {E<:Number}
 
     if basistype === HybridMatrixBasis
-        CUDA_AVAILABLE || error("CUDA is not available; HybridMatrixBasis requires a GPU.")
+        cuda_available() || error("CUDA is not available; HybridMatrixBasis requires a GPU.")
         # Bytes needed for one vector
         bytes_per_vector = sizeof(E) * size(x0, 1)
         
         # Get GPU free memory
         # Programmatically get free and total memory
-        free_mem = CUDA.available_memory()    # bytes available for allocation
-        total_mem = CUDA.total_memory()       # total GPU memory
+        free_mem = gpu_available_memory()    # bytes available for allocation
+        total_mem = gpu_total_memory()       # total GPU memory
         safety_factor = 0.9  # leave headroom
         usable_mem = free_mem * safety_factor
         # usable_mem = 2. * 1e9

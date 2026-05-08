@@ -15,11 +15,11 @@ mutable struct HybridMatrixBasis{T<:Number, MG<:AbstractMatrix{T}, MC<:AbstractM
 
     """Build a hybrid GPU/CPU basis with fixed GPU and CPU column capacities."""
     function HybridMatrixBasis(maxdim_gpu::Int, maxdim_cpu::Int, x0::AbstractVecOrMat{T}) where {T}
-        CUDA_AVAILABLE || error("CUDA is not available; HybridMatrixBasis requires a GPU.")
+        cuda_available() || error("CUDA is not available; HybridMatrixBasis requires a GPU.")
         hilbertspacedim = size(x0, 1)
         blocksize        = size(x0, 2)
 
-        gpu_basis = CUDA.zeros(T, hilbertspacedim, maxdim_gpu)
+        gpu_basis = gpu_zeros(T, hilbertspacedim, maxdim_gpu)
         cpu_basis = zeros(T, hilbertspacedim, maxdim_cpu)
         MG = typeof(gpu_basis)
         MC = typeof(cpu_basis)

@@ -70,7 +70,7 @@ Low-level Gram-Schmidt projection kernels. `W` is mutated in-place.
     W_cpu .-= B_cpu * (B_cpu' * W_cpu)
 
     # Move back to GPU
-    W .= CuArray(W_cpu)
+    W .= gpu_array(W_cpu)
 end
 
 """Single-matrix basis overload of low-level `reorthogonalization!`."""

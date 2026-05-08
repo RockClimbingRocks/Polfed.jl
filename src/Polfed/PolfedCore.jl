@@ -10,8 +10,10 @@ import ..ClenshawMapping: Clenshaw
 import ..Lanczos: lanczos, FactorizationReport, display_factorization_report,
         FullRO, PartialRO, ReOrthTechnique,
         MatrixBasis, HybridMatrixBasis, OrthonormalBasis
-import ..CuArray, ..CuVector, ..CuMatrix, ..CUDA_AVAILABLE, ..is_gpu_array, ..main_module_file
-import ..CUDA
+import ..cuda_available, ..is_gpu_array, ..is_gpu_sparse_matrix, ..main_module_file
+import ..gpu_array, ..gpu_matrix, ..gpu_matrix_type, ..gpu_vector_type
+import ..gpu_zeros, ..gpu_ones, ..gpu_rand, ..gpu_randn
+import ..gpu_memory_info, ..gpu_functional, ..gpu_device_count
 
 include("Structs/Structs.jl")
 include("Structs/PolfedDefaults.jl")
@@ -89,7 +91,7 @@ function _prepare_polfed_initial_state(x0::AbstractMatrix)
 
     source = is_gpu_array(x0) ? Array(x0) : x0
     q = Matrix(qr(source).Q)[:, 1:size(x0, 2)]
-    return is_gpu_array(x0) ? CuMatrix(q) : q
+    return is_gpu_array(x0) ? gpu_matrix(q) : q
 end
 
 

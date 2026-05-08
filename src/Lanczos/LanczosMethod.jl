@@ -1,8 +1,8 @@
 
 function cleanup_after_lanczos!(pu::ProcessingUnit)
     if pu isa GPU
-        CUDA.synchronize()
-        CUDA.reclaim()
+        gpu_synchronize()
+        gpu_reclaim()
     end
 
     GC.gc(true)

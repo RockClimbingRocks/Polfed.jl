@@ -84,9 +84,9 @@ Checks include:
 function warn_parallelization(x0::AbstractVecOrMat, parallel_strategy::Parallelization, pu::ProcessingUnit)
     if should_warn()
         cuda_devices = 0
-        if CUDA_AVAILABLE
+        if cuda_available()
             try
-                cuda_devices = CUDA.functional() ? CUDA.device_count() : 0
+                cuda_devices = gpu_functional() ? gpu_device_count() : 0
             catch
                 cuda_devices = 0
             end

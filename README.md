@@ -5,6 +5,19 @@
 [![Documentation – dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo.svg">
+    <img src="docs/src/assets/logo.svg" alt="Polfed.jl logo" width="420">
+  </picture>
+</p>
+
+Temporary documentation page:
+[http://www-f1.ijs.si/~rokpintar/polfed/documentation/generated/0.Home/](http://www-f1.ijs.si/~rokpintar/polfed/documentation/generated/0.Home/)
+
+This page is temporary.
+
 ---
 
 ## Overview

@@ -4,29 +4,14 @@ const Offdiagonals = Union{Offdiagonal, Vector{<:Offdiagonal}}
 
 
 include("cpu/cpu.jl")
-if CUDA_AVAILABLE
-    include("gpu/gpu.jl")
-end
 
-@inline is_gpu_matrix(mat) = is_gpu_array(mat) || (CUDA_AVAILABLE && mat isa CUDA.CUSPARSE.AbstractCuSparseMatrix)
+@inline is_gpu_matrix(mat) = is_gpu_array(mat) || is_gpu_sparse_matrix(mat)
 
-function materialize_host_matrix(mat::CUDA.CUSPARSE.AbstractCuSparseMatrix{T}) where {T<:Number}
-    I_gpu, J_gpu, V_gpu = findnz(mat)
-    I = Int.(collect(I_gpu))
-    J = Int.(collect(J_gpu))
-    V = collect(V_gpu)
-    return sparse(I, J, V, size(mat, 1), size(mat, 2))
-end
-
-materialize_host_matrix(mat::AbstractMatrix{T}) where {T<:Number} = mat
-
-function materialize_host_matrix(mat::CuMatrix{T}) where {T<:Number}
-    return Array(mat)
-end
+materialize_host_matrix(mat::AbstractMatrix{T}) where {T<:Number} = is_gpu_array(mat) ? Array(mat) : mat
 
 function move_packed_mapping_to_gpu(diagonals::AbstractVector{T}, offdiagonals::Vector{<:Offdiagonal}) where {T<:Number}
-    diagonals_gpu = CuArray(diagonals)
-    offdiagonals_gpu = [(val, CuArray(flat), CuArray(starts)) for (val, flat, starts) in offdiagonals]
+    diagonals_gpu = gpu_array(diagonals)
+    offdiagonals_gpu = [(val, gpu_array(flat), gpu_array(starts)) for (val, flat, starts) in offdiagonals]
     return diagonals_gpu, offdiagonals_gpu
 end
 

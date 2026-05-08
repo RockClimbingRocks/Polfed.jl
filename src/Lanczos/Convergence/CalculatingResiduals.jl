@@ -101,5 +101,7 @@ function calculateresidual(ϕ::AbstractMatrix, β::AbstractMatrix, i::Int)
 end
 
 function calculateresidual(ϕ::AbstractMatrix, β::Real, i::Int)
-    return CUDA.@allowscalar abs(β*ϕ[end,i])
+    return gpu_allowscalar() do
+        abs(β*ϕ[end,i])
+    end
 end

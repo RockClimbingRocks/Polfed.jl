@@ -33,8 +33,8 @@ and allocation/random helper functions.
 When CUDA is unavailable, construction throws an informative error.
 """
 struct GPU <: ProcessingUnit
-    Matrix::Type{<:CuMatrix}
-    Vector::Type{<:CuVector}
+    Matrix::Any
+    Vector::Any
     zeros::Function
     ones::Function
     rand::Function
@@ -42,7 +42,7 @@ struct GPU <: ProcessingUnit
 
     """Construct GPU backend dispatch helpers."""
     function GPU()
-        CUDA_AVAILABLE || error("CUDA is not available; GPU processing unit cannot be constructed.")
-        return new(CuMatrix, CuVector, CUDA.zeros, CUDA.ones, CUDA.rand, CUDA.randn)
+        cuda_available() || error("CUDA is not available; GPU processing unit cannot be constructed.")
+        return new(gpu_matrix_type(), gpu_vector_type(), gpu_zeros, gpu_ones, gpu_rand, gpu_randn)
     end
 end

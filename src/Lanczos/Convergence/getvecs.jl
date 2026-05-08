@@ -42,7 +42,7 @@ function calculate_eigenvectors!_(vecs::AbstractMatrix, krylovbasis::Tuple{AM_gp
     ϕ_cpu = Matrix(view(ϕ, nvecs_gpu+1:nvecs_gpu+nvecs_cpu, :))
     vecs_cpu .= B_cpu * ϕ_cpu
 
-    vecs .+= CuMatrix(vecs_cpu)
+    vecs .+= gpu_matrix(vecs_cpu)
 end
 
 
@@ -64,8 +64,10 @@ function calculate_eigenvectors!_(vecs::AbstractMatrix, krylovbasis::Vector{<:Ab
     for i in 1:howmany
         veci = view(vecs,:, i)
         veci .= 0
-        CUDA.@allowscalar for j in 1:krylovdim
-            veci .+= krylovbasis[j] * ϕ[j, i]
+        gpu_allowscalar() do
+            for j in 1:krylovdim
+                veci .+= krylovbasis[j] * ϕ[j, i]
+            end
         end
     end
 end
