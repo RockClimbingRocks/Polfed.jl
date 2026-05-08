@@ -23,6 +23,76 @@ include("Algorithm/polfed_algorithm.jl")
 include("Plan/workers.jl")
 
 
+@inline _finite_number(x::Real) = isfinite(x)
+@inline _finite_number(x::Complex) = isfinite(real(x)) && isfinite(imag(x))
+
+function _check_finite_gram(gram::AbstractMatrix)
+    @inbounds for value in gram
+        _finite_number(value) || throw(ArgumentError("POLFED initial matrix must contain finite values."))
+    end
+    return nothing
+end
+
+function _initial_state_tolerance(x0::AbstractVecOrMat)
+    T = typeof(float(real(one(eltype(x0)))))
+    return max(T(1e-10), 10eps(T))
+end
+
+function _prepare_polfed_initial_state(x0::AbstractVector)
+    length(x0) > 0 || throw(ArgumentError("POLFED initial vector must not be empty."))
+
+    nrm = norm(x0)
+    isfinite(nrm) || throw(ArgumentError("POLFED initial vector must contain finite values."))
+    iszero(nrm) && throw(ArgumentError("POLFED initial vector must be nonzero."))
+
+    tol = _initial_state_tolerance(x0)
+    if isapprox(nrm, one(nrm); atol=tol, rtol=tol)
+        return x0
+    end
+
+    PolfedDefaults.polfed_log(
+        PolfedDefaults.POLFED_WARN_LEVEL,
+        "POLFED initial vector is not normalized; using a normalized copy.",
+        norm=nrm,
+        tolerance=tol,
+    )
+
+    x0_normalized = float.(x0)
+    x0_normalized ./= norm(x0_normalized)
+    return x0_normalized
+end
+
+function _prepare_polfed_initial_state(x0::AbstractMatrix)
+    size(x0, 1) > 0 || throw(ArgumentError("POLFED initial matrix must have at least one row."))
+    size(x0, 2) > 0 || throw(ArgumentError("POLFED initial matrix must have at least one column."))
+    size(x0, 2) <= size(x0, 1) ||
+        throw(DimensionMismatch("POLFED initial matrix cannot have orthonormal columns when it has more columns than rows."))
+
+    gram = x0' * x0
+    gram_cpu = is_gpu_array(gram) ? Array(gram) : Matrix(gram)
+    _check_finite_gram(gram_cpu)
+
+    tol = _initial_state_tolerance(x0)
+    identity = Matrix{eltype(gram_cpu)}(I, size(gram_cpu, 1), size(gram_cpu, 2))
+    defect = norm(gram_cpu - identity)
+
+    if isapprox(gram_cpu, identity; atol=tol, rtol=tol)
+        return x0
+    end
+
+    PolfedDefaults.polfed_log(
+        PolfedDefaults.POLFED_WARN_LEVEL,
+        "POLFED initial matrix is not orthonormal; using an orthonormalized copy.",
+        gram_defect=defect,
+        tolerance=tol,
+    )
+
+    source = is_gpu_array(x0) ? Array(x0) : x0
+    q = Matrix(qr(source).Q)[:, 1:size(x0, 2)]
+    return is_gpu_array(x0) ? CuMatrix(q) : q
+end
+
+
 
 """
     polfed(mat, x0, howmany, target; kwargs...)
@@ -67,6 +137,9 @@ When `optimize_mapping = true`, the operator is internally rescaled and optimize
   - Benchmark metrics (wall time, CPU time, and device information)
 
 # Notes
+- If `x0` is not normalized (vector input) or orthonormal (matrix input),
+  POLFED emits a warning and uses a normalized/orthonormalized copy without
+  mutating the caller's array.
 - The polynomial order is chosen automatically unless explicitly set via `TransformConfig.order`.
 - When `mapping.optimize_mapping = true`, a rescaled operator and optimized Clenshaw recurrence are used to reduce memory bandwidth usage, especially beneficial for structured Hamiltonians.
 - GPU execution is automatically enabled when `is_gpu_array(x0)`.
@@ -85,6 +158,7 @@ function polfed(mat::AbstractMatrix{T}, x0::AbstractVecOrMat{T}, howmany::Intege
     if is_gpu_array(x0) && !(eltype(x0) <: Real)
         error("Complex GPU arrays are not supported yet. Current GPU kernels are real-only. Use CPU arrays for complex matrices/operators.")
     end
+    x0 = _prepare_polfed_initial_state(x0)
 
     PolfedDefaults.polfed_log(
         PolfedDefaults.POLFED_INFO_LEVEL,
@@ -122,6 +196,11 @@ function polfed(f!::Function, x0::AbstractVecOrMat{T}, howmany::Integer, target;
     fact                             = FactorizationConfig(),
     dos                              = DoSConfig(),
 ) where {T<:Number}
+    if is_gpu_array(x0) && !(eltype(x0) <: Real)
+        error("Complex GPU arrays are not supported yet. Current GPU kernels are real-only. Use CPU arrays for complex operators.")
+    end
+    x0 = _prepare_polfed_initial_state(x0)
+
     walltime = zeros(Float64, 1)
     cputime = zeros(Float64, 1)
     parallel_strategy = nothing

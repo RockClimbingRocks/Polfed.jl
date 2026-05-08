@@ -91,6 +91,78 @@ end
     @test C == expected
 end
 
+@testset "lanczos extrema helper" begin
+    mat = Matrix(Diagonal([-3.0, -1.25, -0.2, 0.55, 1.8, 3.2]))
+    x0 = ones(size(mat, 1))
+
+    seed = Polfed.Lanczos._normalize_extrema_seed(x0)
+
+    @test seed !== x0
+    @test norm(seed) ≈ 1.0
+    @test x0 == ones(size(mat, 1))
+
+    @test_throws ArgumentError Polfed.Lanczos._normalize_extrema_seed(zeros(3))
+    @test_throws DimensionMismatch Polfed.lanczos_extrema(ones(2, 3); x0=ones(2))
+    @test_throws DimensionMismatch Polfed.lanczos_extrema(mat; x0=ones(size(mat, 1) - 1))
+end
+
+@testset "target specification normalization" begin
+    core = Polfed.PolfedCore
+
+    @test core.normalize_target_spec(:maxdos) isa core.TargetMaxDoS
+    @test core.normalize_target_spec(:middle) isa core.TargetMiddle
+
+    offset = core.normalize_target_spec((:offset, 0.25))
+    @test offset isa core.TargetOffset
+    @test offset.frac == 0.25
+
+    absolute = core.normalize_target_spec((:unrescaled, -1.2))
+    @test absolute isa core.TargetAbsolute
+    @test absolute.value == -1.2
+    @test core.normalize_target_spec(0.7) isa core.TargetAbsolute
+
+    rescaled = core.normalize_target_spec((:rescaled, 0.4))
+    @test rescaled isa core.TargetRescaled
+    @test rescaled.value == 0.4
+    @test core.normalize_target_spec(rescaled) === rescaled
+
+    @test_throws ArgumentError core.normalize_target_spec(:unknown)
+    @test_throws ArgumentError core.normalize_target_spec((:offset, 1.5))
+    @test_throws ArgumentError core.normalize_target_spec((:offset, "0.2"))
+    @test_throws ArgumentError core.normalize_target_spec((:absolute, 0.0))
+    @test_throws ArgumentError core.normalize_target_spec((:quantile, 0.5))
+    @test_throws ArgumentError core.normalize_target_spec((:other, 0.0))
+    @test_throws ArgumentError core.normalize_target_spec("middle")
+end
+
+@testset "polfed initial state checks" begin
+    @test Polfed.PolfedCore._initial_state_tolerance(rand(2)) == 1e-10
+    @test Polfed.PolfedCore._initial_state_tolerance(rand(Float32, 2)) == 10eps(Float32)
+
+    v0 = [3.0, 4.0]
+    v = copy(v0)
+
+    v_prepared = @test_logs (:warn, r"initial vector is not normalized") Polfed.PolfedCore._prepare_polfed_initial_state(v)
+
+    @test v == v0
+    @test norm(v_prepared) ≈ 1.0
+
+    x0 = [
+        1.0  1.0
+        0.0  1.0
+        1.0  0.0
+    ]
+    x = copy(x0)
+
+    x_prepared = @test_logs (:warn, r"initial matrix is not orthonormal") Polfed.PolfedCore._prepare_polfed_initial_state(x)
+
+    @test x == x0
+    @test x_prepared' * x_prepared ≈ Matrix{Float64}(I, size(x0, 2), size(x0, 2))
+
+    @test_throws ArgumentError Polfed.PolfedCore._prepare_polfed_initial_state(zeros(3))
+    @test_throws DimensionMismatch Polfed.PolfedCore._prepare_polfed_initial_state(ones(2, 3))
+end
+
 @testset "small CPU polfed ordering" begin
     mat, vals, vecs = small_polfed_problem()
 

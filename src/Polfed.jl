@@ -62,12 +62,13 @@ is_gpu_array(x) = CUDA_AVAILABLE && x isa CuArray
 
 include("Common/common.jl")
 include("QSun/QSun.jl")
+include("Models/Models.jl")
 include("Clenshaw/ClenshawMapping.jl")
 include("Lanczos/Lanczos.jl")
 
 import .Common: Formatter, fmt, bold, cyan, blue, green, red, yellow, @addtime!
 import .ClenshawMapping: Clenshaw
-import .Lanczos: lanczos, FactorizationReport, display_factorization_report,
+import .Lanczos: lanczos, lanczos_extrema, FactorizationReport, display_factorization_report,
         FullRO, PartialRO, ReOrthTechnique,
         MatrixBasis, HybridMatrixBasis, OrthonormalBasis
 
@@ -78,6 +79,7 @@ using .PolfedCore: polfed, display_report, MappingConfig, TransformConfig, DoSCo
     MulColsParallel, TwoLevelParallel, NoParallel, PolfedDefaults, CPU, GPU,
     optimized_mapping!, optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!
 export polfed, display_report
+export lanczos_extrema
 export MappingConfig, TransformConfig, DoSConfig, FactorizationConfig
 export MulColsParallel, TwoLevelParallel, NoParallel
 export CPU, GPU

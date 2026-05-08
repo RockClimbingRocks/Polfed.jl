@@ -10,7 +10,7 @@
 #
 # ```julia
 # using Polfed
-# using Polfed.QSun: qsun_hamiltonian
+# using Polfed.Models: qsun_hamiltonian
 # using LinearAlgebra
 #
 # L_loc = 12

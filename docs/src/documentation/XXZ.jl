@@ -1,38 +1,27 @@
+using Polfed.Models: xxz_hamiltonian
 using SparseArrays
 using LinearAlgebra
 
-function construct_XXZ_matrix(L::Int, Δ::Real, Nup::Int)
-    basis = [b for b in 0:2^L-1 if count_ones(b) == Nup] # generate basis
-    dim = length(basis)
-    bmap = Dict(b => i for (i, b) in enumerate(basis))  # state index map
-    rows, cols, vals = Int[], Int[], Float64[]
-    for (col, state) in enumerate(basis)
-        for i in 1:L
-            j = i % L + 1  # PBC
-            si = (state >> (i - 1)) & 1
-            sj = (state >> (j - 1)) & 1
-            SzSz = (0.5 - si) * (0.5 - sj) 
-            push!(rows, col); push!(cols, col); push!(vals, Δ * SzSz)
-            if si != sj
-                flipped = state ⊻ (1 << (i - 1)) ⊻ (1 << (j - 1))
-                if haskey(bmap, flipped) 
-                    push!(rows, bmap[flipped]); push!(cols, col); push!(vals, 0.5)
-                end
-            end
-        end
-    end
-    return sparse(rows, cols, vals, dim, dim)
-end
+construct_XXZ_matrix(L::Int, Delta::Real, Lup::Int) =
+    xxz_hamiltonian(
+        L,
+        Lup,
+        1.0,
+        Delta,
+        0.0;
+        boundary=:periodic,
+        field=0.0,
+        use_sparse=true,
+    )
 
-
-
-function get_diags_and_offdiagonals_single_value(mat::AbstractMatrix{T}; tol=1e-13, round_digits=14) where {T<:Real}
+function get_diags_and_offdiagonals_single_value(Delta::Real, L::Int, Lup::Int; tol=1e-13, round_digits=14)
+    mat = construct_XXZ_matrix(L, Delta, Lup)
     dim = size(mat, 1)
     diagonals = [round(mat[i, i]; digits=round_digits) for i in 1:dim]
     flat = Int[]
     starts = Int[]
     idx = 1
-    offdiag_val::Union{Nothing, T} = nothing
+    offdiag_val::Union{Nothing, Float64} = nothing
 
     for i in 1:dim
         push!(starts, idx)
@@ -63,10 +52,10 @@ function mapvec_with_xxz!(
     offdiags_flatten::Vector{Int},
     start_indices::Vector{Int},
 )
-    return (Y,X) -> begin
+    return (Y, X) -> begin
         for i in eachindex(start_indices)
             start = start_indices[i]
-            @inbounds stop  = (i == length(start_indices)) ? length(offdiags_flatten) : start_indices[i+1]-1
+            @inbounds stop = (i == length(start_indices)) ? length(offdiags_flatten) : start_indices[i+1] - 1
             sum_val = 0.0
             for j in start:stop
                 @inbounds sum_val += X[offdiags_flatten[j]]

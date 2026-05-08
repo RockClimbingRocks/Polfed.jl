@@ -1,6 +1,6 @@
 module Lanczos
 
-using LinearAlgebra, Printf, PrettyTables, Logging
+using LinearAlgebra, Printf, PrettyTables, Logging, Random
 import ..CUDA_AVAILABLE, ..CuArray, ..CuVector, ..CuMatrix, ..is_gpu_array
 import ..CUDA
 
@@ -140,11 +140,80 @@ function lanczos(
     lanczos_method(iterator, convergence, basistype, pu)
 end
 
+@inline _is_lanczos_gpu_matrix(mat::AbstractMatrix) =
+    is_gpu_array(mat) || (CUDA_AVAILABLE && mat isa CUDA.CUSPARSE.AbstractCuSparseMatrix)
+
+function _normalize_extrema_seed(x0::AbstractVector)
+    seed = convert.(float(eltype(x0)), x0)
+    nrm = norm(seed)
+    iszero(nrm) && throw(ArgumentError("lanczos_extrema requires a nonzero starting vector."))
+    seed ./= nrm
+    return seed
+end
+
+function _default_extrema_seed(mat::AbstractMatrix)
+    T = float(eltype(mat))
+    seed = _is_lanczos_gpu_matrix(mat) ? CUDA.randn(T, size(mat, 1)) : randn(T, size(mat, 1))
+    return _normalize_extrema_seed(seed)
+end
+
+function _lanczos_extremal_value(operator, x0::AbstractVector, which::Symbol; maxdim::Int, tol::Real, eigentol::Real, kwargs...)
+    vals = collect(lanczos(operator, x0, 1; which=which, maxdim=maxdim, tol=tol, eigentol=eigentol, kwargs...)[1])
+    isempty(vals) && error("Failed to estimate $(which) extremal eigenvalue with Lanczos.")
+    return which === :SR ? first(vals) : last(vals)
+end
+
+"""
+    lanczos_extrema(mat::AbstractMatrix; x0=nothing, maxdim=1000, tol=1e-14, eigentol=1e-8, kwargs...)
+    lanczos_extrema(f!::Function, x0::AbstractVector; maxdim=1000, tol=1e-14, eigentol=1e-8, kwargs...)
+
+Estimate the smallest and largest eigenvalues of a Hermitian/symmetric matrix
+or linear operator using two short Lanczos probes.
+
+The returned tuple is `(Emin, Emax)`, where `Emin` is obtained with
+`which=:SR` and `Emax` with `which=:LR`. If `x0` is provided, it is copied and
+normalized before use. If omitted for matrix input, a random normalized vector
+with a floating element type compatible with `mat` is generated.
+
+Extra keyword arguments are forwarded to [`lanczos`](@ref), except that
+`which` and `howmany` are fixed internally.
+"""
+function lanczos_extrema(
+    mat::AbstractMatrix;
+    x0::Union{Nothing,AbstractVector}=nothing,
+    maxdim::Int=1000,
+    tol::Real=1e-14,
+    eigentol::Real=1e-8,
+    kwargs...
+)
+    size(mat, 1) == size(mat, 2) || throw(DimensionMismatch("lanczos_extrema requires a square matrix."))
+    seed = isnothing(x0) ? _default_extrema_seed(mat) : _normalize_extrema_seed(x0)
+    length(seed) == size(mat, 1) || throw(DimensionMismatch("x0 length must match the matrix dimension."))
+
+    Emin = _lanczos_extremal_value(mat, seed, :SR; maxdim=maxdim, tol=tol, eigentol=eigentol, kwargs...)
+    Emax = _lanczos_extremal_value(mat, seed, :LR; maxdim=maxdim, tol=tol, eigentol=eigentol, kwargs...)
+    return Emin, Emax
+end
+
+function lanczos_extrema(
+    f!::Function,
+    x0::AbstractVector;
+    maxdim::Int=1000,
+    tol::Real=1e-14,
+    eigentol::Real=1e-8,
+    kwargs...
+)
+    seed = _normalize_extrema_seed(x0)
+    Emin = _lanczos_extremal_value(f!, seed, :SR; maxdim=maxdim, tol=tol, eigentol=eigentol, kwargs...)
+    Emax = _lanczos_extremal_value(f!, seed, :LR; maxdim=maxdim, tol=tol, eigentol=eigentol, kwargs...)
+    return Emin, Emax
+end
+
 
 export FullRO, PartialRO, ReOrthTechnique
 export MatrixBasis, HybridMatrixBasis, VectorBasis
 export GPU, CPU
-export lanczos
+export lanczos, lanczos_extrema
 export FactorizationReport
 export EigSorter
 export display_factorization_report, print_factorization_report

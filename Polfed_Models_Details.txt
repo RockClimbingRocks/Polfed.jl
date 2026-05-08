@@ -1,0 +1,254 @@
+Polfed.Models Hamiltonian Constructors
+=====================================
+
+This file summarizes the planned/added Polfed.Models API for spin-1/2 model
+Hamiltonians in Polfed.jl.
+
+
+Namespace
+---------
+
+Use the model constructors from:
+
+    using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+
+QSun is also re-exported through the same namespace:
+
+    using Polfed.Models: qsun_hamiltonian
+
+
+Boundary Conditions
+-------------------
+
+The supported boundary keyword values are:
+
+    boundary = :periodic
+    boundary = :open
+
+Default:
+
+    boundary = :periodic
+
+For periodic boundaries, site indices wrap around. For open boundaries,
+boundary-crossing terms are omitted.
+
+
+Sector Convention
+-----------------
+
+The constructors are fixed to spin S = 1/2.
+
+The second positional argument is Lup, the number of spin-up sites.
+
+For a spin-1/2 chain of length L:
+
+    total S_z = Lup - L/2
+
+For the zero-magnetization sector with even L:
+
+    Lup = div(L, 2)
+
+Examples:
+
+    L = 16
+    Lup = div(L, 2)
+
+
+Disorder Convention
+-------------------
+
+The random-field disorder strength is W.
+
+If fields is not provided, local fields h_i are sampled uniformly from:
+
+    [field - W, field + W]
+
+Defaults:
+
+    field = 0.0
+    boundary = :periodic
+    use_sparse = true
+
+Use rng for reproducible random disorder:
+
+    using Random
+
+    H = xxz_hamiltonian(
+        L,
+        Lup,
+        J,
+        Delta,
+        W;
+        rng = MersenneTwister(1234),
+    )
+
+Use fields to pass an explicit disorder realization:
+
+    fields = randn(L)
+
+    H = xxz_hamiltonian(
+        L,
+        Lup,
+        J,
+        Delta,
+        W;
+        fields = fields,
+    )
+
+When fields is passed, it is used directly and W does not generate random
+fields.
+
+
+XXZ Model
+---------
+
+Definition:
+
+    H = J sum_{i=1}^L (
+            S_i^x S_{i+1}^x
+          + S_i^y S_{i+1}^y
+          + Delta S_i^z S_{i+1}^z
+        )
+        + sum_{i=1}^L h_i S_i^z
+
+Constructor:
+
+    H_xxz = xxz_hamiltonian(
+        L,
+        Lup,
+        J,
+        Delta,
+        W;
+        boundary = :periodic,
+        use_sparse = true,
+    )
+
+Example:
+
+    using Polfed.Models: xxz_hamiltonian
+
+    L = 16
+    Lup = div(L, 2)
+    J = 1.0
+    Delta = 1.0
+    W = 0.5
+
+    H_xxz = xxz_hamiltonian(
+        L,
+        Lup,
+        J,
+        Delta,
+        W;
+        boundary = :periodic,
+        use_sparse = true,
+    )
+
+
+J1-J2 Model
+-----------
+
+Definition:
+
+    H =
+        J1 sum_{i=1}^L (
+              S_i^x S_{i+1}^x
+            + S_i^y S_{i+1}^y
+            + Delta1 S_i^z S_{i+1}^z
+        )
+      + J2 sum_{i=1}^L (
+              S_i^x S_{i+2}^x
+            + S_i^y S_{i+2}^y
+            + Delta2 S_i^z S_{i+2}^z
+        )
+      + sum_{i=1}^L h_i S_i^z
+
+Constructor:
+
+    H_j1j2 = j1j2_hamiltonian(
+        L,
+        Lup,
+        J1,
+        J2,
+        Delta1,
+        Delta2,
+        W;
+        boundary = :periodic,
+        use_sparse = true,
+    )
+
+Example:
+
+    using Polfed.Models: j1j2_hamiltonian
+
+    L = 16
+    Lup = div(L, 2)
+    J1 = 1.0
+    J2 = 0.5
+    Delta1 = 1.0
+    Delta2 = 1.0
+    W = 0.5
+
+    H_j1j2 = j1j2_hamiltonian(
+        L,
+        Lup,
+        J1,
+        J2,
+        Delta1,
+        Delta2,
+        W;
+        boundary = :periodic,
+        use_sparse = true,
+    )
+
+
+Using With POLFED
+-----------------
+
+Once a Hamiltonian matrix is constructed, use it like any other matrix input:
+
+    using Polfed
+    using LinearAlgebra
+    using Random
+    using Polfed.Models: xxz_hamiltonian
+
+    L = 16
+    Lup = div(L, 2)
+
+    H = xxz_hamiltonian(
+        L,
+        Lup,
+        1.0,
+        1.0,
+        0.5;
+        boundary = :periodic,
+        rng = MersenneTwister(1234),
+    )
+
+    x0 = rand(size(H, 1))
+    x0 ./= norm(x0)
+
+    howmany = 20
+    target = :middle
+
+    vals, vecs = polfed(H, x0, howmany, target)
+
+
+Notes
+-----
+
+1. These constructors currently target spin-1/2 chains only.
+
+2. For periodic boundaries, the implementation follows the formula exactly:
+
+       sum_{i=1}^L terms involving i and i+r
+
+   with site indices wrapped around.
+
+3. For small systems, this means some periodic terms can appear twice compared
+   with a "unique undirected bonds" convention. This is intentional because it
+   matches the written formula.
+
+4. For larger systems, prefer use_sparse = true.
+
+5. For reproducible disorder averages, pass rng = MersenneTwister(seed), or
+   pass explicit fields.

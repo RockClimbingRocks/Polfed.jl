@@ -18,20 +18,21 @@
 #
 # ## Speedup of the XXZ Hamiltonian
 #
-# For the XXZ model, you only need to construct the Hamiltonian using the
-# helper from [Optimization of the XXZ Model](@ref optimization_xxz_model), then
-# enable `optimize_mapping=true`; here one should observe a large speedup
-# compared to the generic `mul!` mapping.
+# For the XXZ model, you only need to construct the Hamiltonian with
+# [`xxz_hamiltonian`](@ref Polfed.Models.xxz_hamiltonian) from the
+# [XXZ](@ref xxz_model) model page, then enable `optimize_mapping=true`; here
+# one should observe a large speedup compared to the generic `mul!` mapping.
 #
 # ```julia
 # using Polfed
+# using Polfed.Models: xxz_hamiltonian
 # using LinearAlgebra
 #
 # L = 18
-# Nup = L ÷ 2
+# Lup = L ÷ 2
 # Delta = 0.55
 #
-# mat = construct_XXZ_matrix(L, Delta, Nup)
+# mat = xxz_hamiltonian(L, Lup, 1.0, Delta, 0.0; boundary=:periodic, field=0.0, use_sparse=true)
 # x0 = rand(size(mat, 1)); x0 ./= norm(x0)
 # howmany = 120
 # target = 0.0

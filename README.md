@@ -21,14 +21,14 @@ Polfed is designed for **high-performance simulations**, integrates smoothly wit
 For now, you can install directly from GitHub:
 
 ```julia
-] add https://github.com/RockClimbingRocks/Polfed.jl
+] add https://github.com/RockClimbingRocks/Polfed.jl.git
 ```
 
 ## Quick Start
 
 ```julia
 using Polfed
-using Polfed.QSun: qsun_hamiltonian
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 L_loc = 12
@@ -43,6 +43,41 @@ target = :maxdos
 
 vals, vecs = polfed(mat, v0, howmany, target)
 ```
+
+## Model Constructors
+
+Hamiltonian builders live under `Polfed.Models`:
+
+```julia
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+
+H_xxz = xxz_hamiltonian(
+    16,
+    8,
+    1.0,
+    1.0,
+    0.5;
+    boundary=:periodic,
+    use_sparse=true,
+)
+
+H_j1j2 = j1j2_hamiltonian(
+    16,
+    8,
+    1.0,
+    0.5,
+    1.0,
+    1.0,
+    0.5;
+    boundary=:periodic,
+)
+```
+
+The positional arguments are `L`, `Lup`, and the model parameters. `Lup` is
+the number of spin-up sites; for the zero-magnetization spin-1/2 sector use
+`Lup = L ÷ 2`. `W` is the random-field disorder width, sampled uniformly in
+`[field - W, field + W]`. Pass an explicit `fields=[...]` vector to reuse the
+same disorder realization.
 
 ### Config Split (Mapping vs Transform)
 

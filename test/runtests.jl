@@ -3,6 +3,7 @@ using Test
 
 @testset "Polfed.jl" begin
     include("test_qsun.jl")
+    include("test_models.jl")
     include("optimization.jl")
     include("test_polfed.jl")
 end

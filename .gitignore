@@ -2,8 +2,10 @@
 *.jl.cov
 *.jl.mem
 /Manifest.toml
+/build/
 /docs/Manifest*.toml
 /docs/build/
+/notebooks/
 
 
 
@@ -12,7 +14,6 @@
 *.jpeg  
 *.h5
 *.ipynb
-!notebooks/QSun/QuantumSun_Playground.ipynb
 
 
 .DS_Store
@@ -24,6 +25,8 @@ notebooks/.CondaPkg/
 *.AppleDouble
 
 # Omit all AppleDouble metadata files (e.g. ._foo)
+.AppleDouble/
+**/.AppleDouble/
 ._*
 **/._*
 

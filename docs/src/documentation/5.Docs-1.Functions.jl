@@ -1,6 +1,7 @@
 # # [Documentation for Polfed.jl](@id docs_main_reference)
 #
-# This page documents POLFED solver entry points used throughout the tutorials.
+# This page documents POLFED solver entry points and the public Hamiltonian
+# constructors used throughout the tutorials.
 #
 # ## Main Solver Entry Point
 #
@@ -11,6 +12,12 @@
 # ```@docs
 # Polfed.polfed
 # ```
+#
+# ## Model Constructors
+#
+# Public Hamiltonian builders live under the common `Polfed.Models` namespace.
+# Their full signatures, keyword arguments, return types, and conventions are
+# documented in [Models](@ref docs_models_reference).
 #
 # ## Mapping-Optimization Helpers
 #
@@ -26,20 +33,15 @@
 # ## Low-Level Factorization Utility
 #
 # ```@docs
+# Polfed.lanczos_extrema
 # Polfed.Lanczos.lanczos
-# ```
-#
-# ## Quantum Sun Constructors
-#
-# ```@docs
-# Polfed.QSun.qsun_hamiltonian
 # ```
 #
 # ## Example: Passing Full Configuration into `polfed`
 #
 # ```julia
 # using Polfed
-# using Polfed.QSun: qsun_hamiltonian
+# using Polfed.Models: qsun_hamiltonian
 # using LinearAlgebra
 #
 # L_loc = 12

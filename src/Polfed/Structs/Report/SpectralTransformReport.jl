@@ -65,7 +65,7 @@ mutable struct SpectralTransformReport
             howmany,
             0,   # howmany_ininterval → to be updated later
             num_vecmuls, 
-            mapping_plan !== nothing && hasproperty(mapping_plan, :optimize_mapping) ? mapping_plan.optimize_mapping : false
+            mapping_plan.optimize_mapping
         )
     end
 end

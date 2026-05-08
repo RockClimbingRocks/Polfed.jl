@@ -1,4 +1,3 @@
-
 using Documenter, Literate, Polfed
 
 files_to_literate = [
@@ -21,10 +20,15 @@ files_to_literate = [
     "src/documentation/3.Advanced-2.XXZ_Custom_Mapping.jl",
     "src/documentation/3.Advanced-3.XXZ_Rescaled_Clenshaw.jl",
     "src/documentation/3.Guidelines.jl",
+
+    # Models
     "src/documentation/4.Quantum_Sun_QSun.jl",
+    "src/documentation/4.Models-2.XXZ.jl",
+    "src/documentation/4.Models-3.J1J2.jl",
 
     # Documentation section (docstrings)
     "src/documentation/5.Docs-1.Functions.jl",
+    "src/documentation/5.Docs-4.Models.jl",
     "src/documentation/5.Docs-2.Configs_Parallelization.jl",
     "src/documentation/5.Docs-3.Reports.jl",
 
@@ -75,11 +79,17 @@ makedocs(
             ],
         ],
 
+        "Models" => [
+            "Quantum Sun (QSun)" => "documentation/generated/4.Quantum_Sun_QSun.md",
+            "XXZ" => "documentation/generated/4.Models-2.XXZ.md",
+            "J1-J2" => "documentation/generated/4.Models-3.J1J2.md",
+        ],
+
         "Guidelines" => "documentation/generated/3.Guidelines.md",
-        "Quantum Sun (QSun)" => "documentation/generated/4.Quantum_Sun_QSun.md",
 
         "Documentation" => [
             "Core Functions" => "documentation/generated/5.Docs-1.Functions.md",
+            "Models" => "documentation/generated/5.Docs-4.Models.md",
             "Configs and Parallelization Types" => "documentation/generated/5.Docs-2.Configs_Parallelization.md",
             "Reports, Logging, and Defaults" => "documentation/generated/5.Docs-3.Reports.md",
         ],

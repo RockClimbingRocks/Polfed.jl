@@ -7,13 +7,17 @@
 # sparse disordered Hamiltonians that are natural inputs for
 # [`polfed`](@ref Polfed.polfed).
 #
-# The main constructor is [`qsun_hamiltonian`](@ref Polfed.QSun.qsun_hamiltonian):
+# The main constructor is [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian):
 #
 # ```julia
-# using Polfed.QSun: qsun_hamiltonian
+# using Polfed.Models: qsun_hamiltonian
 #
 # H = qsun_hamiltonian(L_loc, L_grain, g0, α; kwargs...)
 # ```
+#
+# For the full Julia constructor signature, argument types, keyword meanings,
+# and return types, see [Models](@ref docs_models_reference), in particular
+# [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian).
 #
 # ## Model Definition
 #
@@ -24,7 +28,7 @@
 # - both constructions generalize directly to higher spins such as `S = 1`,
 #   `S = 3/2`, and so on.
 #
-# Both are built through the same [`qsun_hamiltonian`](@ref Polfed.QSun.qsun_hamiltonian)
+# Both are built through the same [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian)
 # interface.
 #
 # ### Conventional Quantum Sun Model
@@ -163,7 +167,7 @@
 # The parameters `L_loc`, `L_grain`, `g0`, `α`, `γ`, `w`, `hz`, `ζ`, `S`,
 # `rng`, and `use_sparse` keep the same meaning as in the conventional model.
 # The new ingredients are:
-# - `use_U1=true`: tells [`qsun_hamiltonian`](@ref Polfed.QSun.qsun_hamiltonian)
+# - `use_U1=true`: tells [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian)
 #   to build the U(1)-symmetric model instead of the conventional one.
 # - `S_z`: total magnetization sector kept in the reduced Hilbert space.
 #
@@ -185,14 +189,17 @@
 # ## Basic Example
 #
 # The most direct way to work with QSun is to construct the Hamiltonian with
-# [`qsun_hamiltonian`](@ref Polfed.QSun.qsun_hamiltonian) and then pass it into
+# [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian) and then pass it into
 # [`polfed`](@ref Polfed.polfed).
+#
+# If you want the complete constructor reference while reading this page, jump
+# to [Models](@ref docs_models_reference).
 #
 # ### Full-Hilbert-Space Example
 #
 # ```julia
 # using Polfed
-# using Polfed.QSun: qsun_hamiltonian
+# using Polfed.Models: qsun_hamiltonian
 # using LinearAlgebra
 # using Random
 #
