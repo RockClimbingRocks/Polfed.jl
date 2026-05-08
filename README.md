@@ -34,7 +34,8 @@ Polfed is designed for **high-performance simulations**, integrates smoothly wit
 For now, you can install directly from GitHub:
 
 ```julia
-] add https://github.com/RockClimbingRocks/Polfed.jl.git
+using Pkg
+Pkg.add(url="https://github.com/RockClimbingRocks/Polfed.jl.git")
 ```
 
 ## Quick Start
