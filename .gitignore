@@ -6,6 +6,8 @@
 /docs/Manifest*.toml
 /docs/build/
 /notebooks/
+/Polfed_Models_Details.txt
+/lcov.info
 
 
 

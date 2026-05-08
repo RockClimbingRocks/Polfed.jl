@@ -5,5 +5,6 @@ using Test
     include("test_qsun.jl")
     include("test_models.jl")
     include("optimization.jl")
+    include("test_spectral_helpers.jl")
     include("test_polfed.jl")
 end

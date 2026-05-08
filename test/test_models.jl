@@ -75,6 +75,24 @@ end
     )
 
     @test H_explicit_1 ≈ H_explicit_2
+
+    H_three_site = xxz_hamiltonian(
+        3,
+        1,
+        2.0,
+        0.5,
+        0.0,
+        boundary=:open,
+        fields=[0.3, -0.7, 1.1],
+        use_sparse=false,
+    )
+    expected_three_site = [
+        -0.05 1.0 0.0
+        1.0 -1.55 1.0
+        0.0 1.0 0.75
+    ]
+
+    @test H_three_site ≈ expected_three_site
 end
 
 @testset "J1-J2 Hamiltonian" begin
@@ -166,6 +184,29 @@ end
     @test size(H_sparse) == (10, 10)
     @test Matrix(H_sparse) ≈ H_dense
     @test ishermitian(H_dense)
+
+    H_hardcoded = j1j2_hamiltonian(
+        4,
+        2,
+        1.2,
+        -0.8,
+        0.5,
+        1.5,
+        0.0,
+        boundary=:open,
+        fields=[0.2, -0.4, 0.6, -0.8],
+        use_sparse=false,
+    )
+    expected_hardcoded = [
+        0.75 0.6 -0.4 -0.4 0.0 0.0
+        0.6 -0.05 0.6 0.6 0.0 0.0
+        -0.4 0.6 0.85 0.0 0.6 -0.4
+        -0.4 0.6 0.0 0.05 0.6 -0.4
+        0.0 0.0 0.6 0.6 -2.05 0.6
+        0.0 0.0 -0.4 -0.4 0.6 0.75
+    ]
+
+    @test H_hardcoded ≈ expected_hardcoded
 end
 
 @testset "Model argument validation" begin
