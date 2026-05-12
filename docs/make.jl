@@ -1,41 +1,43 @@
 using Documenter, Literate, Polfed
 
+documentation_source_dir = joinpath(@__DIR__, "src", "documentation")
+
 files_to_literate = [
-    "src/documentation/0.Home.jl",
-    "src/documentation/1.Getting_Started.jl",
+    joinpath(documentation_source_dir, "0.Home.jl"),
+    joinpath(documentation_source_dir, "1.Getting_Started.jl"),
 
     # Beginner tutorials
-    "src/documentation/2.Tutorial-2.Choosing_Target.jl",
-    "src/documentation/2.Tutorial-8.Reporting.jl",
-    "src/documentation/2.Tutorial-9.Lanczos_Block_Lanczos.jl",
-    "src/documentation/2.Tutorial-3.Parallelization_Basics.jl",
-    "src/documentation/2.Tutorial-4.Optimized_Mapping.jl",
-    "src/documentation/2.Tutorial-5.Reducing_Memory_Access.jl",
-    "src/documentation/2.Tutorial-7.Hermitian_matrices.jl",
-    "src/documentation/2.Tutorial-6.Working_with_GPUs.jl",
+    joinpath(documentation_source_dir, "2.Tutorial-2.Choosing_Target.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-8.Reporting.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-9.Lanczos_Block_Lanczos.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-3.Parallelization_Basics.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-4.Optimized_Mapping.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-5.Reducing_Memory_Access.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-7.Hermitian_matrices.jl"),
+    joinpath(documentation_source_dir, "2.Tutorial-6.Working_with_GPUs.jl"),
 
     # Advanced tutorials (XXZ)
-    "src/documentation/3.Advanced-Optimization_XXZ.jl",
-    "src/documentation/3.Advanced-1.XXZ_Baseline.jl",
-    "src/documentation/3.Advanced-2.XXZ_Custom_Mapping.jl",
-    "src/documentation/3.Advanced-3.XXZ_Rescaled_Clenshaw.jl",
-    "src/documentation/3.Guidelines.jl",
+    joinpath(documentation_source_dir, "3.Advanced-Optimization_XXZ.jl"),
+    joinpath(documentation_source_dir, "3.Advanced-1.XXZ_Baseline.jl"),
+    joinpath(documentation_source_dir, "3.Advanced-2.XXZ_Custom_Mapping.jl"),
+    joinpath(documentation_source_dir, "3.Advanced-3.XXZ_Rescaled_Clenshaw.jl"),
+    joinpath(documentation_source_dir, "3.Guidelines.jl"),
 
     # Models
-    "src/documentation/4.Quantum_Sun_QSun.jl",
-    "src/documentation/4.Models-2.XXZ.jl",
-    "src/documentation/4.Models-3.J1J2.jl",
+    joinpath(documentation_source_dir, "4.Quantum_Sun_QSun.jl"),
+    joinpath(documentation_source_dir, "4.Models-2.XXZ.jl"),
+    joinpath(documentation_source_dir, "4.Models-3.J1J2.jl"),
 
     # Documentation section (docstrings)
-    "src/documentation/5.Docs-1.Functions.jl",
-    "src/documentation/5.Docs-4.Models.jl",
-    "src/documentation/5.Docs-2.Configs_Parallelization.jl",
-    "src/documentation/5.Docs-3.Reports.jl",
+    joinpath(documentation_source_dir, "5.Docs-1.Functions.jl"),
+    joinpath(documentation_source_dir, "5.Docs-4.Models.jl"),
+    joinpath(documentation_source_dir, "5.Docs-2.Configs_Parallelization.jl"),
+    joinpath(documentation_source_dir, "5.Docs-3.Reports.jl"),
 
-    "src/documentation/6.FAQ.jl",
+    joinpath(documentation_source_dir, "6.FAQ.jl"),
 ]
 
-generated_dir = "src/documentation/generated"
+generated_dir = joinpath(documentation_source_dir, "generated")
 mkpath(generated_dir)
 
 for file in files_to_literate
