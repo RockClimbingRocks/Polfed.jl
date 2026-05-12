@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>GPU Implementation · Polfed.jl</title><meta name="title" content="GPU Implementation · Polfed.jl"/><meta property="og:title" content="GPU Implementation · Polfed.jl"/><meta property="twitter:title" content="GPU Implementation · Polfed.jl"/><meta name="description" content="Documentation for Polfed.jl."/><meta property="og:description" content="Documentation for Polfed.jl."/><meta property="twitter:description" content="Documentation for Polfed.jl."/><meta property="og:url" content="https://RockClimbingRocks.github.io/Polfed.jl/documentation/generated/3.Advanced-3.XXZ_Rescaled_Clenshaw/"/><meta property="twitter:url" content="https://RockClimbingRocks.github.io/Polfed.jl/documentation/generated/3.Advanced-3.XXZ_Rescaled_Clenshaw/"/><link rel="canonical" href="https://RockClimbingRocks.github.io/Polfed.jl/documentation/generated/3.Advanced-3.XXZ_Rescaled_Clenshaw/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.svg" alt="Polfed.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.svg" alt="Polfed.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">Polfed.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../0.Home/">Home</a></li><li><a class="tocitem" href="../1.Getting_Started/">Getting Started</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">Beginner</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../2.Tutorial-2.Choosing_Target/">Choosing Target</a></li><li><a class="tocitem" href="../2.Tutorial-8.Reporting/">Reporting</a></li><li><a class="tocitem" href="../2.Tutorial-9.Lanczos_Block_Lanczos/">Lanczos and Block Lanczos Factorization</a></li><li><a class="tocitem" href="../2.Tutorial-3.Parallelization_Basics/">Parallelization</a></li><li><a class="tocitem" href="../2.Tutorial-4.Optimized_Mapping/">Optimized Mapping</a></li><li><a class="tocitem" href="../2.Tutorial-5.Reducing_Memory_Access/">Reducing Memory Access</a></li><li><a class="tocitem" href="../2.Tutorial-7.Hermitian_matrices/">Hermitian matrices</a></li><li><a class="tocitem" href="../2.Tutorial-6.Working_with_GPUs/">Working with GPUs</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox" checked/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Advanced</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../3.Advanced-Optimization_XXZ/">Optimization of the XXZ Model</a></li><li><a class="tocitem" href="../3.Advanced-2.XXZ_Custom_Mapping/">Custom Mapping</a></li><li><a class="tocitem" href="../3.Advanced-1.XXZ_Baseline/">Automatic Optimization</a></li><li class="is-active"><a class="tocitem" href>GPU Implementation</a><ul class="internal"><li><a class="tocitem" href="#simple_gpu_run"><span>Simple Run on GPU</span></a></li><li><a class="tocitem" href="#automatic_optimization_on_GPUs"><span>Automatic Optimization on GPU</span></a></li><li><a class="tocitem" href="#custom_mapping_construction"><span>Custom Mapping Construction on GPU</span></a></li><li><a class="tocitem" href="#pass_custom_clenshaw_kernels"><span>Pass Custom Clenshaw Kernels Through <code>MappingConfig</code></span></a></li></ul></li></ul></li></ul></li><li><span class="tocitem">Models</span><ul><li><a class="tocitem" href="../4.Quantum_Sun_QSun/">Quantum Sun (QSun)</a></li><li><a class="tocitem" href="../4.Models-2.XXZ/">XXZ</a></li><li><a class="tocitem" href="../4.Models-3.J1J2/">J1-J2</a></li></ul></li><li><a class="tocitem" href="../3.Guidelines/">Guidelines</a></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../5.Docs-1.Functions/">Core Functions</a></li><li><a class="tocitem" href="../5.Docs-4.Models/">Models</a></li><li><a class="tocitem" href="../5.Docs-2.Configs_Parallelization/">Configs and Parallelization Types</a></li><li><a class="tocitem" href="../5.Docs-3.Reports/">Reports, Logging, and Defaults</a></li></ul></li><li><a class="tocitem" href="../6.FAQ/">FAQ / Troubleshooting</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Advanced</a></li><li class="is-active"><a href>GPU Implementation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>GPU Implementation</a></li></ul></nav><div class="docs-right"><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="tutorial_xxz_rescaled_clenshaw"><a class="docs-heading-anchor" href="#tutorial_xxz_rescaled_clenshaw">GPU Implementation</a><a id="tutorial_xxz_rescaled_clenshaw-1"></a><a class="docs-heading-anchor-permalink" href="#tutorial_xxz_rescaled_clenshaw" title="Permalink"></a></h1><p>This section applies the XXZ workflow on GPU.</p><p>The key point is that the user-facing API stays almost identical to CPU runs. You still call <a href="../5.Docs-1.Functions/#Polfed.PolfedCore.polfed"><code>polfed</code></a>, but your matrix/vector inputs are moved to GPU arrays. Internally, heavy mapping work is then executed under the hood on GPUs.</p><p>Workflow overview:</p><ul><li><a href="#simple_gpu_run">Simple Run on GPU</a></li><li><a href="#automatic_optimization_on_GPUs">Automatic Optimization on GPU</a></li><li><a href="#custom_mapping_construction">Custom Mapping Construction on GPU</a></li><li><a href="#pass_custom_clenshaw_kernels">Pass Custom Clenshaw Kernels Through <code>MappingConfig</code></a></li></ul><h2 id="simple_gpu_run"><a class="docs-heading-anchor" href="#simple_gpu_run">Simple Run on GPU</a><a id="simple_gpu_run-1"></a><a class="docs-heading-anchor-permalink" href="#simple_gpu_run" title="Permalink"></a></h2><p>Start from the usual XXZ construction, then transfer matrix and vectors to GPU and run POLFED in the same way as on CPU.</p><pre><code class="language-julia hljs">using Polfed
+using Polfed.Models: xxz_hamiltonian
+using CUDA
+using LinearAlgebra
+
+L = 18
+Lup = L ÷ 2
+Delta = 0.55
+howmany = 120
+target = 0.0
+
+mat = xxz_hamiltonian(L, Lup, 1.0, Delta, 0.0; boundary=:periodic, field=0.0, use_sparse=true)
+x0 = rand(size(mat, 1)); x0 ./= norm(x0)
+
+# Transfer to GPU
+mat_gpu = CUDA.CUSPARSE.CuSparseMatrixCSR(mat)
+x0_gpu = CuVector(x0)
+
+vals_gpu, vecs_gpu, report_gpu = polfed(mat_gpu, x0_gpu, howmany, target; produce_report=true)
+display_report(report_gpu)</code></pre><h2 id="automatic_optimization_on_GPUs"><a class="docs-heading-anchor" href="#automatic_optimization_on_GPUs">Automatic Optimization on GPU</a><a id="automatic_optimization_on_GPUs-1"></a><a class="docs-heading-anchor-permalink" href="#automatic_optimization_on_GPUs" title="Permalink"></a></h2><p>The interface is the same as on CPU: set <code>optimize_mapping=true</code>. On GPU, <code>NoParallel()</code> is typically the correct strategy because parallelism is handled by the GPU backend itself. It is worth noting that this is the default choice on GPUs, so the explicit setting is not strictly necessary, but it makes the intended execution path clear.</p><pre><code class="language-julia hljs">mapping_gpu_auto = MappingConfig(
+    parallel_strategy=NoParallel(),
+    optimize_mapping=true,
+)
+
+vals_gpu_auto, vecs_gpu_auto, report_gpu_auto = polfed(
+    mat_gpu,
+    x0_gpu,
+    howmany,
+    target;
+    produce_report=true,
+    mapping=mapping_gpu_auto,
+)
+display_report(report_gpu_auto)</code></pre><h2 id="custom_mapping_construction"><a class="docs-heading-anchor" href="#custom_mapping_construction">Custom Mapping Construction on GPU</a><a id="custom_mapping_construction-1"></a><a class="docs-heading-anchor-permalink" href="#custom_mapping_construction" title="Permalink"></a></h2><p>You can also pass a custom rescaled mapping on GPU, exactly as in CPU workflows. A practical option is to precompute a rescaled matrix and use GPU <code>mul!</code> for that mapping.</p><pre><code class="language-julia hljs"># Estimate bounds on CPU (same workflow as in previous sections)
+f_mul_cpu! = (Y, X) -&gt; mul!(Y, mat, X)
+Emin = first(collect(Polfed.Lanczos.lanczos(f_mul_cpu!, x0, 1; which=:SR, maxdim=1000)[1]))
+Emax = last(collect(Polfed.Lanczos.lanczos(f_mul_cpu!, x0, 1; which=:LR, maxdim=1000)[1]))
+spread = (Emax - Emin) / 2
+center = (Emax + Emin) / 2
+
+# Build rescaled matrix, then move it to GPU
+mat_rescaled = copy(mat)
+mat_rescaled .*= 1 / spread
+mat_rescaled += spdiagm(0 =&gt; fill(-center / spread, size(mat, 1)))
+mat_gpu_rescaled = CUDA.CUSPARSE.CuSparseMatrixCSR(mat_rescaled)
+
+f_rescaled_gpu! = (Y, X) -&gt; mul!(Y, mat_gpu_rescaled, X)
+
+mapping_gpu_rescaled = MappingConfig(
+    parallel_strategy=NoParallel(),
+    f!_rescaled=f_rescaled_gpu!,
+    Emin=Emin,
+    Emax=Emax,
+)
+
+vals_gpu_rescaled, vecs_gpu_rescaled, report_gpu_rescaled = polfed(
+    mat_gpu,
+    x0_gpu,
+    howmany,
+    target;
+    produce_report=true,
+    mapping=mapping_gpu_rescaled,
+)
+display_report(report_gpu_rescaled)</code></pre><h2 id="pass_custom_clenshaw_kernels"><a class="docs-heading-anchor" href="#pass_custom_clenshaw_kernels">Pass Custom Clenshaw Kernels Through <code>MappingConfig</code></a><a id="pass_custom_clenshaw_kernels-1"></a><a class="docs-heading-anchor-permalink" href="#pass_custom_clenshaw_kernels" title="Permalink"></a></h2><p>For model-specific tuning, you can also provide custom Clenshaw recurrence/final-sum callbacks. A practical template keeps data on GPU and calls GPU <code>mul!</code> inside these callbacks.</p><pre><code class="language-julia hljs">function make_gpu_clenshaw_kernels(mat_gpu)
+    crr = (b1, b2, b3, c, X) -&gt; begin
+        tmp = similar(X)
+        mul!(tmp, mat_gpu, b2)
+        @. b1 = c * X + 2 * tmp - b3
+        return nothing
+    end
+
+    cfs = (b1, b2, c, Y, X) -&gt; begin
+        tmp = similar(X)
+        mul!(tmp, mat_gpu, b1)
+        @. Y = c * X + tmp - b2
+        return nothing
+    end
+
+    return crr, cfs
+end
+
+crr_gpu!, cfs_gpu! = make_gpu_clenshaw_kernels(mat_gpu)
+
+mapping_gpu_custom = MappingConfig(
+    parallel_strategy=NoParallel(),
+    optimize_mapping=true,
+    clenshaw_recurrence=crr_gpu!,
+    clenshaw_finalsum=cfs_gpu!,
+)
+
+vals_gpu_custom, vecs_gpu_custom, report_gpu_custom = polfed(
+    mat_gpu,
+    x0_gpu,
+    howmany,
+    target;
+    produce_report=true,
+    mapping=mapping_gpu_custom,
+)
+display_report(report_gpu_custom)</code></pre><p>In production, you would replace these callbacks with fused model-specific GPU kernels. The integration point stays the same: <a href="../5.Docs-2.Configs_Parallelization/#Polfed.PolfedCore.MappingConfig"><code>MappingConfig</code></a>.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../3.Advanced-1.XXZ_Baseline/">« Automatic Optimization</a><a class="docs-footer-nextpage" href="../4.Quantum_Sun_QSun/">Quantum Sun (QSun) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 12 May 2026 07:49">Tuesday 12 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
