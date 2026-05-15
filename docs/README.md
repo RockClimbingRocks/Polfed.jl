@@ -4,16 +4,19 @@ The webpage is built directly from Markdown files in `docs/src`.
 
 ## Edit Pages
 
-- Home page: `docs/src/index.md`
+- Root redirect: `docs/src/index.md`
+- Polfed landing page: `docs/src/polfed/index.md`
 - Getting started: `docs/src/getting-started/index.md`
-- Tutorials: `docs/src/tutorials/<page-name>/index.md`
+- Beginner tutorials: `docs/src/tutorials/beginner/<page-name>/index.md`
+- Advanced tutorials: `docs/src/tutorials/advanced/<page-name>/index.md`
 - Models: `docs/src/models/<model-name>/index.md`
 - API/reference pages: `docs/src/documentation/<page-name>/index.md`
 - FAQ: `docs/src/faq/index.md`
 
 The URL follows the same folder structure. For example:
 
-- `docs/src/tutorials/choosing-target/index.md` becomes `/tutorials/choosing-target/`
+- `docs/src/polfed/index.md` becomes `/polfed/`
+- `docs/src/tutorials/beginner/optimized-mapping/index.md` becomes `/tutorials/beginner/optimized-mapping/`
 - `docs/src/models/qsun/index.md` becomes `/models/qsun/`
 - `docs/src/documentation/models/index.md` becomes `/documentation/models/`
 
@@ -53,4 +56,10 @@ The current development docs are published under:
 https://rockclimbingrocks.github.io/Polfed.jl/dev/
 ```
 
-The public root page is `docs/src/index.md`.
+The public root page redirects to:
+
+```text
+https://rockclimbingrocks.github.io/Polfed.jl/dev/polfed/
+```
+
+The landing page content is `docs/src/polfed/index.md`.

@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/RockClimbingRocks/Polfed.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/RockClimbingRocks/Polfed.jl/actions)
 [![Documentation – stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/stable)
-[![Documentation – dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/dev)
+[![Documentation – dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
@@ -14,7 +14,7 @@
 </p>
 
 Documentation:
-[https://RockClimbingRocks.github.io/Polfed.jl/dev/](https://RockClimbingRocks.github.io/Polfed.jl/dev/)
+[https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/](https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/)
 
 ---
 
