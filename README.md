@@ -13,10 +13,8 @@
   </picture>
 </p>
 
-Temporary documentation page:
-[http://www-f1.ijs.si/~rokpintar/polfed/documentation/generated/0.Home/](http://www-f1.ijs.si/~rokpintar/polfed/documentation/generated/0.Home/)
-
-This page is temporary.
+Documentation:
+[https://RockClimbingRocks.github.io/Polfed.jl/dev/](https://RockClimbingRocks.github.io/Polfed.jl/dev/)
 
 ---
 
