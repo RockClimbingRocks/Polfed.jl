@@ -88,7 +88,7 @@ html.theme--catppuccin-mocha .polfed-spectral-dark {
   </span>
   <span class="polfed-split-button">
     <span class="button is-static">Article</span>
-    <a class="button is-primary" href="https://scipost.org/SciPostPhysCodeb" target="_blank" rel="noopener noreferrer">SciPost</a>
+    <a class="button is-primary" href="https://scipost.org/submissions/2605.10191v2/" target="_blank" rel="noopener noreferrer">SciPost</a>
     <a class="button is-primary" href="https://arxiv.org/abs/2605.10191" target="_blank" rel="noopener noreferrer">arXiv</a>
   </span>
 </p>
@@ -141,7 +141,7 @@ The original POLFED method was introduced by Piotr Sierant and collaborators in
 / [arXiv](https://arxiv.org/pdf/2005.09534).
 
 For a broader overview and practical discussion, read the `Polfed.jl` article:
-[SciPost](https://scipost.org/SciPostPhysCodeb)
+[SciPost](https://scipost.org/submissions/2605.10191v2/)
 / [arXiv](https://arxiv.org/abs/2605.10191).
 
 ## Features and Capabilities

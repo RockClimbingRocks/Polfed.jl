@@ -13,7 +13,7 @@ visible, useful, and maintainable for the community.
 The article is not accepted yet. For now, please cite the arXiv preprint:
 
 - [arXiv preprint](https://arxiv.org/abs/2605.10191)
-- [SciPost Physics Codebases](https://scipost.org/SciPostPhysCodeb)
+- [SciPost submission](https://scipost.org/submissions/2605.10191v2/)
 
 ```bibtex
 @misc{Pintar26polfed,

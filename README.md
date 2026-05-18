@@ -20,7 +20,7 @@ Hamiltonian tools for quantum many-body simulations.
   <a href="https://rockclimbingrocks.github.io/Polfed.jl/citation/#article"><img alt="Citation article" src="https://img.shields.io/badge/Citation-article-blue"></a>
   <a href="https://rockclimbingrocks.github.io/Polfed.jl/citation/#code"><img alt="Citation code" src="https://img.shields.io/badge/Citation-code-blue"></a>
   <a href="https://github.com/RockClimbingRocks/Polfed.jl"><img alt="GitHub" src="https://img.shields.io/badge/Code-GitHub-blue"></a>
-  <a href="https://scipost.org/SciPostPhysCodeb"><img alt="SciPost" src="https://img.shields.io/badge/Article-SciPost-blue"></a>
+  <a href="https://scipost.org/submissions/2605.10191v2/"><img alt="SciPost" src="https://img.shields.io/badge/Article-SciPost-blue"></a>
   <a href="https://arxiv.org/abs/2605.10191"><img alt="arXiv" src="https://img.shields.io/badge/Article-arXiv-blue"></a>
   <a href="https://juliapkgstats.com/pkg/Polfed?timeframe=30d&trendingPeriod=14d&userData=true&ciData=true&missingData=true"><img alt="Download Statistics" src="https://img.shields.io/badge/Download%20Statistics-JuliaPkgStats-blue"></a>
 </p>
@@ -67,7 +67,7 @@ The original POLFED method was introduced by Piotr Sierant and collaborators in
 / [arXiv](https://arxiv.org/pdf/2005.09534).
 
 For a broader overview and practical discussion, read the `Polfed.jl` article:
-[SciPost](https://scipost.org/SciPostPhysCodeb)
+[SciPost](https://scipost.org/submissions/2605.10191v2/)
 / [arXiv](https://arxiv.org/abs/2605.10191).
 
 ## Features and Capabilities
