@@ -1,8 +1,7 @@
 # Polfed.jl
 
 [![Build Status](https://github.com/RockClimbingRocks/Polfed.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/RockClimbingRocks/Polfed.jl/actions)
-[![Documentation – stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/stable)
-[![Documentation – dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/)
+[![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](http://www-f1.ijs.si/~rokpintar/Polfed.jl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
@@ -13,96 +12,76 @@
   </picture>
 </p>
 
-Documentation:
-[http://www-f1.ijs.si/~rokpintar/polfed/polfed/](http://www-f1.ijs.si/~rokpintar/polfed/)
+`Polfed.jl` is a Julia package for polynomial filtering eigensolvers and
+Hamiltonian tools for quantum many-body simulations.
 
----
+<p>
+  <a href="http://www-f1.ijs.si/~rokpintar/Polfed.jl/"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-online-blue"></a>
+  <a href="http://www-f1.ijs.si/~rokpintar/Polfed.jl/citation/#article"><img alt="Citation article" src="https://img.shields.io/badge/Citation-article-blue"></a>
+  <a href="http://www-f1.ijs.si/~rokpintar/Polfed.jl/citation/#code"><img alt="Citation code" src="https://img.shields.io/badge/Citation-code-blue"></a>
+  <a href="https://github.com/RockClimbingRocks/Polfed.jl"><img alt="GitHub" src="https://img.shields.io/badge/Code-GitHub-blue"></a>
+  <a href="https://scipost.org/SciPostPhysCodeb"><img alt="SciPost" src="https://img.shields.io/badge/Article-SciPost-blue"></a>
+  <a href="https://arxiv.org/abs/2605.10191"><img alt="arXiv" src="https://img.shields.io/badge/Article-arXiv-blue"></a>
+  <a href="https://juliapkgstats.com/pkg/Polfed?timeframe=30d&trendingPeriod=14d&userData=true&ciData=true&missingData=true"><img alt="Download Statistics" src="https://img.shields.io/badge/Download%20Statistics-JuliaPkgStats-blue"></a>
+</p>
 
-## Overview
+If `Polfed.jl` supports your research, please cite both the overview article
+and the code. This helps make the method and the software visible, reusable,
+and easier to maintain for the community. Citation details are collected on the
+[citation page](http://www-f1.ijs.si/~rokpintar/Polfed.jl/citation/).
 
-**Polfed.jl** is a Julia package for performing **Polynomial Filtering (PolFed)** simulations of quantum systems.  
-It provides efficient numerical routines for working with large Hamiltonians, including support for eigenvalue filtering, kernel polynomial methods, and custom iterative algorithms.
+Version of the code: `v0.1.0`
 
-Polfed is designed for **high-performance simulations**, integrates smoothly with other Julia scientific computing packages, and includes GPU acceleration support (real-valued arrays). CPU runs support complex Hermitian matrices.
+## What Is POLFED?
 
----
+Polynomial Filtering Exact Diagonalization (POLFED) is designed for eigenvalue
+problems of the form
 
-## Installation
-
-For now, you can install directly from GitHub:
-
-```julia
-using Pkg
-Pkg.add(url="https://github.com/RockClimbingRocks/Polfed.jl.git")
+```math
+H |\psi\rangle = E |\psi\rangle
 ```
 
-## Quick Start
+where only a selected part of the spectrum is desired. The interface allows one
+to target arbitrary spectral regions, while the method builds a polynomial
+filter that amplifies components of a vector near the target energy $\lambda$ and
+suppresses the rest of the spectrum. Krylov/Lanczos-type factorization is then
+applied to the filtered problem.
 
-```julia
-using Polfed
-using Polfed.Models: qsun_hamiltonian
-using LinearAlgebra
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/spectral-transform-webpage-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/spectral-transform-webpage-light.png">
+    <img src="docs/src/assets/spectral-transform-webpage-light.png" alt="Spectral transformation used by POLFED." width="900">
+  </picture>
+</p>
 
-L_loc = 12
-L_grain = 2
-g0 = 1.0
-α = 0.5
+The original POLFED method was introduced by Piotr Sierant and collaborators in
+[PRL](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.125.156601)
+/ [arXiv](https://arxiv.org/pdf/2005.09534).
 
-mat = qsun_hamiltonian(L_loc, L_grain, g0, α; use_sparse=true)
-v0 = rand(size(mat, 1)); v0 ./= norm(v0)
-howmany = 100
-target = :maxdos
+For a broader overview and practical discussion, read the `Polfed.jl` article:
+[SciPost](https://scipost.org/SciPostPhysCodeb)
+/ [arXiv](https://arxiv.org/abs/2605.10191).
 
-vals, vecs = polfed(mat, v0, howmany, target)
-```
+## Features and Capabilities
 
-## Model Constructors
-
-Hamiltonian builders live under `Polfed.Models`:
-
-```julia
-using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
-
-H_xxz = xxz_hamiltonian(
-    16,
-    8,
-    1.0,
-    1.0,
-    0.5;
-    boundary=:periodic,
-    use_sparse=true,
-)
-
-H_j1j2 = j1j2_hamiltonian(
-    16,
-    8,
-    1.0,
-    0.5,
-    1.0,
-    1.0,
-    0.5;
-    boundary=:periodic,
-)
-```
-
-The positional arguments are `L`, `Lup`, and the model parameters. `Lup` is
-the number of spin-up sites; for the zero-magnetization spin-1/2 sector use
-`Lup = L ÷ 2`. `W` is the random-field disorder width, sampled uniformly in
-`[field - W, field + W]`. Pass an explicit `fields=[...]` vector to reuse the
-same disorder realization.
-
-### Config Split (Mapping vs Transform)
-
-Polfed separates **mapping** concerns from **polynomial transform** concerns:
-
-- `MappingConfig`: mapping kernel, rescaling (`Emin/Emax`), parallelization, and optimized mapping/clenshaw kernels.
-- `TransformConfig`: coefficients, normalization, cutoff, interval (`left/right`), order, and safety factor.
-
-Example:
-
-```julia
-mapping = MappingConfig(optimize_mapping=true)
-transform = TransformConfig(cutoff=0.2)
-
-vals, vecs = polfed(mat, v0, howmany, :middle; mapping=mapping, transform=transform)
-```
+- Lanczos and block Lanczos factorizations are supported; see
+  [Lanczos and Block Lanczos Factorization](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/lanczos-block-lanczos/).
+- Arbitrary parts of the spectrum can be targeted; see
+  [Choosing Target](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/choosing-target/).
+- Built-in parallelization and optimized mapping workflows are available; see
+  [Parallelization](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/parallelization/),
+  [Optimized Mapping](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/optimized-mapping/), and
+  [Reducing Memory Access](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/reducing-memory-access/).
+- Automatic optimization and custom mappings can be used for structured models;
+  see [Automatic Optimization](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/advanced/automatic-optimization/)
+  and [Custom Mapping](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/advanced/custom-mapping/).
+- CUDA workflows are supported where available; see
+  [Working with GPUs](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/working-with-gpus/).
+- Built-in Hamiltonian constructors are provided for
+  [Quantum Sun (QSun)](http://www-f1.ijs.si/~rokpintar/Polfed.jl/models/qsun/),
+  [XXZ](http://www-f1.ijs.si/~rokpintar/Polfed.jl/models/xxz/), and
+  [J1-J2](http://www-f1.ijs.si/~rokpintar/Polfed.jl/models/j1j2/).
+- Reports expose convergence, timing, and configuration details; see
+  [Reporting](http://www-f1.ijs.si/~rokpintar/Polfed.jl/tutorials/beginner/reporting/) and
+  [Reports, Logging, and Defaults](http://www-f1.ijs.si/~rokpintar/Polfed.jl/documentation/reports-logging-and-defaults/).

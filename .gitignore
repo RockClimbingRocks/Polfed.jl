@@ -13,6 +13,8 @@
 
 *.pdf
 *.png
+!docs/src/assets/*.pdf
+!docs/src/assets/*.png
 *.jpeg  
 *.h5
 *.ipynb

@@ -9,12 +9,12 @@ makedocs(
     doctest=false,
     pagesonly=true,
     format=Documenter.HTML(
-        canonical="https://RockClimbingRocks.github.io/Polfed.jl",
+        canonical="https://rockclimbingrocks.github.io/Polfed.jl/",
         edit_link=nothing,
         assets=String[],
     ),
     pages=[
-        "Polfed.jl" => "index.md",
+        "Introduction" => "index.md",
         # "Polfed" => "polfed/index.md",
         "Citation" => "citation/index.md",
 

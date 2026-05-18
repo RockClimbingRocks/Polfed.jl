@@ -8,7 +8,7 @@ if ! command -v "$JULIA_BIN" >/dev/null 2>&1; then
 fi
 
 PROJECT_ARG="${1:-@.}"
-DEPLOY_DIR="${DEPLOY_DIR:-/project/rokpintar/public_html/polfed}"
+DEPLOY_DIR="${DEPLOY_DIR:-/project/rokpintar/public_html/Polfed.jl}"
 VOLUME_ROOT="$(df -P . | awk 'NR==2 {print $6}')"
 CLEANUP_ROOT="${DOCS_CLEANUP_DIR:-$VOLUME_ROOT/.polfed_docs_cleanup}"
 

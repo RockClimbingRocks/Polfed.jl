@@ -48,18 +48,19 @@ The local output is written to `docs/build`.
 
 ## Publish
 
-GitHub Pages publishing is handled by Documenter through `docs/make.jl`.
+Publishing to the IJS personal webpage is handled by `docs/build.sh`.
 
-The current development docs are published under:
-
-```text
-https://rockclimbingrocks.github.io/Polfed.jl/dev/
-```
-
-The public root page redirects to:
+The docs are published under:
 
 ```text
-https://rockclimbingrocks.github.io/Polfed.jl/dev/polfed/
+http://www-f1.ijs.si/~rokpintar/Polfed.jl/
 ```
 
-The landing page content is `docs/src/polfed/index.md`.
+Subpages follow the same path structure:
+
+```text
+http://www-f1.ijs.si/~rokpintar/Polfed.jl/citation/
+http://www-f1.ijs.si/~rokpintar/Polfed.jl/getting-started/
+```
+
+The landing page content is `docs/src/index.md`.
