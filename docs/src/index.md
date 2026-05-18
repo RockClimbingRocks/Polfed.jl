@@ -124,8 +124,8 @@ applied to the filtered problem.
 
 ```@raw html
 <figure class="polfed-spectral-figure">
-  <img class="polfed-spectral-light" src="assets/spectral-transform-webpage-light.png" alt="Spectral transformation used by POLFED.">
-  <img class="polfed-spectral-dark" src="assets/spectral-transform-webpage-dark.png" alt="Spectral transformation used by POLFED.">
+  <img class="polfed-spectral-light" src="assets/spectral-transform-webpage-light.svg" alt="Spectral transformation used by POLFED.">
+  <img class="polfed-spectral-dark" src="assets/spectral-transform-webpage-dark.svg" alt="Spectral transformation used by POLFED.">
 </figure>
 ```
 
