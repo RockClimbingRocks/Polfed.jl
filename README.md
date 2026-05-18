@@ -14,7 +14,7 @@
 </p>
 
 Documentation:
-[https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/](https://RockClimbingRocks.github.io/Polfed.jl/dev/polfed/)
+[http://www-f1.ijs.si/~rokpintar/polfed/polfed/](http://www-f1.ijs.si/~rokpintar/polfed/)
 
 ---
 
