@@ -14,7 +14,7 @@ makedocs(
         assets=String[],
     ),
     pages=[
-        hide("index.md"),
+        "Polfed.jl" => "index.md",
         # "Polfed" => "polfed/index.md",
         "Citation" => "citation/index.md",
 
