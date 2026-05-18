@@ -30,7 +30,7 @@ vals, vecs = polfed(mat, x0, 100, 0.0)
 
 ## Where To Go Next
 
-- [Getting Started](getting-started/)
-- [Choosing Target](tutorials/beginner/choosing-target/)
-- [Core Functions](documentation/core-functions/)
-- [Hamiltonian Models](documentation/models/)
+- [Getting Started](getting-started/index.md)
+- [Choosing Target](tutorials/beginner/choosing-target/index.md)
+- [Core Functions](documentation/core-functions/index.md)
+- [Hamiltonian Models](documentation/models/index.md)
