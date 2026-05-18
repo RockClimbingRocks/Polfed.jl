@@ -15,7 +15,7 @@ makedocs(
     ),
     pages=[
         hide("index.md"),
-        "Polfed" => "polfed/index.md",
+        # "Polfed" => "polfed/index.md",
         "Citation" => "citation/index.md",
 
         "Getting Started" => "getting-started/index.md",
@@ -57,7 +57,9 @@ makedocs(
     ],
 )
 
-deploydocs(
-    repo="github.com/RockClimbingRocks/Polfed.jl.git",
-    devbranch="dev",
-)
+if get(ENV, "DOCUMENTER_DEPLOY", "false") == "true"
+    deploydocs(
+        repo="github.com/RockClimbingRocks/Polfed.jl.git",
+        devbranch="main",
+    )
+end

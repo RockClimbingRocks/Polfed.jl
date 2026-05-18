@@ -65,10 +65,8 @@ jobs:
           Pkg.resolve()
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-docdeploy@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+      - name: Build documentation
+        run: julia --project=docs --color=yes docs/make.jl
       - name: Run doctests
         shell: julia --project=docs --color=yes {0}
         run: |
