@@ -55,6 +55,13 @@ applied to the filtered problem.
   </picture>
 </p>
 
+The lower part of the figure shows the original, untransformed spectrum: the
+eigenvalues and eigenvectors (shortly the eigenpairs) that one would like to
+compute, denoted with red color. The curve above it illustrates the polynomial
+transformation used to filter out the desired spectral region. By mapping the
+wanted eigenvalues to extremal values (either the largest or the smallest ones),
+POLFED makes the target eigenpairs accessible to Krylov/Lanczos-type methods.
+
 The original POLFED method was introduced by Piotr Sierant and collaborators in
 [PRL](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.125.156601)
 / [arXiv](https://arxiv.org/pdf/2005.09534).
