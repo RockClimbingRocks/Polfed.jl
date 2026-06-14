@@ -8,7 +8,16 @@ if ! command -v "$JULIA_BIN" >/dev/null 2>&1; then
 fi
 
 PROJECT_ARG="${1:-@.}"
-DEPLOY_DIR="${DEPLOY_DIR:-/project/rokpintar/public_html/Polfed.jl}"
+if [[ -n "${DEPLOY_DIRS:-}" ]]; then
+  read -r -a DEPLOY_TARGETS <<< "$DEPLOY_DIRS"
+elif [[ -n "${DEPLOY_DIR:-}" ]]; then
+  DEPLOY_TARGETS=("$DEPLOY_DIR")
+else
+  DEPLOY_TARGETS=(
+    "/project/rokpintar/public_html/polfed"
+    "/project/rokpintar/public_html/Polfed.jl"
+  )
+fi
 VOLUME_ROOT="$(df -P . | awk 'NR==2 {print $6}')"
 CLEANUP_ROOT="${DOCS_CLEANUP_DIR:-$VOLUME_ROOT/.polfed_docs_cleanup}"
 
@@ -23,7 +32,8 @@ move_appledouble() {
 
 echo "[build] Using Julia binary: $JULIA_BIN"
 echo "[build] Using project: $PROJECT_ARG"
-echo "[build] Deploy dir: $DEPLOY_DIR"
+echo "[build] Deploy targets:"
+printf '  - %s\n' "${DEPLOY_TARGETS[@]}"
 echo "[build] Cleanup dir: $CLEANUP_ROOT"
 
 mkdir -p "$CLEANUP_ROOT"
@@ -57,12 +67,24 @@ done
 "$JULIA_BIN" --color=yes --project="$PROJECT_ARG" make.jl
 move_appledouble
 
-deploy_parent="$(dirname "$DEPLOY_DIR")"
-if [[ -d "$deploy_parent" ]]; then
-  rm -rf "$DEPLOY_DIR"
-  cp -R build "$DEPLOY_DIR"
-  echo "[build] Docs deployed to $DEPLOY_DIR"
-else
+deployed=false
+for deploy_dir in "${DEPLOY_TARGETS[@]}"; do
+  if [[ -z "$deploy_dir" ]]; then
+    continue
+  fi
+
+  deploy_parent="$(dirname "$deploy_dir")"
+  if [[ -d "$deploy_parent" ]]; then
+    rm -rf "$deploy_dir"
+    mkdir -p "$deploy_dir"
+    cp -R build/. "$deploy_dir/"
+    echo "[build] Docs deployed to $deploy_dir"
+    deployed=true
+  else
+    echo "[build] Skipping deploy to $deploy_dir because $deploy_parent does not exist on this machine"
+  fi
+done
+
+if [[ "$deployed" == false ]]; then
   echo "[build] Build completed locally at $(pwd)/build"
-  echo "[build] Skipping deploy because $deploy_parent does not exist on this machine"
 fi

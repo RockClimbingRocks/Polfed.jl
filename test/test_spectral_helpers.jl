@@ -109,6 +109,17 @@ end
     @test resolved_order.order isa Integer
     @test resolved_order.order >= 10
 
+    wide_interval = CORE.build_transform_plan(
+        Polfed.TransformConfig(left=-0.5, right=0.5),
+        mapping_plan,
+        1,
+        :middle,
+    )
+    CORE.getorderofexpansion!(wide_interval)
+
+    @test wide_interval.order isa Integer
+    @test wide_interval.left < wide_interval.target < wide_interval.right
+
     overconstrained = CORE.build_transform_plan(
         Polfed.TransformConfig(left=-0.2, right=0.2, order=12),
         mapping_plan,

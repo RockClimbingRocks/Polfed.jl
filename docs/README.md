@@ -46,6 +46,17 @@ JULIA_BIN=/Users/rockclimbingrocks/.juliaup/bin/julia bash build.sh
 
 The local output is written to `docs/build`.
 
+On the IJS machine, `bash build.sh` also copies the fresh build to the personal
+test pages:
+
+```text
+http://www-f1.ijs.si/~rokpintar/polfed/
+http://www-f1.ijs.si/~rokpintar/Polfed.jl/
+```
+
+You can override this with `DEPLOY_DIR=/some/path bash build.sh` for one target,
+or `DEPLOY_DIRS="/path/one /path/two" bash build.sh` for multiple targets.
+
 ## Publish
 
 Publishing is handled by the GitHub Pages workflow.

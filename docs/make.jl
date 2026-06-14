@@ -15,8 +15,15 @@ makedocs(
     ),
     pages=[
         "Introduction" => "index.md",
-        # "Polfed" => "polfed/index.md",
+        
         "Citation" => "citation/index.md",
+
+
+        "What is POLFED" => [
+            "Krylov Methods" => "what-is-polfed/krylov-methods/index.md",
+            "Polynomial Filtering" => "what-is-polfed/polynomial-filtering/index.md",
+            # "Mapping" => "what-is-polfed/mapping/index.md",
+        ],
 
         "Getting Started" => "getting-started/index.md",
 

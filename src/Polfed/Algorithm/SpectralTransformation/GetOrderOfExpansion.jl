@@ -52,11 +52,21 @@ function getorderofexpansion_in_interval!(transform_plan::TransformPlan)
         max(p_a, p_b) <  cutoff && (return +1)
     end
 
-    Kmax = ceil(Int, analytical_orderofexpansion(target, halfwidth)*2)
     Kmin = 10
-    K = bisection(bisection_fun, Kmin, Kmax; tol=1)
+    Kmax = max(Kmin + 1, ceil(Int, analytical_orderofexpansion(target, halfwidth)*2))
 
-    transform_plan.order = floor(Int64, K*order_safety_factor)
+    K = if bisection_fun(Kmin) > 0
+        Kmin
+    else
+        while bisection_fun(Kmax) < 0
+            Kmax > 1_000_000 && error("Could not bracket polynomial order below cutoff")
+            Kmax *= 2
+        end
+
+        bisection(bisection_fun, Kmin, Kmax; tol=1)
+    end
+
+    transform_plan.order = max(1, floor(Int64, K*order_safety_factor))
 
     (order_safety_factor < 1.) && (getbounds_from_K!(transform_plan, :mean))
 
