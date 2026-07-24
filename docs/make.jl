@@ -23,7 +23,6 @@ makedocs(
         "What is POLFED" => [
             "Krylov Methods" => "what-is-polfed/krylov-methods/index.md",
             "Polynomial Filtering" => "what-is-polfed/polynomial-filtering/index.md",
-            # "Mapping" => "what-is-polfed/mapping/index.md",
         ],
 
         "Getting Started" => "getting-started/index.md",
@@ -60,6 +59,11 @@ makedocs(
             "Models" => "documentation/models/index.md",
             "Configs and Parallelization Types" => "documentation/configs-and-parallelization-types/index.md",
             "Reports, Logging, and Defaults" => "documentation/reports-logging-and-defaults/index.md",
+        ],
+
+        "Development" => [
+            "Architecture" => "development/architecture.md",
+            "Roadmap" => "development/roadmap.md",
         ],
         "FAQ / Troubleshooting" => "faq/index.md",
     ],

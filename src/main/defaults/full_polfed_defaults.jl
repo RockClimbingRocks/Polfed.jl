@@ -1,7 +1,7 @@
 """
-    UniPolfed.Defaults.patched_polfed
+    UniPolfed.Defaults.full_polfed
 
-Default registry for the `patched_polfed` variant, following the per-function pattern of
+Default registry for the `full_polfed` variant, following the per-function pattern of
 [`Defaults.polfed`](@ref).
 """
 module full_polfed
@@ -12,12 +12,12 @@ import ...Numerics.Lanczos: FullRO, MatrixBasis   # for the `rot`/`basistype` de
     Defaults.full_polfed.edge_distance::Float64 = 0.1
 
 Default inward distance from the rescaled spectral edges `±1` used when constructing
-patched POLFED intervals.
+full-spectrum POLFED intervals.
 """
 const edge_distance = 0.1
 
 """
-    Defaults.full_polfed.howmany_pad::Int = 10
+    Defaults.full_polfed.howmany_pad::Int = 3
 
 Per-side overlap, in states, applied to each patch by
 [`intervalize_interval_overlapping`](@ref). Each patch is grown outward on both sides by a
@@ -50,7 +50,7 @@ too few iterations), so both are grown to be safe. `0` disables retries (fall st
 const max_glue_retries = 3
 
 """
-    Defaults.full_polfed.retry_budget_growth::Float64 = 2.0
+    Defaults.full_polfed.retry_budget_growth::Float64 = 1.5
 
 Factor the Krylov-budget safety (`overestimate_iters`) is multiplied by on each coverage retry
 (see [`max_glue_retries`](@ref)). The padding grows additively (`+howmany_pad` per retry) alongside.
@@ -65,7 +65,7 @@ const retry_budget_growth = 1.5
 
 
 """
-    Defaults.patched_polfed.N::Int = 250
+    Defaults.full_polfed.N::Int = 1000
 
     Default number of Chebyshev moments used in KPM density-of-states estimation.
     Higher `N` sharpens spectral resolution at higher cost.
@@ -73,7 +73,7 @@ const retry_budget_growth = 1.5
 const N = 1000
 
 """
-    Defaults.patched_polfed.R::Int = 300
+    Defaults.full_polfed.R::Int = 1000
 
     Default number of stochastic random probes for KPM density-of-states estimation.
     Statistical error scales as `1/√R`.
@@ -81,7 +81,7 @@ const N = 1000
 const R = 1000
 
 """
-    Defaults.patched_polfed.kernel::Symbol = :Jackson
+    Defaults.full_polfed.kernel::Symbol = :Jackson
 
     Default KPM damping kernel (see `Numerics.KPM.get_kernel`).
 """
@@ -90,7 +90,7 @@ const kernel = :Jackson
 # ── Mapping ───────────────────────────────────────────────────────────────────
 
 """
-    Defaults.patched_polfed.optimize_mapping::Bool = false
+    Defaults.full_polfed.optimize_mapping::Bool = false
 
     Whether to build optimized (value-grouped) mapping/Clenshaw kernels from a matrix
     input. Off by default; effective for structured Hamiltonians with few unique
@@ -101,15 +101,15 @@ const optimize_mapping = false
 # ── Target resolution ─────────────────────────────────────────────────────────
 
 """
-    Defaults.patched_polfed.maxdos_edge_margin::Float64 = 0.01
+    Defaults.full_polfed.maxdos_edge_margin::Float64 = 0.01
 
     Margin kept away from the rescaled spectral edges `±1` when searching for the
     max-DoS energy (see [`_resolve_center`](@ref)`(::TargetMaxDoS, …)`). The KPM
     density `ρ(x) = expansion(x)/(π√(1-x²))` carries a Jacobian that diverges as
     `x → ±1`; at finite moment count that divergence is an imperfectly-cancelled
     numerical artifact, so `argmax` snaps to the endpoint unless the search stays a
-    physical margin inside `[-1, 1]`. Scanning `[-1 + margin, 1 - margin]` (matching
-    the legacy `[-0.99, 0.99]`) lets the bulk mode win.
+    physical margin inside `[-1, 1]`. With the default margin, the scan covers
+    `[-0.99, 0.99]`, allowing the bulk mode to win.
 """
 const maxdos_edge_margin = 0.01
 
@@ -121,7 +121,7 @@ const maxdos_edge_margin = 0.01
 # ── Factorization (Lanczos) ───────────────────────────────────────────────────
 
 """
-    Defaults.patched_polfed.rot::FullRO = FullRO()
+    Defaults.full_polfed.rot::FullRO = FullRO()
 
     Default reorthogonalization technique for the Lanczos factorization. Full
     reorthogonalization is the safe default; since the spectral transform dominates
@@ -130,28 +130,28 @@ const maxdos_edge_margin = 0.01
 const rot = FullRO()
 
 """
-    Defaults.patched_polfed.basistype::Type = MatrixBasis
+    Defaults.full_polfed.basistype::Type = MatrixBasis
 
     Default Krylov basis storage for the Lanczos factorization.
 """
 const basistype = MatrixBasis
 
 """
-    Defaults.patched_polfed.tol::Float64 = 1e-14
+    Defaults.full_polfed.tol::Float64 = 1e-14
 
     Default Ritz-residual tolerance for the Lanczos factorization.
 """
 const tol = 1e-14
 
 """
-    Defaults.patched_polfed.eigentol::Float64 = 1e-9
+    Defaults.full_polfed.eigentol::Float64 = 1e-9
 
     Default eigen-residual (`‖A·v − λ·v‖`) tolerance for accepting converged eigenpairs.
 """
 const eigentol = 1e-9
 
 """
-    Defaults.patched_polfed.overestimate_iters::Float64 = 1.25
+    Defaults.full_polfed.overestimate_iters::Float64 = 1.25
 
     Safety factor multiplying the predicted Krylov dimension, to allow enough
     iterations for all requested eigenpairs to converge. Increase it if a run exhausts
@@ -162,7 +162,7 @@ const overestimate_iters = 1.25
 # ── Convergence-check scheduling ──────────────────────────────────────────────
 
 """
-    Defaults.patched_polfed.check_start_frac::Float64 = 1.0
+    Defaults.full_polfed.check_start_frac::Float64 = 1.1
 
     Fraction of the **expected** Krylov dimension at which POLFED starts running convergence checks
     (see [`conv_checking`](@ref)). `1.0` = start exactly at the expected dim; lower values start
@@ -203,4 +203,4 @@ conv_checking(expected_dim::Real) =
 
 
 
-end # module patched_polfed
+end # module full_polfed

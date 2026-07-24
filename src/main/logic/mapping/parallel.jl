@@ -52,13 +52,13 @@ Unlike [`MulColsParallel`](@ref), this parallelizes **even for a single vector**
 ([`RowLayout`](@ref)), where row chunks are contiguous and fast for sparse `H`.
 
 # Fields
-- `nt_per_row::Int`: threads used within each row chunk (nested parallelism); `1`
-  means pure row-chunk parallelism.
+- `nt_per_row::Int`: reserved tuning value for row-parallel kernels. Current kernels
+  use `Threads.nthreads()` and do not inspect this field.
 
 !!! note
-    The strategy *type* exists now; the row-chunked matvec it selects is implemented
-    in the optimization slice (migrated later). Until then `MulRowsParallel` is a
-    dormant placeholder behind the parallelization dispatch.
+    Row-kernel implementations live in `Optimization`. Clenshaw supplies the whole
+    row-layout block in one call, and the selected kernel partitions output rows
+    across Julia threads.
 """
 mutable struct MulRowsParallel <: Parallelization
     nt_per_row::Int

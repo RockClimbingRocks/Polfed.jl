@@ -5,7 +5,7 @@
 # (and the regime where value-grouped optimization pays off): a SINGLE distinct off-diagonal
 # value `hx` and a REGULAR row length `L` (every row has exactly `L` off-diagonal neighbours) —
 # e.g. QREM / uniform-σˣ models. Multi-value / irregular Hamiltonians fall back to the generic
-# Clenshaw path (`optimize_mapping = false`) until a multi-group kernel is migrated.
+# Clenshaw path (`optimize_mapping = false`) until a multi-group kernel is available.
 
 """
     MappingStructure{T}

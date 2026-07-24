@@ -7,7 +7,7 @@
 #   • count mode targeting an extremal energy: the grown interval reaches the edge, so the
 #     EdgeFilter is picked and the `howmany` edge eigenpairs must match ED;
 #   • the :both filter driven directly (build_transform + BothEnds Lanczos): both spectrum edges
-#     harvested from ONE Krylov space (no `polfed` path for :both yet — multi-window TODO).
+#     harvested from one Krylov space. The public multi-window entrypoint is tracked in the roadmap.
 
 using LinearAlgebra, SparseArrays, Random, Logging, Test
 using UniPolfed: polfed, MappingConfig, PolfedResult

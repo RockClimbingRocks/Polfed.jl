@@ -51,10 +51,6 @@ function probe_dimension(template::AbstractMatrix)
     return probe_info(template).dim
 end
 
-function probe_block_size(template::AbstractVecOrMat)
-    return probe_info(template).block_size
-end
-
 function _random_normal!(x, ::CPU)
     randn!(x)
     return x

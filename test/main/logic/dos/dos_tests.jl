@@ -3,7 +3,7 @@ using UniPolfed
 
 K = UniPolfed.Numerics.KPM
 
-cheb(x, k) = cos(k * acos(x))
+_dos_test_cheb(x, k) = cos(k * acos(x))
 
 @testset "DoS" begin
     @testset "DoSConfig keyword overrides" begin
@@ -22,7 +22,7 @@ cheb(x, k) = cos(k * acos(x))
 
         res = UniPolfed.calculate_dos(cfg, f!, sys)
 
-        exact = [dim * cheb(c, k) for k in 0:cfg.N-1]
+        exact = [dim * _dos_test_cheb(c, k) for k in 0:cfg.N-1]
         @test res isa UniPolfed.DoSResult
         @test res.moments ≈ exact rtol = 1e-10
         @test res.coefficients ≈ K.kpm_coeffs(res.moments, cfg.kernel)
@@ -43,7 +43,7 @@ cheb(x, k) = cos(k * acos(x))
 
         res = UniPolfed.calculate_dos(cfg, f!, sys)
 
-        exact = [dim * cheb(c, k) for k in 0:cfg.N-1]
+        exact = [dim * _dos_test_cheb(c, k) for k in 0:cfg.N-1]
         @test res.moments ≈ exact
         @test shapes == Set([(dim, block)])
     end

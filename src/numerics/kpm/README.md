@@ -1,6 +1,7 @@
-# `kpm-new/`
+# Kernel Polynomial Method (KPM)
 
-Small prototype for direction-independent KPM moments.
+Direction-independent KPM moments and density-of-states reconstruction. The module is
+loaded by `Numerics.jl` and used by UniPolfed's density-of-states stage.
 
 The public API is intentionally small:
 
@@ -41,5 +42,3 @@ mu = kpm_moments(f!, 250, 300, template, CPU())
 There are no KPM-specific layout types, batching options, or operator convenience
 methods in this version. If `f!` expects row storage, pass a row-shaped template.
 If it expects column storage, pass a column-shaped template.
-
-This folder is intentionally not wired into `src/numerics/Numerics.jl` yet.

@@ -65,6 +65,12 @@ function lanczos(
     next_check::Function                = DEFAULT_NEXT_CHECK,
     warn_incomplete::Bool               = true,
 )
+    if layout isa RowLayout && basistype <: VectorBasis
+        throw(ArgumentError(
+            "RowLayout with VectorBasis is not supported; use MatrixBasis for row-oriented blocks.",
+        ))
+    end
+
     pu = is_gpu_array(x0) ? GPU() : CPU()
     if isa(pu, GPU) && !(eltype(x0) <: Real)
         error("Complex GPU arrays are not supported yet. The GPU Lanczos path is real-only; use CPU arrays for complex operators.")

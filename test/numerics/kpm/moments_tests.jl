@@ -6,7 +6,7 @@ using Random
 K = UniPolfed.Numerics.KPM
 
 # Closed-form Chebyshev value, |x| ≤ 1.
-cheb(x, k) = cos(k * acos(x))
+_kpm_test_cheb(x, k) = cos(k * acos(x))
 
 # Matrix-free operator (mul!/size/eltype) — the LinearOperators.jl contract.
 struct MomTestOp
@@ -34,7 +34,7 @@ Base.eltype(::MomTestOp) = Float64
 
             K.trace_doubling!(f!, probe, μ, work)
 
-            expected = [cheb(λ[j], k) for k in 0:N-1]
+            expected = [_kpm_test_cheb(λ[j], k) for k in 0:N-1]
             @test μ ≈ expected
         end
     end
@@ -55,7 +55,7 @@ Base.eltype(::MomTestOp) = Float64
             K.trace_doubling!(f!, probe, μ, work)
         end
 
-        expected = [sum(cheb(λj, k) for λj in λ) for k in 0:N-1]
+        expected = [sum(_kpm_test_cheb(λj, k) for λj in λ) for k in 0:N-1]
         @test μ ≈ expected
     end
 
@@ -73,7 +73,7 @@ Base.eltype(::MomTestOp) = Float64
 
         K.trace_doubling!(f!, probe, μ, work)
 
-        expected = [cheb(λ[1], k) + cheb(λ[3], k) for k in 0:N-1]
+        expected = [_kpm_test_cheb(λ[1], k) + _kpm_test_cheb(λ[3], k) for k in 0:N-1]
         @test μ ≈ expected
     end
 
@@ -88,7 +88,7 @@ Base.eltype(::MomTestOp) = Float64
 
         μ = K.kpm_moments(f!, N, R, template, UniPolfed.CPU())
 
-        expected = [dim * cheb(c, k) for k in 0:N-1]
+        expected = [dim * _kpm_test_cheb(c, k) for k in 0:N-1]
         @test μ ≈ expected
     end
 
@@ -105,7 +105,7 @@ Base.eltype(::MomTestOp) = Float64
 
         μ = K.kpm_moments(f!, N, R, template, UniPolfed.CPU())
 
-        expected = [dim * cheb(c, k) for k in 0:N-1]
+        expected = [dim * _kpm_test_cheb(c, k) for k in 0:N-1]
         @test eltype(μ) === S
         @test isapprox(μ, expected; rtol = tol, atol = tol)
     end
@@ -116,7 +116,7 @@ Base.eltype(::MomTestOp) = Float64
         dim = 6
         block = 2
         c = 0.4
-        expected = [dim * cheb(c, k) for k in 0:N-1]
+        expected = [dim * _kpm_test_cheb(c, k) for k in 0:N-1]
 
         col_shapes = Set{Tuple{Int,Int}}()
         col_calls = Ref(0)
@@ -164,7 +164,7 @@ Base.eltype(::MomTestOp) = Float64
 
         N = 9
         dim = size(H, 1)
-        expected = [sum(cheb(λj, k) for λj in λ) for k in 0:N-1]
+        expected = [sum(_kpm_test_cheb(λj, k) for λj in λ) for k in 0:N-1]
 
         probe_col = Matrix{ComplexF64}(I, dim, dim)
         μ_col = zeros(Float64, N)

@@ -4,8 +4,7 @@ The webpage is built directly from Markdown files in `docs/src`.
 
 ## Edit Pages
 
-- Root redirect: `docs/src/index.md`
-- UniPolfed landing page: `docs/src/polfed/index.md`
+- UniPolfed landing page: `docs/src/index.md`
 - Getting started: `docs/src/getting-started/index.md`
 - Beginner tutorials: `docs/src/tutorials/beginner/<page-name>/index.md`
 - Advanced tutorials: `docs/src/tutorials/advanced/<page-name>/index.md`
@@ -15,7 +14,7 @@ The webpage is built directly from Markdown files in `docs/src`.
 
 The URL follows the same folder structure. For example:
 
-- `docs/src/polfed/index.md` becomes `/polfed/`
+- `docs/src/index.md` becomes `/`
 - `docs/src/tutorials/beginner/optimized-mapping/index.md` becomes `/tutorials/beginner/optimized-mapping/`
 - `docs/src/models/qsun/index.md` becomes `/models/qsun/`
 - `docs/src/documentation/models/index.md` becomes `/documentation/models/`
@@ -38,28 +37,18 @@ From the docs folder:
 bash build.sh
 ```
 
-On machines where plain `julia` points to an old Julia version, use:
+To select a specific Julia executable, use:
 
 ```bash
-JULIA_BIN=/Users/rockclimbingrocks/.juliaup/bin/julia bash build.sh
+JULIA_BIN=/path/to/julia bash build.sh
 ```
 
 The local output is written to `docs/build`.
 
-On the IJS machine, `bash build.sh` also copies the fresh build to the personal
-test pages:
-
-```text
-http://www-f1.ijs.si/~rokpintar/polfed/
-http://www-f1.ijs.si/~rokpintar/UniPolfed.jl/
-```
-
-You can override this with `DEPLOY_DIR=/some/path bash build.sh` for one target,
-or `DEPLOY_DIRS="/path/one /path/two" bash build.sh` for multiple targets.
-
 ## Publish
 
-Publishing is handled by the GitHub Pages workflow.
+Publishing is handled exclusively by the GitHub Pages workflow; the local build
+script never writes outside this repository.
 
 The docs are published under:
 

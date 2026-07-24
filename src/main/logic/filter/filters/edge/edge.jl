@@ -10,7 +10,7 @@
 # stretched (slope ~p/2 at the exposed end) while the rest of the spectrum is squashed toward 0,
 # ordering is preserved (so the Window stop criterion and the mapped-value selection work
 # unchanged), and — being monotone — the polynomial HAS no side lobes, so the boundary leakage
-# that disqualifies the delta filters near ±1 (see `RESTRUCTURE.md` §7) cannot occur.
+# that disqualifies the delta filters near ±1 cannot occur.
 #
 # Consequently almost none of the delta machinery is needed: no order bisection (the order is a
 # fixed cost/stretch knob, default 3), no passband growth (a monotone filter's effective window IS

@@ -17,7 +17,7 @@ patched POLFED intervals.
 const edge_distance = 0.1
 
 """
-    Defaults.patched_polfed.howmany_pad::Int = 10
+    Defaults.patched_polfed.howmany_pad::Int = 3
 
 Per-side overlap, in states, applied to each patch by
 [`intervalize_interval_overlapping`](@ref). Each patch is grown outward on both sides by a
@@ -65,7 +65,7 @@ const retry_budget_growth = 2.0
 
 
 """
-    Defaults.patched_polfed.N::Int = 250
+    Defaults.patched_polfed.N::Int = 1000
 
     Default number of Chebyshev moments used in KPM density-of-states estimation.
     Higher `N` sharpens spectral resolution at higher cost.
@@ -73,7 +73,7 @@ const retry_budget_growth = 2.0
 const N = 1000
 
 """
-    Defaults.patched_polfed.R::Int = 300
+    Defaults.patched_polfed.R::Int = 1000
 
     Default number of stochastic random probes for KPM density-of-states estimation.
     Statistical error scales as `1/√R`.
@@ -108,8 +108,8 @@ const optimize_mapping = false
     density `ρ(x) = expansion(x)/(π√(1-x²))` carries a Jacobian that diverges as
     `x → ±1`; at finite moment count that divergence is an imperfectly-cancelled
     numerical artifact, so `argmax` snaps to the endpoint unless the search stays a
-    physical margin inside `[-1, 1]`. Scanning `[-1 + margin, 1 - margin]` (matching
-    the legacy `[-0.99, 0.99]`) lets the bulk mode win.
+    physical margin inside `[-1, 1]`. With the default margin, the scan covers
+    `[-0.99, 0.99]`, allowing the bulk mode to win.
 """
 const maxdos_edge_margin = 0.01
 
@@ -162,7 +162,7 @@ const overestimate_iters = 1.25
 # ── Convergence-check scheduling ──────────────────────────────────────────────
 
 """
-    Defaults.patched_polfed.check_start_frac::Float64 = 1.0
+    Defaults.patched_polfed.check_start_frac::Float64 = 1.075
 
     Fraction of the **expected** Krylov dimension at which POLFED starts running convergence checks
     (see [`conv_checking`](@ref)). `1.0` = start exactly at the expected dim; lower values start

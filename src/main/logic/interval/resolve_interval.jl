@@ -58,18 +58,6 @@ function resolve_interval(target::Target, dos::DoSResult)
 end
 
 
-function resolve_patched_intervals(target::Target, dos::DoSResult)
-    
-    left, right = _size_window_from_dos(
-        target.rescaled_energy,
-        target.rescaled_energy_position,
-        target.howmany,
-        dos,
-    )
-    return Interval(left, right)
-end
-
-
 """
     howmany_in_interval(dos::DoSResult, interval::Interval) -> Int
 

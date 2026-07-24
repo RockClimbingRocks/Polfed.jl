@@ -40,9 +40,8 @@ The `:both` form: one filter exposing BOTH spectrum edges (`P(x) = x^order`, `or
 [`BothEnds`](@ref) run harvesting `interval1` (at the left edge) and `interval2` (at the right
 edge) in a single Krylov space. The stored `interval` is the hull `[interval1.left,
 interval2.right]`. Mirrors the two-interval `build_filter(DoubleDeltaFilter, …)` signature — the
-seam the future multi-window pipeline resolves through; until that lands (see
-`MULTI_WINDOW_TODO.md`) a `:both` filter is used directly with [`build_transform`](@ref), not via
-`polfed(...)`.
+seam the future multi-window pipeline resolves through; until that lands (see the development
+roadmap) a `:both` filter is used directly with [`build_transform`](@ref), not via `polfed(...)`.
 
 # Throws
 - `ArgumentError`: `interval1` not at the left edge, `interval2` not at the right edge, the

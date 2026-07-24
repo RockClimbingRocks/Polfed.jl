@@ -2,8 +2,6 @@ module UniPolfedCUDAExt
 
 using CUDA
 using CUDA.CUSPARSE
-using LinearAlgebra
-using SparseArrays
 
 import UniPolfed
 
@@ -37,30 +35,5 @@ end
 
 UniPolfed.is_gpu_array(::CUDA.CuArray) = true
 UniPolfed.is_gpu_sparse_matrix(::CUDA.CUSPARSE.AbstractCuSparseMatrix) = true
-
-# ── GPU sparse → host CSC conversion ─────────────────────────────────────────
-# Extends UniPolfed.materialize_host_matrix (defined in UniPolfed/Optimization/) for
-# CuSparse matrices. Wired when UniPolfed/Optimization/ is migrated.
-#
-# import UniPolfed: materialize_host_matrix
-#
-# function materialize_host_matrix(mat::CUDA.CUSPARSE.AbstractCuSparseMatrix{T}) where {T<:Number}
-#     I_gpu, J_gpu, V_gpu = findnz(mat)
-#     I = Int.(collect(I_gpu))
-#     J = Int.(collect(J_gpu))
-#     V = collect(V_gpu)
-#     return sparse(I, J, V, size(mat, 1), size(mat, 2))
-# end
-
-# ── GPU Clenshaw / mapping kernels ────────────────────────────────────────────
-# Extends optimized_mapping!, optimized_clenshaw_recurrence_relation!, and
-# optimized_clenshaw_final_sum! (defined in UniPolfed/Optimization/) with GPU
-# methods dispatching on CuVector diagonals. Wired when UniPolfed/Optimization/
-# is migrated.
-#
-# import UniPolfed: Parallelization, optimized_mapping!,
-#                optimized_clenshaw_recurrence_relation!, optimized_clenshaw_final_sum!
-#
-# include(joinpath(dirname(pathof(UniPolfed)), "UniPolfed", "Optimization", "gpu", "vector_dispatch.jl"))
 
 end

@@ -1,25 +1,24 @@
 module UniPolfed
 
-# Rebuilt incrementally on the `restructure/file-layout` branch. Old code lives
-# in ../src-OBSOLET as the reference we port from. Components are migrated
-# dependency-first: infrastructure → Numerics (Clenshaw → KPM → Lanczos) → POLFED.
+# Components are loaded in dependency order: infrastructure, reusable numerics,
+# model builders, optimized mappings, and finally the POLFED pipelines.
 
 using LinearAlgebra, Random
 
-# ── infrastructure (migrated) ────────────────────────────────────────────────
+# ── infrastructure ───────────────────────────────────────────────────────────
 include("common/Common.jl")    # logging, formatting, timing            (module Common)
 include("backend/Backend.jl")  # GPU dispatch plumbing + CPU/GPU types   (top-level)
 
-# ── numerics (migrated: Clenshaw) ─────────────────────────────────────────────
+# ── reusable numerics ────────────────────────────────────────────────────────
 include("numerics/Numerics.jl") # reusable spectral primitives           (module Numerics)
 
-# ── physics (migrated: Models) ────────────────────────────────────────────────
+# ── physics models ───────────────────────────────────────────────────────────
 include("models/Models.jl")     # Hamiltonian builders (QSun, spin chains) (module Models)
 
-# ── optimization (migrating: Stage 1 — reads kernels + benchmark) ─────────────
+# ── optimized mappings ───────────────────────────────────────────────────────
 include("optimization/Optimization.jl")  # value-grouped row kernels        (module Optimization)
 
-# ── POLFED core (migrating) ───────────────────────────────────────────────────
+# ── POLFED algorithm ─────────────────────────────────────────────────────────
 using Distributed                                             # TwoLevelParallel workers
 using SharedArrays                                            # TwoLevelParallel Clenshaw buffer
 using Printf                                                  # Report section formatting
@@ -44,9 +43,5 @@ using .Numerics.Lanczos: ReOrthTechnique, OrthonormalBasis,   # Factorization co
                          FactorizationReport                   # Report convergence/timing source
 using .Optimization: build_optimized_mapping                  # matrix entrypoint row kernels
 
-include("main/main.jl")                          # module Defaults (filter-agnostic, algorithm-wide)
-
-
-
-
+include("main/main.jl")                          # module Defaults + public pipelines
 end # module

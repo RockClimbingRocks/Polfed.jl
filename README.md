@@ -92,3 +92,20 @@ For a broader overview and practical discussion, read the original `Polfed.jl` a
 - Reports expose convergence, timing, and configuration details; see
   [Reporting](https://rockclimbingrocks.github.io/UniPolfed.jl/tutorials/beginner/reporting/) and
   [Reports, Logging, and Defaults](https://rockclimbingrocks.github.io/UniPolfed.jl/documentation/reports-logging-and-defaults/).
+
+## Development and Experiments
+
+- [Architecture](docs/src/development/architecture.md) explains the package layers,
+  runtime data flow, and numerical invariants.
+- [Roadmap](docs/src/development/roadmap.md) records the remaining multi-window,
+  filtering, mapping, and Lanczos work.
+- [Curated notebooks](notebooks/README.md) preserve the reproducible experiments and
+  summarize the useful conclusions from the larger research archive.
+- [Reporting example](examples/reporting.jl) provides a small runnable package example.
+
+Run the package checks from the repository root:
+
+```bash
+julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
+bash docs/build.sh
+```

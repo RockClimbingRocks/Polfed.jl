@@ -43,6 +43,10 @@ using Random
             # eigenvectors are stored as ROWS in row layout (nconv × D) and satisfy A·v = λ·v
             @test size(rr.vecs) == (3, n)
             @test size(rc.vecs) == (n, 3)
+            # RowLayout stores its maxdim-sized basis capacity on axis 1, not the
+            # operator-dimension axis. The report must still express this as columns.
+            @test rr.report.ncols_cpu_reserved == 36
+            @test rr.report.ncols_cpu_needed <= rr.report.ncols_cpu_reserved
             @test all(rr.residuals .< 1e-6)
             for k in 1:3
                 v = collect(rr.vecs[k, :])
@@ -53,4 +57,25 @@ using Random
             end
         end
     end
+end
+
+@testset "RowLayout rejects unsupported VectorBasis at the public boundary" begin
+    x0 = randn(2, 8)
+    passthrough!(Y, X) = copyto!(Y, X)
+
+    err = try
+        lanczos(
+            passthrough!, x0, LowestEigs(1);
+            layout=RowLayout(), basistype=VectorBasis, maxdim=4,
+        )
+        nothing
+    catch caught
+        caught
+    end
+
+    @test err isa ArgumentError
+    @test occursin(
+        "RowLayout with VectorBasis is not supported",
+        sprint(showerror, err),
+    )
 end

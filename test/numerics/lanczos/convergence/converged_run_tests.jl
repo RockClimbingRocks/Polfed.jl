@@ -132,6 +132,45 @@ end
         @test only_hi < straddle                      # strictly less work than a two-sided window
     end
 
+    @testset "Window — transformed-boundary selection supports overlapping patch seams" begin
+        p_left = [0.1, 0.2, 0.3, 0.6, 0.8, 0.9]
+        E_left = [0.9, 0.8, 0.1, 0.3, 0.5, 0.6]
+        left = LZ.decide(
+            Highest(Window(0.2, 0.7, 0.5)), p_left,
+            _ -> true, zeros(6), idxs -> (E_left[idxs], _ -> true),
+        )
+
+        p_right = [0.1, 0.2, 0.3, 0.6, 0.8, 0.9]
+        E_right = [0.1, 0.3, 0.9, 0.5, 0.6, 0.8]
+        right = LZ.decide(
+            Highest(Window(0.45, 0.85, 0.5)), p_right,
+            _ -> true, zeros(6), idxs -> (E_right[idxs], _ -> true),
+        )
+
+        left_vals = sort(E_left[left.keep])
+        right_vals = sort(E_right[right.keep])
+        @test left.done && right.done
+        @test left_vals == [0.3, 0.5, 0.6]
+        @test right_vals == [0.5, 0.6, 0.8]
+        @test left_vals[2:end] == right_vals[1:2]
+    end
+
+    @testset "Window walker does not write debug output" begin
+        debug_p = [0.1, 0.4, 0.6, 0.9]
+        debug_E = [0.9, 0.7, 0.5, 0.3]
+        mktemp() do _, output
+            redirect_stdout(output) do
+                LZ.decide(
+                    Highest(Window(0.2, 0.8)), debug_p, _ -> true, zeros(4),
+                    idxs -> (debug_E[idxs], _ -> true),
+                )
+            end
+            flush(output)
+            seekstart(output)
+            @test isempty(read(output, String))
+        end
+    end
+
     @testset "REGRESSION — a distant converged pair must not bracket a window" begin
         # The reported failure: obtained values [-0.25203, -0.22856, …] for the window
         # [-0.23102, -0.21023]. The old rule accepted ANY converged pair on the correct side

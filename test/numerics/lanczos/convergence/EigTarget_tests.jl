@@ -17,6 +17,15 @@ LZ = UniPolfed.Numerics.Lanczos
         @test BothEnds(2, 3) === BothEnds(NumEigs(2), NumEigs(3))
     end
 
+    @testset "NumEigs requires a positive count" begin
+        @test NumEigs(Int32(2)) == NumEigs(2)
+        @test_throws ArgumentError NumEigs(0)
+        @test_throws ArgumentError NumEigs(-1)
+        @test_throws ArgumentError LowestEigs(0)
+        @test_throws ArgumentError HighestEigs(-1)
+        @test_throws ArgumentError BothEnds(1, 0)
+    end
+
     @testset "Window struct: promote + low<high guard" begin
         w = Window(0.5, 0.6)
         @test (w.low, w.high) == (0.5, 0.6)
@@ -24,6 +33,12 @@ LZ = UniPolfed.Numerics.Lanczos
         @test_throws ArgumentError Window(0.6, 0.5)
         @test_throws ArgumentError Window(0.5, 0.5)
         @test Window(-Inf, 0.6) isa Window{Float64}     # edge windows are legal
+
+        certified = Window(0.2, 0.8, 0.5)
+        @test certified.edge_value == 0.5
+        @test !certified.return_brackets
+        @test Window(0.2, 0.8).return_brackets
+        @test_throws ArgumentError Window(0.2, 0.8, Inf)
     end
 
     @testset "ends — the single seam Lowest/Highest/BothEnds share" begin

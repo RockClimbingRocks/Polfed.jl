@@ -4,7 +4,7 @@ module QSun
 # localized spins through long-range couplings. Submodule of `Models`.
 #
 # Files are plain `include`d text sharing this module's namespace (no nested
-# modules — the old `SpinOperators` submodule was flattened in the restructure).
+# implementation submodules).
 # Include order is dependency-first:
 #   spin_operators        SpinBasis + on-site Sˣ/Sʸ/Sᶻ and bit packing
 #   random_utils          disorder, GOE grain, attachment sites, couplings

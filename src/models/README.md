@@ -21,11 +21,11 @@ Two families are provided:
 
 ## File layout
 
-```
-Models/
+```text
+src/models/
 ├── Models.jl              «module root» — using/includes/exports + the qsun_hamiltonian wrapper
 ├── spin_half_chains.jl     xxz_hamiltonian, j1j2_hamiltonian (+ private bond/field/assembly helpers)
-└── QSun/                  «submodule» the Quantum Sun model
+└── qsun/                   «submodule» the Quantum Sun model
     ├── QSun.jl             «module root» — includes, exports, qsun_hamiltonian dispatch
     ├── spin_operators.jl   SpinBasis + bit-packed on-site Sˣ/Sʸ/Sᶻ, get_spin/set_spin
     ├── random_utils.jl     uniform_array, goe_matrix, random_neighbors, long_range_couplings
@@ -35,11 +35,9 @@ Models/
 ```
 
 `Models` is a submodule of `UniPolfed`, included directly at the package top level
-(sibling to `Numerics`). `QSun` is a submodule of `Models`. In the restructure the
-old top-level `QSun/` folder moved under `Models/`, and the former nested
-`SpinOperators` module was **flattened**: `spin_operators.jl` and friends are now
-plain `include`d text sharing the `QSun` namespace — only `Models.jl` and `QSun.jl`
-declare a `module`.
+(sibling to `Numerics`). `QSun` is a submodule of `Models`;
+`spin_operators.jl` and the other files under `qsun/` share that namespace. Only
+`Models.jl` and `QSun.jl` declare modules.
 
 Public entry points:
 
@@ -78,7 +76,7 @@ H = j1j2_hamiltonian(L, Lup, J1, J2, Δ1, Δ2, W; boundary=:periodic, …)
 
 ---
 
-## Quantum Sun — `QSun/`
+## Quantum Sun — `qsun/`
 
 The Quantum Sun model couples a small **chaotic grain** of `L_grain` spins (a GOE
 block) to `L_loc` **localized** spins; localized spin `j` attaches to a random grain
@@ -128,7 +126,7 @@ values. `S_z` must be a valid sector (`|S_z| ≤ L·S` with `S_z + L·S ∈ ℤ`
 
 ## Testing
 
-Tests in `test/Models/` mirror this layout and assert against **mathematical ground
+Tests in `test/models/` mirror this layout and assert against **mathematical ground
 truth**, not captured snapshots:
 
 - **spin operators** — the on-site `Sˣ/Sʸ/Sᶻ`, materialized as dense matrices, must

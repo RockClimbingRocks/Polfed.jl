@@ -5,10 +5,8 @@
 using Test
 using UniPolfed
 
-@testset "DoubleDeltaFilter - building filter" begin
-
-
-    @testset "Vertify exact results for symmetric intervals for |cutoff|=$(cutoff)" for cutoff in [0.25,0.3,0.35]
+@testset "DoubleDeltaFilter construction" begin
+    @testset "filter contract for |cutoff|=$(cutoff)" for cutoff in [0.25,0.3,0.35]
         cases = [
             (UniPolfed.Interval(-0.3, -0.2), UniPolfed.Interval(+0.2, +0.3)),   # symmetric, moderate
             (UniPolfed.Interval(-0.5, -0.4), UniPolfed.Interval(+0.1, +0.3)),   # asymmetric widths, off-center

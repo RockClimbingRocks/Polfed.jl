@@ -5,12 +5,10 @@
 # sparse matvec severalfold. This module holds those kernels, a registry, and a benchmark to pick
 # the fastest for a given machine/block size.
 #
-# STAGE 1 (this file set): the three general "reads" kernels (csr_simd / ell32_svec / csr64_svec),
-# value grouping, `build_row_mapping`, `list_mappings`, and `benchmark_mappings`. Self-contained —
-# operates on a matrix, no dependency on the POLFED pipeline types.
-#
-# LATER STAGES: the model-declared flip kernel (shuf), the fused-Clenshaw + transpose-at-boundary
-# wrapping (`optimize_spectral_transform`), and the `optimize_mapping` hook in `build_mapping_plan`.
+# It provides the general reads kernels (`csr_simd`, `ell32_svec`, `csr64_svec`),
+# the structured `shuf` kernel, value grouping, mapping selection, and benchmarks.
+# The module is independently testable; the POLFED matrix entrypoint consumes its
+# resolved row operators through `build_optimized_mapping`.
 
 module Optimization
 

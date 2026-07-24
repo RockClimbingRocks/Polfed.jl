@@ -106,7 +106,22 @@ LZ = UniPolfed.Numerics.Lanczos
             @test !LZ.is_satisfied(whi, Float64[], [0.52, 0.58], false)
 
             # Both infinite = the whole spectrum, nothing to bracket at all.
+            @test !LZ.is_satisfied(Window(-Inf, Inf), Float64[], Float64[], false)
             @test LZ.is_satisfied(Window(-Inf, Inf), Float64[], [0.5], false)
+        end
+
+        @testset "transformed-boundary mode uses a p-space completeness guard" begin
+            positive = Window(0.2, 0.8, 0.5)
+            positive_p = [0.1, 0.4, 0.6, 0.9]
+            @test LZ.pool_indices(positive, positive_p, false) == [4, 3, 2]
+            @test !LZ.is_satisfied(positive, [0.9, 0.6], Float64[], false)
+            @test LZ.is_satisfied(positive, [0.9, 0.6, 0.4], Float64[], false)
+
+            negative = Window(0.2, 0.8, -0.5)
+            negative_p = [-0.9, -0.6, -0.4, -0.1]
+            @test LZ.pool_indices(negative, negative_p, true) == [1, 2, 3]
+            @test !LZ.is_satisfied(negative, [-0.9, -0.6], Float64[], true)
+            @test LZ.is_satisfied(negative, [-0.9, -0.6, -0.4], Float64[], true)
         end
 
         @testset "select keeps the in-window pairs + the NEAREST bracket per side" begin

@@ -5,9 +5,8 @@ Default parameter values for the `polfed` entrypoint and its pipeline, reference
 (e.g. `Defaults.polfed.N`) so the names never leak into `module UniPolfed`'s namespace. Defaults are
 **per function**: a variant like `patched_polfed` carries its own [`Defaults.patched_polfed`](@ref).
 
-This module is **minimal during the restructure**: it holds only the constants whose dependencies
-are already migrated. More are added as each POLFED component lands (mapping, transform,
-factorization, …).
+Filter-specific defaults live beside their filter implementations; this module contains
+algorithm-wide defaults shared by the `polfed` pipeline.
 """
 module polfed
 
@@ -59,8 +58,8 @@ max-DoS energy (see [`_resolve_center`](@ref)`(::TargetMaxDoS, …)`). The KPM
 density `ρ(x) = expansion(x)/(π√(1-x²))` carries a Jacobian that diverges as
 `x → ±1`; at finite moment count that divergence is an imperfectly-cancelled
 numerical artifact, so `argmax` snaps to the endpoint unless the search stays a
-physical margin inside `[-1, 1]`. Scanning `[-1 + margin, 1 - margin]` (matching
-the legacy `[-0.99, 0.99]`) lets the bulk mode win.
+physical margin inside `[-1, 1]`. With the default margin, the scan covers
+`[-0.99, 0.99]`, allowing the bulk mode to win.
 """
 const maxdos_edge_margin = 0.01
 

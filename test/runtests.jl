@@ -107,21 +107,9 @@ using Test
                     @testset "delta_up" begin
                         include("main/logic/filter/filters/delta_up/delta_up_tests.jl")
                         include("main/logic/filter/filters/delta_up/coefficients_tests.jl")
-                        # include("main/logic/filter/filters/delta_up/build_tests.jl")  # holds `@test false` TODO placeholders (build_tests.jl:89,93) — wire once filled in
+                        include("main/logic/filter/filters/delta_up/build_tests.jl")
                         include("main/logic/filter/filters/delta_up/validate_tests.jl")
                     end
-                    # delta_up_smooth: Jackson-damped delta. Tests are written (ground-truth style,
-                    # same as delta_up) but GATED until the filter is completed + registered — its
-                    # build.jl/validate.jl are still half-renamed (dispatch on DeltaUpFilter), the
-                    # defaults module lacks `const cutoff`, coefficients.jl passes norm_factor where
-                    # `_damping_coeffs` wants the order, and filters.jl does not include the folder.
-                    # Uncomment once those are fixed.
-                    # @testset "delta_up_smooth" begin
-                    #     include("main/logic/filter/filters/delta_up_smooth/delta_up_smooth_tests.jl")
-                    #     include("main/logic/filter/filters/delta_up_smooth/coefficients_tests.jl")
-                    #     include("main/logic/filter/filters/delta_up_smooth/build_tests.jl")
-                    #     include("main/logic/filter/filters/delta_up_smooth/validate_tests.jl")
-                    # end
                     @testset "delta_down" begin
                         include("main/logic/filter/filters/delta_down/delta_down_tests.jl")
                         include("main/logic/filter/filters/delta_down/coefficients_tests.jl")

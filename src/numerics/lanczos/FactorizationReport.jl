@@ -66,7 +66,9 @@ mutable struct FactorizationReport
         # Reserved/used basis columns, normalized so both backends report column counts
         # (MatrixBasis.nvecs already counts columns; VectorBasis.nvecs counts blocks).
         if basistype <: MatrixBasis
-            reserved_cols = size(factorization.basis.basis, 2)
+            basis = factorization.basis
+            reserved_cols = basis.layout isa RowLayout ? size(basis.basis, 1) :
+                                                         size(basis.basis, 2)
             needed_cols   = factorization.basis.nvecs
         elseif basistype <: VectorBasis
             bs = factorization.basis.blocksize

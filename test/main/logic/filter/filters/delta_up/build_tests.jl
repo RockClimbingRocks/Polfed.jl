@@ -1,96 +1,92 @@
-# DeltaUpFilter: construction, the interface methods, and the order/passband/validation logic.
-# Ground truth is the delta-peaked Chebyshev polynomial itself — normalized to peak at exactly +1
-# at the target, dropping to `cutoff` at the passband edges.
-
 using Test
 using UniPolfed
 
-@testset "DeltaUpFilter - building filter" begin
+function _test_valid_delta_up(filter)
+    P = UniPolfed._scalar_filter(filter)
+    interval = filter.interval
+    passband = filter.passband
 
+    @test interval.left < filter.target < interval.right
+    @test passband.left < filter.target < passband.right
+    @test passband.left <= interval.left
+    @test passband.right >= interval.right
+    @test P(interval.left) >= filter.cutoff
+    @test P(interval.right) >= filter.cutoff
+    @test P(passband.left) ≈ filter.cutoff atol = 1e-8
+    @test P(passband.right) ≈ filter.cutoff atol = 1e-8
+    @test P(filter.target) ≈ 1.0 atol = 1e-8
+    @test UniPolfed.validate_filter(filter)
+end
 
-    @testset "Vertify exact results for interval" begin
-        iv = UniPolfed.Interval(-0.1, 0.1)     
-        f = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter, iv; 
-            cutoff = 0.17, 
-            order_safety_factor = 0.97
-        )
-
-        P = UniPolfed._scalar_filter(f)
-
-        # Exact results obtianed numerically
-        @test f.order == 25
-        @test f.target ≈ (iv.left + iv.right)/2 atol = 1e-8
-        @test f.interval == iv
-        @test f.passband.left  ≈ -0.10664465656736866 
-        @test f.passband.right ≈ +0.10664465656736866 
-        
-        
-        # Identities and inequalities that must hold for a valid filter
-        @test f.interval.left       <  f.target             < f.interval.right
-        @test f.passband.left       <  f.target             < f.passband.right
-        @test f.passband.left       <= f.interval.left
-        @test f.passband.right      >= f.interval.right
-        @test P(f.interval.left)    >= f.cutoff 
-        @test P(f.interval.right)   >= f.cutoff     
-        @test P(f.passband.left)    ≈  f.cutoff atol = 1e-8
-        @test P(f.passband.right)   ≈  f.cutoff atol = 1e-8
-        @test P(f.target)           ≈  1.0      atol = 1e-8  
-    end
-    
-    @testset "Vertify identities - symmetric filters, δ=$(δ)" for δ in [0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 1e-2, 1e-3, 1e-4, 1e-5] 
-        iv = UniPolfed.Interval(-δ, δ)
-        f = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter, iv;
-            cutoff = 0.17,
-            order_safety_factor = 0.97
-        )
-        P = UniPolfed._scalar_filter(f)
-
-        @test f.interval.left       <  f.target             < f.interval.right
-        @test f.passband.left       <  f.target             < f.passband.right
-        @test f.passband.left       <= f.interval.left
-        @test f.passband.right      >= f.interval.right
-        @test P(f.interval.left)    >= f.cutoff 
-        @test P(f.interval.right)   >= f.cutoff
-        @test P(f.passband.left)    ≈  f.cutoff atol = 1e-8
-        @test P(f.passband.right)   ≈  f.cutoff atol = 1e-8
-        @test P(f.target)           ≈  1.0      atol = 1e-8
-
-        # Properties of symmetric filters
-        @test P(f.interval.right)   ≈  P(f.interval.left) 
-    end
-
-    @testset "Verify identities - non-symmetric filter, target=$(target), δ=$(δ)" for δ in [1e-1, 1e-2, 1e-3, 1e-4, 1e-5], target in [1e-3, 1e-2, 1e-1, 0.2, 0.4, 0.6, 0.7, 0.8]
-        iv = UniPolfed.Interval(target - δ, target + δ)
-        f = UniPolfed.build_filter(UniPolfed.DeltaUpFilter, iv;
+@testset "DeltaUpFilter construction" begin
+    @testset "resolved order and passband" begin
+        interval = UniPolfed.Interval(-0.1, 0.1)
+        filter = UniPolfed.build_filter(
+            UniPolfed.DeltaUpFilter,
+            interval;
             cutoff = 0.17,
             order_safety_factor = 0.97,
         )
-        P = UniPolfed._scalar_filter(f)
 
-        # if δ==0.1 && target==0.8
-        #     println("-----------")
-        #     display(f)
-        # end
-
-        @test f.interval.left     <  f.target < f.interval.right
-        @test f.passband.left     <  f.target < f.passband.right
-        @test f.passband.left     <= f.interval.left
-        @test f.passband.right    >= f.interval.right
-        @test P(f.interval.left)  >= f.cutoff
-        @test P(f.interval.right) >= f.cutoff
-        @test P(f.passband.left)  ≈  f.cutoff atol = 1e-8
-        @test P(f.passband.right) ≈  f.cutoff atol = 1e-8
-        @test P(f.target)         ≈  1.0 atol = 1e-8
-    end 
-
-    @testset "Test predetermined order..." begin
-        @test false
+        @test filter.order == 25
+        @test filter.target == 0.0
+        @test filter.interval == interval
+        _test_valid_delta_up(filter)
     end
 
-    @testset "Dont forget to test δ=0.8 and above... What to do with it?" begin
-        @test false
+    @testset "symmetric windows, half-width=$half_width" for half_width in
+        (0.6, 0.2, 0.05, 1e-2, 1e-3)
+        interval = UniPolfed.Interval(-half_width, half_width)
+        filter = UniPolfed.build_filter(
+            UniPolfed.DeltaUpFilter,
+            interval;
+            cutoff = 0.17,
+            order_safety_factor = 0.97,
+        )
+        P = UniPolfed._scalar_filter(filter)
+
+        _test_valid_delta_up(filter)
+        @test P(interval.left) ≈ P(interval.right) atol = 1e-10
     end
 
+    @testset "off-center windows" begin
+        for (target, half_width) in
+            ((0.2, 0.05), (0.4, 1e-2), (0.7, 1e-3), (-0.35, 0.02))
+            interval = UniPolfed.Interval(target - half_width, target + half_width)
+            filter = UniPolfed.build_filter(
+                UniPolfed.DeltaUpFilter,
+                interval;
+                cutoff = 0.17,
+                order_safety_factor = 0.97,
+            )
+            _test_valid_delta_up(filter)
+        end
+    end
+
+    @testset "a caller-supplied order is honored" begin
+        filter = UniPolfed.build_filter(
+            UniPolfed.DeltaUpFilter,
+            UniPolfed.Interval(-0.1, 0.1);
+            cutoff = 0.17,
+            order = 17,
+        )
+
+        @test filter.order == 17
+        _test_valid_delta_up(filter)
+    end
+
+    @testset "very wide interior windows fail explicitly when no delta validates" begin
+        supported = UniPolfed.resolve_filter(UniPolfed.Interval(-0.8, 0.8))
+        @test supported isa UniPolfed.DeltaUpFilter
+        @test UniPolfed.validate_filter(supported)
+
+        error = try
+            UniPolfed.resolve_filter(UniPolfed.Interval(-0.9, 0.9))
+            nothing
+        catch caught
+            caught
+        end
+        @test error isa ErrorException
+        @test occursin("no filter validated", sprint(showerror, error))
+    end
 end

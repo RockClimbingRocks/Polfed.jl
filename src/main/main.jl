@@ -2,7 +2,7 @@
 # that sequences them, then the public entrypoints that wrap the pipeline. No logic lives here —
 # each concern is its own folder with its own aggregator (like every other slice in the tree).
 
-include("defaults/defaults.jl")   # per-function default registries (PolfedDefaults, …)
+include("defaults/defaults.jl")   # per-entrypoint registries under Defaults
 include("sys_info.jl")            # SysInfo — problem shape/type/device (carried on the plan)
 
 # ── logic ──────────────

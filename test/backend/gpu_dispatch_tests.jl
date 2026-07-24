@@ -2,7 +2,7 @@ using Test
 using UniPolfed
 
 # These lock the no-CUDA fallback contract that the CUDA extension relies on.
-# (The GPU code paths themselves cannot run on the CPU host; see RESTRUCTURE.md.)
+# GPU execution is covered separately on CUDA-capable hosts.
 @testset "gpu_dispatch (no CUDA loaded)" begin
     @testset "detection predicates are false on host data" begin
         @test UniPolfed.cuda_available() == false

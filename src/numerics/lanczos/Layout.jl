@@ -1,9 +1,9 @@
 # Block storage orientation for Lanczos. A block of `bs` Krylov vectors can be stored
 # with the vectors as COLUMNS (`D × bs`, operator action `H·X`) or as ROWS (`bs × D`,
 # operator action `X·H`). The row layout makes the per-block inner loop contiguous in
-# memory, which is substantially faster for sparse `H` (see
-# `src/UniPolfed/Optimization/NOTES.md`). Both are mathematically equivalent for a
-# Hermitian operator; only the storage axis and the side of each matrix operation differ.
+# memory and supports UniPolfed's optimized sparse row kernels. Both layouts are
+# mathematically equivalent for a Hermitian operator; only the storage axis and the
+# side of each matrix operation differ.
 #
 # The orientation is carried as a singleton trait so dispatch is fully static. Every
 # orientation-sensitive operation in the factorization goes through one of the seven

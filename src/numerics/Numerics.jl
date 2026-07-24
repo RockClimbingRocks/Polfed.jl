@@ -1,7 +1,7 @@
 module Numerics
 
-# Reusable, POLFED-agnostic spectral primitives. Migrated dependency-first:
-# Clenshaw → KPM (uses Clenshaw) → Lanczos.
+# Reusable, POLFED-agnostic spectral primitives, loaded dependency-first:
+# Clenshaw → KPM (which uses Clenshaw) → Lanczos.
 
 include("clenshaw/Clenshaw.jl")
 include("kpm/kpm.jl")             # uses Clenshaw — include after it

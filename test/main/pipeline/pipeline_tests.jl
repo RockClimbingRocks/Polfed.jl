@@ -1,5 +1,6 @@
 using LinearAlgebra
 using Random
+using SparseArrays
 using Test
 using UniPolfed: DoSConfig, MappingConfig, full_polfed, patched_polfed
 
@@ -43,4 +44,54 @@ using UniPolfed: DoSConfig, MappingConfig, full_polfed, patched_polfed
     @test size(full_vecs) == (dim, dim)
     @test full_report.mapping.layout == "RowLayout"
     @test count(patch -> patch.kind == :edge_both, full_report.patches) == 1
+end
+
+function _pipeline_qrem(L::Int; hx::Float64 = 0.7)
+    rng = MersenneTwister(42)
+    dim = 1 << L
+    diagonal = randn(rng, dim)
+    rows = Int[]
+    columns = Int[]
+    values = Float64[]
+
+    for row in 1:dim
+        push!(rows, row)
+        push!(columns, row)
+        push!(values, diagonal[row])
+        state = row - 1
+        for bit in 0:L-1
+            push!(rows, row)
+            push!(columns, xor(state, 1 << bit) + 1)
+            push!(values, hx)
+        end
+    end
+    return sparse(rows, columns, values, dim, dim)
+end
+
+@testset "patched window matches exact QREM spectrum" begin
+    H = _pipeline_qrem(5)
+    exact = sort(eigvals(Symmetric(Matrix(H))))
+    lo = (exact[9] + exact[10]) / 2
+    hi = (exact[23] + exact[24]) / 2
+    expected = exact[10:23]
+    x0 = normalize(randn(MersenneTwister(9), size(H, 1)))
+
+    vals, vecs, report = patched_polfed(
+        H,
+        x0,
+        5,
+        (:unrescaled, (lo, hi));
+        mc = MappingConfig(Emin = first(exact), Emax = last(exact)),
+        dosc = DoSConfig(N = 80, R = 150, kernel = :Jackson),
+        tol = 1e-12,
+        eigentol = 1e-8,
+        edge_distance = 0.2,
+        howmany_pad = 2,
+        max_retries = 2,
+        retry_growth = 1.5,
+    )
+
+    @test vals ≈ expected atol = 1e-10
+    @test length(vecs) == length(expected)
+    @test report.total_eigenpairs == length(expected)
 end

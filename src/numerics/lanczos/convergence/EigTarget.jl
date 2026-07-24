@@ -28,6 +28,11 @@ Converge a fixed number `n` of eigenpairs at this end.
 """
 struct NumEigs <: EndSpec
     n::Int
+
+    function NumEigs(n::Integer)
+        n > 0 || throw(ArgumentError("NumEigs requires n > 0, got $n"))
+        return new(Int(n))
+    end
 end
 
 """
