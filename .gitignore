@@ -37,3 +37,7 @@
 # Temporary docs validation folders
 /docs/build_tmp_validate*.pending_delete*/
 /docs/build_locked_*/
+
+
+# CLAUDE
+CLAUDE.md
