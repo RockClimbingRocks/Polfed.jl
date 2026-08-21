@@ -65,7 +65,7 @@ end
         for (fam, truth) in cases
             for n in 0:3
                 coeffs = [i == n ? 1.0 : 0.0 for i in 0:n]
-                ce = ClenshawExpansion(fam, coeffs, n, dummy!, 1, Float64)
+                ce = ClenshawExpansion(fam, coeffs, n, dummy!)
                 @test ce(x) ≈ truth[n+1]
             end
         end
@@ -73,10 +73,10 @@ end
 
     @testset "scalar callable — high order & complex" begin
         θ = 0.31
-        ce = ClenshawExpansion(:Chebyshev, [i == 100 ? 1.0 : 0.0 for i in 0:100], 100, dummy!, 1, Float64)
+        ce = ClenshawExpansion(:Chebyshev, [i == 100 ? 1.0 : 0.0 for i in 0:100], 100, dummy!)
         @test ce(cos(θ)) ≈ cos(100*θ)
 
-        cz = ClenshawExpansion(:Chebyshev, [0.0, 0.0, 1.0], 2, dummy!, 1, ComplexF64)
+        cz = ClenshawExpansion(:Chebyshev, [0.0, 0.0, 1.0], 2, dummy!)
         z = 0.5 + 0.2im
         @test cz(z) ≈ 2z^2 - 1
     end
@@ -87,7 +87,7 @@ end
         v = T[1, -2]
         for n in (0, 1, 2, 5)
             coeffs = [i == n ? one(T) : zero(T) for i in 0:n]
-            ce = ClenshawExpansion(:Chebyshev, coeffs, n, mapping!, size(A, 1), eltype(A))
+            ce = ClenshawExpansion(:Chebyshev, coeffs, n, mapping!)
             Y = zeros(T, 2)
             b = [zeros(T, 2) for _ in 1:3]
             ce(Y, v, b)
@@ -102,7 +102,6 @@ end
         coeffs = [i == n ? 1.0 : 0.0 for i in 0:n]
         for M in (A, sparse(A))
             ce = ClenshawExpansion(:Chebyshev, coeffs, n, M)
-            @test ce.D == 2 && ce.T == Float64
             Y = zeros(2); b = [zeros(2) for _ in 1:3]
             ce(Y, v, b)
             @test Y ≈ cheb_mat(A, n) * v
@@ -116,7 +115,6 @@ end
         n = 3
         coeffs = [i == n ? 1.0 : 0.0 for i in 0:n]
         ce = ClenshawExpansion(:Chebyshev, coeffs, n, op)
-        @test ce.D == 2 && ce.T == Float64
         Y = zeros(2); b = [zeros(2) for _ in 1:3]
         ce(Y, v, b)
         @test Y ≈ cheb_mat(A, n) * v
@@ -129,9 +127,9 @@ end
         coeffs = [i == n ? 1.0 : 0.0 for i in 0:n]
         v = [1.0, -2.0]
 
-        ce1 = ClenshawExpansion(:Chebyshev, coeffs, n, mapping!, 2, Float64)
+        ce1 = ClenshawExpansion(:Chebyshev, coeffs, n, mapping!)
         rec!, fin! = CL.build_clenshaw_kernels(mapping!, :Chebyshev)
-        ce2 = ClenshawExpansion(:Chebyshev, coeffs, n, rec!, fin!, 2, Float64)
+        ce2 = ClenshawExpansion(:Chebyshev, coeffs, n, rec!, fin!)
 
         Y1 = zeros(2); Y2 = zeros(2)
         ce1(Y1, v, [zeros(2) for _ in 1:3])
@@ -142,7 +140,6 @@ end
     @testset "constructor: scalar-only (no operator)" begin
         # single-term Chebyshev T₂ via the operator-free constructor
         ce = ClenshawExpansion(:Chebyshev, [0.0, 0.0, 1.0], 2)
-        @test ce.D == 0 && ce.T == Float64
         θ = 0.4
         @test ce(cos(θ)) ≈ cos(2θ)
 
@@ -182,7 +179,7 @@ end
         # single-term expansions S(A) = Tₙ(A)
         for n in (0, 1, 2, 5)
             coeffs = [i == n ? one(T) : zero(T) for i in 0:n]
-            ce = ClenshawExpansion(:Chebyshev, coeffs, n, map_row!, D, T)
+            ce = ClenshawExpansion(:Chebyshev, coeffs, n, map_row!)
             Xr = block_input(T, bs, D)
             Yr = zeros(T, bs, D); b = [zeros(T, bs, D) for _ in 1:3]
             ce(Yr, Xr, b)
@@ -191,7 +188,7 @@ end
 
         # general multi-term expansion
         coeffs = T[0.3, -0.2, 0.5, 0.1, -0.4]
-        ce = ClenshawExpansion(:Chebyshev, coeffs, 4, map_row!, D, T)
+        ce = ClenshawExpansion(:Chebyshev, coeffs, 4, map_row!)
         Xr = block_input(T, bs, D)
         Yr = zeros(T, bs, D); b = [zeros(T, bs, D) for _ in 1:3]
         ce(Yr, Xr, b)
@@ -208,8 +205,8 @@ end
         map_row!(out, in) = mul!(out, in, A)     # X·H  (row,    bs×D)
         coeffs = T[0.3, -0.2, 0.5, 0.1, -0.4]; n = 4
 
-        ce_col = ClenshawExpansion(:Chebyshev, coeffs, n, map_col!, D, T)
-        ce_row = ClenshawExpansion(:Chebyshev, coeffs, n, map_row!, D, T)
+        ce_col = ClenshawExpansion(:Chebyshev, coeffs, n, map_col!)
+        ce_row = ClenshawExpansion(:Chebyshev, coeffs, n, map_row!)
 
         Xc = block_input(T, D, bs)               # D×bs
         Xr = permutedims(Xc)                     # bs×D  (transpose, NOT adjoint)
@@ -272,9 +269,9 @@ end
     @testset "errors" begin
         mapping!(out, in) = mul!(out, [1.0 0; 0 1.0], in)
         # unknown polynomial family
-        @test_throws ArgumentError ClenshawExpansion(:Bogus, [1.0], 0, mapping!, 2, Float64)
+        @test_throws ArgumentError ClenshawExpansion(:Bogus, [1.0], 0, mapping!)
         # coefficient vector too short for the requested order
-        @test_throws ArgumentError ClenshawExpansion(:Chebyshev, [1.0, 2.0], 5, mapping!, 2, Float64)
+        @test_throws ArgumentError ClenshawExpansion(:Chebyshev, [1.0, 2.0], 5, mapping!)
         # workspace vector `b` must have length 3
         ce = ClenshawExpansion(:Chebyshev, [1.0, 0.0, 1.0], 2, [1.0 0; 0 1.0])
         @test_throws AssertionError ce(zeros(2), [1.0, 1.0], [zeros(2), zeros(2)])

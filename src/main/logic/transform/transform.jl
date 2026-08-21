@@ -54,7 +54,6 @@ function build_transform(filter::AbstractFilter, mp::MappingPlan)
         "got order=$order for $(typeof(filter)).",
     ))
     family = polynomial_type(filter)
-    dim    = mp.sys.dim
     E      = eltype(x0)
 
     # The order IS the per-matvec cost multiplier (one H·v per Chebyshev term), so it is the
@@ -65,7 +64,7 @@ function build_transform(filter::AbstractFilter, mp::MappingPlan)
                layout = typeof(layout))
 
     coeffs_func = coefficients(filter)                       # normalized: peak at ±1 at the target
-    expansion = _build_expansion(family, order, coeffs_func, mp, dim, E, x0)
+    expansion = _build_expansion(family, order, coeffs_func, mp, x0)
     b_storage = get_b_storage(mp.parallel_strategy, pu, x0, layout)
 
     if should_log(POLFED_DEBUG_LEVEL)

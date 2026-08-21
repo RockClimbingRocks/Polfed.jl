@@ -6,7 +6,7 @@
 # filter arriving here is fully resolved (`target` and `order` set).
 
 """
-    _build_expansion(family, order, coefficients, mp, dim, E, x0) -> ClenshawExpansion
+    _build_expansion(family, order, coefficients, mp, x0) -> ClenshawExpansion
 
 Build the operator [`ClenshawExpansion`](@ref) for the transform, selecting the Clenshaw
 kernels from the [`MappingPlan`](@ref):
@@ -26,19 +26,18 @@ A user recurrence is adapted to the internal six-argument form by
 - `coefficients`: the filter's **normalized** coefficient function `n -> cₙ` (from
   [`coefficients`](@ref)).
 - `mp::MappingPlan`: carries `f!_rescaled` and the optional custom Clenshaw kernels.
-- `dim::Int`, `E::Type`: operator dimension and element type (from `x0`).
 - `x0::AbstractVecOrMat`: probe used to detect a user recurrence's arity.
 
 # Returns
 A [`ClenshawExpansion`](@ref) callable as `expansion(Y, X, b)`.
 """
 function _build_expansion(family::Symbol, order::Int, coefficients,
-                          mp::MappingPlan, dim::Int, ::Type{E}, x0::AbstractVecOrMat) where {E}
+                          mp::MappingPlan, x0::AbstractVecOrMat)
     has_recurrence = !isnothing(mp.clenshaw_recurrence)
     has_finalsum   = !isnothing(mp.clenshaw_finalsum)
 
     if !has_recurrence && !has_finalsum
-        return ClenshawExpansion(family, coefficients, order, mp.f!_rescaled, dim, E)
+        return ClenshawExpansion(family, coefficients, order, mp.f!_rescaled)
     end
 
     recurrence = if has_recurrence
@@ -49,7 +48,7 @@ function _build_expansion(family::Symbol, order::Int, coefficients,
     end
     finalsum = has_finalsum ? mp.clenshaw_finalsum : last(build_clenshaw_kernels(mp.f!_rescaled, family))
 
-    return ClenshawExpansion(family, coefficients, order, recurrence, finalsum, dim, E)
+    return ClenshawExpansion(family, coefficients, order, recurrence, finalsum)
 end
 
 """

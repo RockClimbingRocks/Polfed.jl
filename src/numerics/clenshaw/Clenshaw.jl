@@ -110,16 +110,18 @@ dynamic.
 # Fields
 - `coefficients::C`: fast indexing closure over the precomputed coefficients.
 - `order::Int`: highest polynomial degree.
-- `D::Int`: problem dimension (rows of the operator).
-- `T::Type`: element type of the operator.
 - `recurrence!::R`, `finalsum!::F`: the Clenshaw step and terminal callbacks.
+
+The expansion carries no dimension or element type. It never allocates — the caller supplies
+every buffer as `b` — so both were write-only metadata, and `T::Type` was an abstract field
+that boxed and cost a dynamic lookup for nothing.
 
 The family symbol is recovered with [`family`](@ref).
 
 # Construction
 Build from any of:
-- a mapping callback `mapping!(out, in)` plus `(D, T)`,
-- explicit `recurrence!` / `finalsum!` callbacks plus `(D, T)` — the "whole
+- a mapping callback `mapping!(out, in)`,
+- explicit `recurrence!` / `finalsum!` callbacks — the "whole
   recurrence relation" path,
 - a concrete `AbstractMatrix`,
 - any object `op` supporting `mul!(out, op, in)`, `size`, and `eltype`
@@ -132,8 +134,6 @@ See the constructor methods below.
 struct ClenshawExpansion{Family, C, R<:Function, F<:Function}
     coefficients::C
     order::Int
-    D::Int
-    T::Type
     recurrence!::R
     finalsum!::F
 end
@@ -144,29 +144,29 @@ The polynomial family symbol (e.g. `:Chebyshev`) carried in the type parameter."
 family(::ClenshawExpansion{Family}) where {Family} = Family
 
 """
-    ClenshawExpansion(type, coefficients, order, mapping!, D, T)
+    ClenshawExpansion(type, coefficients, order, mapping!)
 
-Build from a mapping callback `mapping!(out, in)` (`out ← A·in`) and the problem
-metadata `D` (dimension) and `T` (element type). The recurrence/final-sum
+Build from a mapping callback `mapping!(out, in)` (`out ← A·in`). The recurrence/final-sum
 kernels are derived from `type` via [`build_clenshaw_kernels`](@ref).
+
+The expansion carries no dimension or element type: it never allocates — every buffer is
+supplied by the caller as `b` — so those were metadata nothing read.
 """
 function ClenshawExpansion(
     type::Symbol,
     coefficients::Union{Function,AbstractVector{<:Number}},
     order::Int,
     mapping!::Function,
-    D::Int,
-    T::Type,
 )
     is_supported_family(type) ||
         throw(ArgumentError("Unknown polynomial type :$type. Supported families: $(SUPPORTED_FAMILIES)"))
     coeff = _precompute_coefficients(coefficients, order)
     recurrence!, finalsum! = build_clenshaw_kernels(mapping!, Val(type))
-    return ClenshawExpansion{type, typeof(coeff), typeof(recurrence!), typeof(finalsum!)}(coeff, order, D, T, recurrence!, finalsum!)
+    return ClenshawExpansion{type, typeof(coeff), typeof(recurrence!), typeof(finalsum!)}(coeff, order, recurrence!, finalsum!)
 end
 
 """
-    ClenshawExpansion(type, coefficients, order, recurrence!, finalsum!, D, T)
+    ClenshawExpansion(type, coefficients, order, recurrence!, finalsum!)
 
 Build from explicit `recurrence!` and `finalsum!` callbacks. Use this when the
 recurrence is supplied directly (e.g. a fused/optimized kernel) rather than
@@ -178,20 +178,17 @@ function ClenshawExpansion(
     order::Int,
     recurrence!::Function,
     finalsum!::Function,
-    D::Int,
-    T::Type,
 )
     is_supported_family(type) ||
         throw(ArgumentError("Unknown polynomial type :$type. Supported families: $(SUPPORTED_FAMILIES)"))
     coeff = _precompute_coefficients(coefficients, order)
-    return ClenshawExpansion{type, typeof(coeff), typeof(recurrence!), typeof(finalsum!)}(coeff, order, D, T, recurrence!, finalsum!)
+    return ClenshawExpansion{type, typeof(coeff), typeof(recurrence!), typeof(finalsum!)}(coeff, order, recurrence!, finalsum!)
 end
 
 """
     ClenshawExpansion(type, coefficients, order, mat::AbstractMatrix)
 
 Build from a concrete matrix, with the linear action `out ← mat·in` via `mul!`.
-`D` and `T` are taken from `mat`.
 """
 function ClenshawExpansion(
     type::Symbol,
@@ -200,7 +197,7 @@ function ClenshawExpansion(
     mat::AbstractMatrix{<:Number},
 )
     mapping!(Ỹ, Y) = mul!(Ỹ, mat, Y)
-    return ClenshawExpansion(type, coefficients, order, mapping!, size(mat, 1), eltype(mat))
+    return ClenshawExpansion(type, coefficients, order, mapping!)
 end
 
 """
@@ -218,7 +215,7 @@ function ClenshawExpansion(
     op,
 )
     mapping!(Ỹ, Y) = mul!(Ỹ, op, Y)
-    return ClenshawExpansion(type, coefficients, order, mapping!, size(op, 1), eltype(op))
+    return ClenshawExpansion(type, coefficients, order, mapping!)
 end
 
 """
@@ -239,9 +236,8 @@ _scalar_only_kernel(args...) = error(
 
 Build a **scalar-only** expansion: one that evaluates the polynomial `S(x)` at a
 number but carries no operator. No `mapping!`/matrix is needed (and none is
-fabricated). `D` is set to `0` and `T` to the coefficient element type; the
-`recurrence!`/`finalsum!` fields are set to [`_scalar_only_kernel`](@ref), so the
-vector/matrix call path raises a clear error if used.
+fabricated). The `recurrence!`/`finalsum!` fields are set to
+[`_scalar_only_kernel`](@ref), so the vector/matrix call path raises a clear error if used.
 
 Useful wherever only scalar evaluation is required — e.g. reconstructing a KPM
 density `ρ(x) = Σₖ cₖ Tₖ(x) / (π√(1-x²))`.
@@ -254,9 +250,8 @@ function ClenshawExpansion(
     is_supported_family(type) ||
         throw(ArgumentError("Unknown polynomial type :$type. Supported families: $(SUPPORTED_FAMILIES)"))
     coeff = _precompute_coefficients(coefficients, order)
-    T = coefficients isa AbstractVector ? eltype(coefficients) : typeof(coefficients(0))
     return ClenshawExpansion{type, typeof(coeff), typeof(_scalar_only_kernel), typeof(_scalar_only_kernel)}(
-        coeff, order, 0, T, _scalar_only_kernel, _scalar_only_kernel,
+        coeff, order, _scalar_only_kernel, _scalar_only_kernel,
     )
 end
 
