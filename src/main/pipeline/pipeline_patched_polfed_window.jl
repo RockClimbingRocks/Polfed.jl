@@ -28,7 +28,9 @@ function run_patched_polfed_window_pipeline(
         "The patched window pipeline requires an explicit window target.",
     ))
     timer = StageTimer()
-    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0)
+    log_run_start("patched_polfed", :window, spec;
+                  howmany_per_patch = Int(howmany_per_patch), tol = tol, eigentol = eigentol)
+    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
     dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
     request = @stage timer :interval resolve_window(spec, mp.a, mp.b)
 
@@ -57,5 +59,7 @@ function run_patched_polfed_window_pipeline(
         _edge_budget(left_edge, right_edge), Int(howmany_pad), records,
         length(vals), mp.a, mp.b, timer,
     )
-    return vals, vecs, report
+    # `vecs` comes back column-oriented from `_finalize_result!` regardless of the Krylov
+    # layout the run used, so the result records ColumnLayout.
+    return PatchedResult(vals, vecs, report, ColumnLayout())
 end

@@ -1,10 +1,8 @@
 # Mapping slice: rescale the operator to `[-1, 1]` (required by the Chebyshev filter)
 # and resolve how that application is parallelized. This file is the folder aggregator
 # — it pulls in the parallelization strategy types (chosen here, consumed downstream)
-# and the Distributed worker lifecycle, then defines the config → plan resolution.
 
 include("parallel.jl")       # Parallelization types + resolve/warn (MappingConfig field + build)
-include("workers.jl")        # set_workers/remove_workers (Distributed; TwoLevelParallel only)
 include("row_operators.jl")  # row-layout operator builders for the matrix entrypoint (polfed(H, …))
 
 """
@@ -22,7 +20,8 @@ it estimates any missing spectral bound with a short [`lanczos_extrema`](@ref) p
 and builds the `f!_rescaled` closure.
 
 # Fields
-- `optimize_mapping::Bool`: build optimized value-grouped kernels from a matrix input
+- `optimize_mapping`: build optimized value-grouped kernels from a matrix input —
+  `false`, `true`/`:auto`, a kernel name, or a [`MappingKernel`](@ref)
   (for structured Hamiltonians). Default [`Defaults.polfed.optimize_mapping`](@ref) (`false`).
 - `f!_rescaled::Union{Nothing,Function}`: user-supplied rescaled operator `H̃·X`; if
   `nothing`, POLFED builds it from `f!` and `a`/`b`.
@@ -30,7 +29,7 @@ and builds the `f!_rescaled` closure.
   Clenshaw kernels (consumed by the transform stage); `nothing` uses the defaults.
 - `parallel_strategy::Union{Parallelization,Nothing}`: how the operator application is
   parallelized. `nothing` (default) means auto — resolved per processing unit
-  (CPU → [`MulColsParallel`](@ref), GPU → [`NoParallel`](@ref)).
+  (CPU → [`VectorWise`](@ref), GPU → [`BlockWise`](@ref)).
 - `Emin`, `Emax::Union{Real,Nothing}`: explicit spectral bounds. Either left `nothing`
   is estimated by a short Lanczos probe.
 
@@ -46,7 +45,7 @@ not here (the config is not mutated). Supplying `Emin`/`Emax` skips the estimati
 probe — useful when you already know the spectral edges.
 """
 struct MappingConfig
-    optimize_mapping::Union{Bool,Symbol,NamedTuple}
+    optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}
     f!_rescaled::Union{Nothing,Function}
     clenshaw_recurrence::Union{Nothing,Function}
     clenshaw_finalsum::Union{Nothing,Function}
@@ -55,7 +54,7 @@ struct MappingConfig
     Emax::Union{Real,Nothing}
 
     function MappingConfig(;
-        optimize_mapping::Union{Bool,Symbol,NamedTuple}   = Defaults.polfed.optimize_mapping,
+        optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}   = Defaults.polfed.optimize_mapping,
         f!_rescaled::Union{Nothing,Function}              = nothing,
         clenshaw_recurrence::Union{Nothing,Function}      = nothing,
         clenshaw_finalsum::Union{Nothing,Function}        = nothing,
@@ -81,7 +80,7 @@ callbacks, and the scalar bounds all carry concrete types.
 
 # Fields
 - `parallel_strategy::Fpar`: resolved [`Parallelization`](@ref) strategy.
-- `optimize_mapping::Union{Bool,Symbol,NamedTuple}`: the mapping-optimization request carried
+- `optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}`: the mapping-optimization request carried
   from the config (metadata; the optimized kernels themselves are built in the matrix entrypoint
   and passed in via `f!_rescaled`).
 - `f!::Fmap`: the original in-place operator `H·X`.
@@ -96,7 +95,7 @@ callbacks, and the scalar bounds all carry concrete types.
 """
 struct MappingPlan{T<:Real,Fpar<:Parallelization,Fmap,Frescaled,Fcrr,Fcfs,S<:SysInfo}
     parallel_strategy::Fpar
-    optimize_mapping::Union{Bool,Symbol,NamedTuple}
+    optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}
     f!::Fmap
     f!_rescaled::Frescaled
     clenshaw_recurrence::Fcrr
@@ -142,8 +141,9 @@ function _resolve_bounds(cfg::MappingConfig, f!, v0::AbstractVector)
                estimating = isnothing(cfg.Emin) ? (isnothing(cfg.Emax) ? "Emin+Emax" : "Emin") : "Emax")
 
     res = lanczos_extrema(f!, v0; return_result = true)
-    polfed_log(POLFED_DEEP_DEBUG_LEVEL, "Bounds probe finished.",
-               converged = res.converged, vals = res.vals)
+    polfed_log(POLFED_DEBUG_LEVEL, "Bounds probe finished.",
+               converged = res.converged, vals = res.vals,
+               iterations = res.report.itersneeded, residual = res.report.residual)
     if res.converged < 2
         polfed_log(POLFED_WARN_LEVEL,
                    "Spectral-bounds probe did not converge both extremes; estimated Emin/Emax " *
@@ -158,7 +158,8 @@ function _resolve_bounds(cfg::MappingConfig, f!, v0::AbstractVector)
 end
 
 """
-    build_mapping_plan(cfg::MappingConfig, f!, x0, pu=CPU()/GPU() from x0) -> MappingPlan
+    build_mapping_plan(cfg::MappingConfig, f!, x0, pu=CPU()/GPU() from x0;
+                       layout=ColumnLayout()) -> MappingPlan
 
 Resolve a [`MappingConfig`](@ref) into a concrete [`MappingPlan`](@ref):
 
@@ -167,17 +168,23 @@ Resolve a [`MappingConfig`](@ref) into a concrete [`MappingPlan`](@ref):
 3. compute the rescaling `a = (Emax-Emin)/2`, `b = (Emax+Emin)/2`,
 4. build the in-place `f!_rescaled` closure (`H̃ = (H - b)/a`) unless the user supplied one.
 
-`x0` is the POLFED starting vector/block; its first column seeds the bound-estimation
-probe. The processing unit `pu` defaults to the device `x0` lives on ([`GPU`](@ref) if
-`x0` is a GPU array, otherwise [`CPU`](@ref)), and can be passed explicitly to override.
+`x0` is the POLFED starting vector/block; its first **Krylov vector** seeds the
+bound-estimation probe — which axis that is depends on `layout`, so the slice is taken
+through [`_vector_slice`](@ref) rather than assuming a column. The processing unit `pu`
+defaults to the device `x0` lives on ([`GPU`](@ref) if `x0` is a GPU array, otherwise
+[`CPU`](@ref)), and can be passed explicitly to override.
+
+`layout` is how the Krylov block is stored ([`ColumnLayout`](@ref) `D × bs` or
+[`RowLayout`](@ref) `bs × D`). It is recorded on the plan's [`SysInfo`](@ref) and is the
+single source of orientation for every downstream stage that slices a vector out of a block.
 """
 function build_mapping_plan(cfg::MappingConfig, f!::Fmap, x0::AbstractVecOrMat,
-                            pu::ProcessingUnit = is_gpu_array(x0) ? GPU() : CPU()) where {Fmap}
+                            pu::ProcessingUnit = is_gpu_array(x0) ? GPU() : CPU();
+                            layout::Layout = ColumnLayout()) where {Fmap}
     strategy = resolve_parallelization(cfg.parallel_strategy, pu)
     warn_parallelization(x0, strategy, pu)
 
-    v0_source = x0 isa AbstractVector ? x0 : view(x0, :, 1)
-    v0 = pu.Vector(v0_source)
+    v0 = pu.Vector(_vector_slice(layout, x0, 1))
 
     Emin, Emax = _resolve_bounds(cfg, f!, v0)
 
@@ -187,13 +194,14 @@ function build_mapping_plan(cfg::MappingConfig, f!::Fmap, x0::AbstractVecOrMat,
 
     f!_rescaled = isnothing(cfg.f!_rescaled) ? _make_rescaled(f!, a, b) : cfg.f!_rescaled
 
-    sys = SysInfo(x0, pu)   # dim/block_size/pu/eltype + x0 (by reference); mp.sys
+    sys = SysInfo(x0, pu, layout)   # dim/block_size/pu/eltype/layout + x0 (by reference); mp.sys
 
     polfed_log(POLFED_INFO_LEVEL, "Mapping resolved: H̃ = (H - b)/a rescales the spectrum to [-1, 1].",
                Emin = Emin, Emax = Emax, a = a, b = b,
                dim = sys.dim, block_size = sys.block_size,
                eltype = eltype(sys.x0), processing_unit = typeof(pu),
-               parallel = typeof(strategy),
+               layout = typeof(layout),
+               parallel = typeof(strategy), width = Emax - Emin,
                f!_rescaled = isnothing(cfg.f!_rescaled) ? "derived" : "user-provided")
 
     return MappingPlan(

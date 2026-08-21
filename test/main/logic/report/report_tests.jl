@@ -69,8 +69,13 @@ using UniPolfed.Common: stage_names, total_wall
         # calls into one entry (matching the window pipeline, where `resolve_window` is one call).
         @test t[:interval, :n] == 2
         @test all(s -> t[s, :n] == 1, (:bounds, :dos, :filter, :transform, :lanczos))
-        # Lanczos dominates: it is the bottleneck the whole design targets.
-        @test t[:lanczos] > sum(t[s] for s in (:bounds, :dos, :interval, :filter, :transform))
+        # NO assertion that :lanczos is the largest stage. It looks like it should hold — Lanczos
+        # is the bottleneck the whole design targets — but on a 256-dimensional fixture the stage
+        # times are dominated by FIRST-CALL COMPILATION, not by work. That made the assertion pass
+        # only while this file happened to be the first thing in the suite to run a full pipeline;
+        # once trace/trace_tests.jl (which runs earlier) started compiling the Lanczos path first,
+        # :lanczos dropped to 0.55s against another stage's 0.67s. A wall-clock ordering claim is a
+        # benchmark statement, not a test one — the guard that matters is `t[s] > 0.0` above.
     end
 
     @testset "convergence-history table only when :convergence_details is set" begin

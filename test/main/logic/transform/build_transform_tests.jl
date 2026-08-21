@@ -23,7 +23,7 @@ end
             UniPolfed.MappingConfig(
                 Emin = -1.0,
                 Emax = 1.0,
-                parallel_strategy = UniPolfed.NoParallel(),
+                parallel_strategy = UniPolfed.BlockWise(),
             ),
             f!,
             x0,
@@ -86,7 +86,7 @@ end
             UniPolfed.MappingConfig(
                 Emin=-1.0,
                 Emax=1.0,
-                parallel_strategy=UniPolfed.NoParallel(),
+                parallel_strategy=UniPolfed.BlockWise(),
             ),
             f!,
             x0,
@@ -136,7 +136,7 @@ end
             UniPolfed.MappingConfig(
                 Emin = -1.0,
                 Emax = 1.0,
-                parallel_strategy = UniPolfed.NoParallel(),
+                parallel_strategy = UniPolfed.BlockWise(),
             ),
             f!,
             x0,
@@ -236,7 +236,7 @@ end
         f_col!(Y, X) = (mul!(Y, H, X); nothing)
         x0_col = ones(Float64, D, bs)
         mp_col = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin = -1.0, Emax = 1.0, parallel_strategy = UniPolfed.NoParallel()),
+            UniPolfed.MappingConfig(Emin = -1.0, Emax = 1.0, parallel_strategy = UniPolfed.BlockWise()),
             f_col!,
             x0_col,
         )
@@ -249,7 +249,7 @@ end
                 Emin = -1.0,
                 Emax = 1.0,
                 f!_rescaled = f_row!,
-                parallel_strategy = UniPolfed.NoParallel(),
+                parallel_strategy = UniPolfed.BlockWise(),
             ),
             f_row!,
             x0_row,
@@ -296,12 +296,10 @@ end
             return Y
         end
 
-        Y_no_parallel = transformed_with(UniPolfed.NoParallel())
-        Y_mulcols = transformed_with(UniPolfed.MulColsParallel())
-        Y_mulrows = transformed_with(UniPolfed.MulRowsParallel())
+        Y_blockwise = transformed_with(UniPolfed.BlockWise())
+        Y_vectorwise = transformed_with(UniPolfed.VectorWise())
 
-        @test Y_mulcols ≈ Y_no_parallel
-        @test Y_mulrows ≈ Y_no_parallel
+        @test Y_vectorwise ≈ Y_blockwise
     end
 
     @testset "parallel strategies agree for block input" begin
@@ -336,12 +334,10 @@ end
             return Y
         end
 
-        Y_no_parallel = transformed_with(UniPolfed.NoParallel())
-        Y_mulcols = transformed_with(UniPolfed.MulColsParallel())
-        Y_mulrows = transformed_with(UniPolfed.MulRowsParallel())
+        Y_blockwise = transformed_with(UniPolfed.BlockWise())
+        Y_vectorwise = transformed_with(UniPolfed.VectorWise())
 
-        @test Y_mulcols ≈ Y_no_parallel
-        @test Y_mulrows ≈ Y_no_parallel
+        @test Y_vectorwise ≈ Y_blockwise
     end
     
 end

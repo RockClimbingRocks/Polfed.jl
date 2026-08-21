@@ -14,7 +14,7 @@ using UniPolfed
         recurrence! = UniPolfed.normalize_clenshaw_recurrence(
             recurrence5!,
             x0,
-            UniPolfed.NoParallel(),
+            UniPolfed.BlockWise(),
         )
 
         b1 = zeros(4)
@@ -39,7 +39,7 @@ using UniPolfed
         recurrence! = UniPolfed.normalize_clenshaw_recurrence(
             recurrence6!,
             x0,
-            UniPolfed.NoParallel(),
+            UniPolfed.BlockWise(),
         )
 
         b1 = zeros(4)
@@ -59,7 +59,7 @@ using UniPolfed
         @test_throws ArgumentError UniPolfed.normalize_clenshaw_recurrence(
             bad_recurrence!,
             x0,
-            UniPolfed.NoParallel(),
+            UniPolfed.BlockWise(),
         )
     end
 end

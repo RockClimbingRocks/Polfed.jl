@@ -1,5 +1,19 @@
 using UniPolfed
 using Test
+using Logging
+
+# Expected POLFED warnings — deliberately under-budgeted Krylov runs, edge-touching windows,
+# partially-converged targets — are noise in a green run, so the ambient logger is raised to
+# Error. This filters only the AMBIENT logger; `@test_logs` installs its own TestLogger locally
+# and is unaffected.
+#
+# Do NOT silence with `Logging.disable_logging` or `Common.verbosity[] = 0` instead: both
+# short-circuit BEFORE the TestLogger is consulted, so the suite's log assertions would fail
+# (verified — `disable_logging(Warn)` breaks `@test_logs`, `global_logger` does not).
+#
+# Set POLFED_TEST_VERBOSE=1 to see the warnings, e.g. to diff the warning set across a refactor.
+const _quiet = get(ENV, "POLFED_TEST_VERBOSE", "0") == "0"
+const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) : global_logger()
 
 @testset "UniPolfed.jl" begin
 
@@ -8,6 +22,7 @@ using Test
             include("common/Formatter_tests.jl")
             include("common/logging_tests.jl")
             include("common/stage_timer_tests.jl")
+            include("common/table_tests.jl")
             @testset "Utils" begin
                 include("common/utils/bisection_tests.jl")
                 include("common/utils/chebyshev_integration_tests.jl")
@@ -73,11 +88,16 @@ using Test
 
     @testset "Optimization" begin
         include("optimization/qrem_fixture.jl")          # qrem(L) + mul_row_ref helpers
-        include("optimization/value_grouping_tests.jl")
-        include("optimization/reads_tests.jl")
-        include("optimization/flips_tests.jl")
-        include("optimization/boundary_tests.jl")
-        include("optimization/benchmark_tests.jl")
+        include("optimization/MappingStructure_tests.jl")
+        include("optimization/MappingKernel_tests.jl")
+        include("optimization/patterns/spin_flip/FlipStructure_tests.jl")
+        include("optimization/patterns/spin_flip/kernels_tests.jl")
+        include("optimization/patterns/spin_flip/validate_kernel_tests.jl")
+        include("optimization/patterns/hopping/HopStructure_tests.jl")
+        include("optimization/patterns/hopping/kernels_tests.jl")
+        include("optimization/patterns/hopping/validate_kernel_tests.jl")
+        include("optimization/patterns/universal/kernels_tests.jl")
+        include("optimization/patterns/universal/validate_kernel_tests.jl")
         include("optimization/optimized_mapping_tests.jl")
     end
 
@@ -98,32 +118,38 @@ using Test
             end
 
             @testset "filter" begin
-                include("main/logic/filter/order_bisection_tests.jl")
                 include("main/logic/filter/polynomial_order_tests.jl")
-                include("main/logic/filter/edge_side_tests.jl")
-                include("main/logic/filter/resolve_filter_tests.jl")
                 include("main/logic/filter/passband_tests.jl")
-                @testset "filters" begin
+                @testset "resolution" begin
+                    include("main/logic/filter/resolution/order_bisection_tests.jl")
+                    include("main/logic/filter/resolution/edge_side_tests.jl")
+                    include("main/logic/filter/resolution/resolve_filter_tests.jl")
+                    include("main/logic/filter/resolution/resolve_double_strategy_tests.jl")
+                end
+                @testset "filter_types" begin
                     @testset "delta_up" begin
-                        include("main/logic/filter/filters/delta_up/delta_up_tests.jl")
-                        include("main/logic/filter/filters/delta_up/coefficients_tests.jl")
-                        include("main/logic/filter/filters/delta_up/build_tests.jl")
-                        include("main/logic/filter/filters/delta_up/validate_tests.jl")
+                        include("main/logic/filter/filter_types/delta_up/delta_up_tests.jl")
+                        include("main/logic/filter/filter_types/delta_up/coefficients_tests.jl")
+                        include("main/logic/filter/filter_types/delta_up/build_tests.jl")
+                        include("main/logic/filter/filter_types/delta_up/validate_tests.jl")
+                    end
+                    @testset "delta_up_smooth" begin
+                        include("main/logic/filter/filter_types/delta_up_smooth/delta_up_smooth_tests.jl")
                     end
                     @testset "delta_down" begin
-                        include("main/logic/filter/filters/delta_down/delta_down_tests.jl")
-                        include("main/logic/filter/filters/delta_down/coefficients_tests.jl")
-                        include("main/logic/filter/filters/delta_down/build_tests.jl")
-                        include("main/logic/filter/filters/delta_down/validate_tests.jl")
+                        include("main/logic/filter/filter_types/delta_down/delta_down_tests.jl")
+                        include("main/logic/filter/filter_types/delta_down/coefficients_tests.jl")
+                        include("main/logic/filter/filter_types/delta_down/build_tests.jl")
+                        include("main/logic/filter/filter_types/delta_down/validate_tests.jl")
                     end
                     @testset "double_delta" begin
-                        include("main/logic/filter/filters/double_delta/double_delta_tests.jl")
-                        include("main/logic/filter/filters/double_delta/coefficients_tests.jl")
-                        include("main/logic/filter/filters/double_delta/build_tests.jl")
-                        include("main/logic/filter/filters/double_delta/validate_tests.jl")
+                        include("main/logic/filter/filter_types/double_delta/double_delta_tests.jl")
+                        include("main/logic/filter/filter_types/double_delta/coefficients_tests.jl")
+                        include("main/logic/filter/filter_types/double_delta/build_tests.jl")
+                        include("main/logic/filter/filter_types/double_delta/validate_tests.jl")
                     end
                     @testset "edge" begin
-                        include("main/logic/filter/filters/edge/edge_tests.jl")
+                        include("main/logic/filter/filter_types/edge/edge_tests.jl")
                     end
                 end
             end
@@ -136,6 +162,10 @@ using Test
                     include("main/logic/transform/parallel/b_storage_tests.jl")
                 end
                 include("main/logic/transform/build_transform_tests.jl")
+            end
+
+            @testset "trace" begin
+                include("main/logic/trace/trace_tests.jl")
             end
 
             @testset "report" begin
@@ -160,7 +190,12 @@ using Test
             include("main/entrypoint/matrix_entrypoint_tests.jl")
             include("main/entrypoint/window_entrypoint_tests.jl")
             include("main/entrypoint/edge_entrypoint_tests.jl")
+            include("main/entrypoint/double_entrypoint_tests.jl")
             include("main/entrypoint/patched_full_entrypoint_tests.jl")
+            # Gated: reports as skipped when no CUDA device is present (the usual case).
+            include("main/entrypoint/gpu_entrypoint_tests.jl")
         end
     end
 end
+
+global_logger(_old_logger)

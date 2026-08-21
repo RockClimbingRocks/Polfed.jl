@@ -47,30 +47,44 @@ here — they live on the `filter` and the `Interval` the caller already holds.
 function build_transform(filter::AbstractFilter, mp::MappingPlan)
     x0     = mp.sys.x0
     pu     = mp.sys.pu
+    layout = mp.sys.layout
     order  = polynomial_order(filter)::Int
     order > 0 || throw(ArgumentError(
         "build_transform requires a resolved filter with positive polynomial order; " *
         "got order=$order for $(typeof(filter)).",
     ))
     family = polynomial_type(filter)
-    dim    = size(x0, 1)
+    dim    = mp.sys.dim
     E      = eltype(x0)
 
     # The order IS the per-matvec cost multiplier (one H·v per Chebyshev term), so it is the
     # single most useful number to see when a run is unexpectedly slow.
     polfed_log(POLFED_INFO_LEVEL, "Building the spectral transformation (Clenshaw filter of H̃).",
                filter = nameof(typeof(filter)), order = order, family = family,
-               dim = dim, eltype = E, parallel = typeof(mp.parallel_strategy))
+               dim = mp.sys.dim, eltype = E, parallel = typeof(mp.parallel_strategy),
+               layout = typeof(layout))
 
     coeffs_func = coefficients(filter)                       # normalized: peak at ±1 at the target
     expansion = _build_expansion(family, order, coeffs_func, mp, dim, E, x0)
-    b_storage = get_b_storage(mp.parallel_strategy, pu, x0)
+    b_storage = get_b_storage(mp.parallel_strategy, pu, x0, layout)
 
-    polfed_log(POLFED_DEBUG_LEVEL, "Spectral transformation built.",
-               order = order, b_storage = typeof(b_storage))
+    if should_log(POLFED_DEBUG_LEVEL)
+        # The coefficient profile says whether the polynomial is well conditioned: c₀ and the
+        # largest |cₖ| bound the Clenshaw recurrence's dynamic range, |c_K| says whether the
+        # expansion was truncated while still contributing.
+        cs = abs.(coeffs_func.(0:order))
+        polfed_log(POLFED_DEBUG_LEVEL, "Spectral transformation built.",
+                   order = order, terms = order + 1, c0 = coeffs_func(0),
+                   max_coefficient = maximum(cs), last_coefficient = last(cs),
+                   kernels = isnothing(mp.clenshaw_recurrence) && isnothing(mp.clenshaw_finalsum) ?
+                             "derived from f!_rescaled" : "user-supplied",
+                   b_storage = typeof(b_storage), b_storage_bytes = Base.summarysize(b_storage))
+        polfed_log(POLFED_DEEP_DEBUG_LEVEL, "Filter coefficients (head).",
+                   coefficients = [coeffs_func(k) for k in 0:min(9, order)])
+    end
 
     return (Y::AbstractVecOrMat{<:Number}, X::AbstractVecOrMat{<:Number}) -> begin
-        clenshaw_apply(expansion, Y, X, b_storage, pu, mp.parallel_strategy)
+        clenshaw_apply(expansion, Y, X, b_storage, pu, mp.parallel_strategy, layout)
         return nothing
     end
 end

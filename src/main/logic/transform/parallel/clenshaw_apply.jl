@@ -11,29 +11,24 @@ Apply the Clenshaw `expansion` to `X`, writing `Y`, under the parallelization `s
 `b` is the recurrence workspace from [`get_b_storage`](@ref) (shape matched to `strategy`).
 
 Methods:
-- [`NoParallel`](@ref) / [`MulRowsParallel`](@ref): a single whole-block call (row-level
-  parallelism, when present, lives inside the expansion's matvec).
-- [`MulColsParallel`](@ref) on [`CPU`](@ref): threaded over columns (per-column workspace),
-  or a single BLAS-serialized whole-block call when `nt_per_col > 1`.
-- [`TwoLevelParallel`](@ref) on [`CPU`](@ref): columns distributed over the worker pool into
-  a shared output buffer.
+- [`BlockWise`](@ref): a single whole-block call (the decomposition, when present, lives
+  inside the expansion's matvec).
+- [`VectorWise`](@ref) on [`CPU`](@ref): threaded over columns with per-column workspace,
+  or — for a vector input, which is a single column — one BLAS-serialized call.
 """
 function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVecOrMat}, ::ProcessingUnit, ::NoParallel)
+                        b::AbstractVector{<:AbstractVecOrMat}, ::ProcessingUnit, ::BlockWise,
+                        ::Layout = ColumnLayout())
     expansion(Y, X, b)
     return nothing
 end
 
+"""CPU vector overload for [`VectorWise`](@ref): a vector input is a single column, so there
+is nothing to split — one call, with BLAS serialized so the expansion's optimized kernels own
+the threads. Selected by the workspace shape (three arrays, not per-column triplets)."""
 function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVecOrMat}, ::ProcessingUnit, ::MulRowsParallel)
-    expansion(Y, X, b)
-    return nothing
-end
-
-"""CPU whole-block overload for [`MulColsParallel`](@ref) with `nt_per_col > 1`: serialize
-BLAS so the expansion's optimized kernels own the threads."""
-function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVecOrMat}, ::CPU, ::MulColsParallel)
+                        b::AbstractVector{<:AbstractVecOrMat}, ::CPU, ::VectorWise,
+                        ::Layout = ColumnLayout())
     prev_blas_threads = BLAS.get_num_threads()
     BLAS.set_num_threads(1)
     try
@@ -44,36 +39,26 @@ function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::Ab
     return nothing
 end
 
-"""CPU threaded-column overload for [`MulColsParallel`](@ref): one column per thread, each
-with its own recurrence triplet."""
+"""CPU threaded per-vector overload for [`VectorWise`](@ref): one Krylov vector per thread,
+each with its own recurrence triplet. The vector axis is selected by `layout` through
+[`_vector_slice`](@ref) — columns under [`ColumnLayout`](@ref), rows under
+[`RowLayout`](@ref) — so a row-layout block is split into `bs` vectors of length `D`, not
+into `D` fragments of length `bs`."""
 function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVector{<:AbstractVector}}, ::CPU, ::MulColsParallel)
+                        b::AbstractVector{<:AbstractVector{<:AbstractVector}}, ::CPU, ::VectorWise,
+                        layout::Layout = ColumnLayout())
     @assert size(X) == size(Y) "Y and X must have the same size"
-    @assert length(b) == size(X, 2) "workspace length must equal the number of columns"
+    nvecs = blocksize(layout, X)
+    @assert length(b) == nvecs "workspace length must equal the number of Krylov vectors"
 
-    ncols = size(X, 2)
     prev_blas_threads = BLAS.get_num_threads()
     BLAS.set_num_threads(1)
     try
-        Threads.@threads for i in 1:ncols
-            expansion(view(Y, :, i), view(X, :, i), b[i])
+        Threads.@threads for i in 1:nvecs
+            expansion(_vector_slice(layout, Y, i), _vector_slice(layout, X, i), b[i])
         end
     finally
         BLAS.set_num_threads(prev_blas_threads)
     end
-    return nothing
-end
-
-"""CPU distributed-worker overload for [`TwoLevelParallel`](@ref): columns are mapped over
-the worker pool into a shared output buffer, then copied back into `Y`."""
-function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVector{<:AbstractVector}}, ::CPU, ps::TwoLevelParallel)
-    nvecs = size(X, 2)
-    @assert size(X) == size(Y) "Y and X must have the same size"
-    @assert length(b) == nvecs "workspace length must equal the number of columns"
-
-    Y_sh = get_clenshaw_shared_buffer!(ps, eltype(Y), size(Y))
-    pmap(i -> expansion(view(Y_sh, :, i), view(X, :, i), b[i]), ps.worker_pool, 1:nvecs)
-    Y .= Y_sh
     return nothing
 end

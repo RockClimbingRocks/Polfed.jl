@@ -29,7 +29,9 @@ function run_full_polfed_pipeline(
 )
     howmany_per_patch > 0 || throw(ArgumentError("howmany_per_patch must be positive."))
     timer = StageTimer()
-    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0)
+    polfed_log(POLFED_INFO_LEVEL, "full_polfed started (whole rescaled spectrum [-1, 1]).",
+               howmany_per_patch = Int(howmany_per_patch), tol = tol, eigentol = eigentol)
+    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
     mp.sys.dim > 1 || throw(ArgumentError("full POLFED requires an operator dimension above one."))
     dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
     request = Interval(-1.0, 1.0)
@@ -64,5 +66,7 @@ function run_full_polfed_pipeline(
         _edge_budget(left_edge, right_edge), Int(howmany_pad), records,
         length(vals), mp.a, mp.b, timer,
     )
-    return vals, vecs, report
+    # `vecs` comes back column-oriented from `_finalize_result!` regardless of the Krylov
+    # layout the run used, so the result records ColumnLayout.
+    return PatchedResult(vals, vecs, report, ColumnLayout())
 end

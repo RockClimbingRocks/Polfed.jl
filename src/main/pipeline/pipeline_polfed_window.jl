@@ -20,7 +20,8 @@ function run_polfed_window_pipeline(
         "The window pipeline requires (:rescaled, (left, right)), " *
         "(:unrescaled, (left, right)), or a bare (left, right).",
     ))
-    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0)
+    log_run_start("polfed", :window, spec; tol = tol, eigentol = eigentol)
+    mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
     dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
     interval = @stage timer :interval resolve_window(spec, mp.a, mp.b)
     howmany = howmany_in_interval(dos, interval)
@@ -33,8 +34,11 @@ function run_polfed_window_pipeline(
         filter, howmany, mp.sys.block_size, max(2.5, overestimate_iters),
     )
 
+    eig_target = window_eig_target(filter, interval)
+    log_prelanczos(mp, filter, eig_target, howmany, expected_dim, maxdim, tol, eigentol_rescaled;
+                   interval = interval, rescaled_values = true)
     result = @stage timer :lanczos lanczos(
-        transformed, mp.sys.x0, window_eig_target(filter, interval);
+        transformed, mp.sys.x0, eig_target;
         rot = Defaults.polfed.rot,
         basistype = Defaults.polfed.basistype,
         maxdim = maxdim,
@@ -44,6 +48,7 @@ function run_polfed_window_pipeline(
         mapvals = mapvals,
         next_check = Defaults.polfed.conv_checking(expected_dim),
     )
+    log_lanczos_outcome(result)
     return build_polfed_result(
         result, mp, interval, spec, filter, layout, howmany, timer;
         vals_rescaled = true,

@@ -42,7 +42,8 @@ function _build_expansion(family::Symbol, order::Int, coefficients,
     end
 
     recurrence = if has_recurrence
-        normalize_clenshaw_recurrence(mp.clenshaw_recurrence, x0, mp.parallel_strategy)
+        normalize_clenshaw_recurrence(mp.clenshaw_recurrence, x0, mp.parallel_strategy,
+                                      mp.sys.layout)
     else
         first(build_clenshaw_kernels(mp.f!_rescaled, family))
     end
@@ -58,17 +59,15 @@ Adapt a user Clenshaw recurrence to the internal six-argument signature
 `(b1, b2, b3, c, k, X)`. Accepts either that form or the five-argument
 `(b1, b2, b3, c, X)` (the step index `k` is then ignored). The `strategy` selects the
 sample used to probe which form the callback accepts (a single column view for the
-block-parallel strategies, the whole `x0` for [`NoParallel`](@ref)).
+per-vector strategies, the whole `x0` for [`BlockWise`](@ref)). The single-vector sample is
+taken through [`_vector_slice`](@ref), so it is a `D`-length vector under either layout.
 
 # Throws
 - `ArgumentError`: if `recurrence` accepts neither signature.
 """
-function normalize_clenshaw_recurrence(recurrence, x0::AbstractVecOrMat, strategy::Parallelization)
-    sample = if strategy isa NoParallel
-        x0
-    else
-        x0 isa AbstractVector ? x0 : view(x0, :, 1)
-    end
+function normalize_clenshaw_recurrence(recurrence, x0::AbstractVecOrMat, strategy::Parallelization,
+                                       layout::Layout = ColumnLayout())
+    sample = strategy isa BlockWise ? x0 : _vector_slice(layout, x0, 1)
     c = one(real(eltype(sample)))
 
     if applicable(recurrence, sample, sample, sample, c, 1, sample)

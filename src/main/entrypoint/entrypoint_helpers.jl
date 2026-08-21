@@ -2,6 +2,23 @@
 # mapping slice; this helper only orchestrates them for the public row-native paths.
 
 """
+    @with_verbosity level expr
+
+Evaluate `expr` with the POLFED [`verbosity`](@ref) temporarily raised to `level`, restoring the
+previous level afterwards (also on error). `level === nothing` — the default of every entrypoint's
+`verbosity` keyword — evaluates `expr` unchanged, leaving the global level alone.
+
+This is what lets `polfed(H, x0, 50, :maxdos; verbosity = 3)` trace one run without the caller
+having to set and reset `UniPolfed.Common.verbosity[]` around it.
+"""
+macro with_verbosity(level, expr)
+    quote
+        local lvl = $(esc(level))
+        lvl === nothing ? $(esc(expr)) : with_verbosity(() -> $(esc(expr)), Int(lvl))
+    end
+end
+
+"""
     _prepare_matrix_row_pipeline(H, x0, mc) -> (f!, x0_row, mc_row)
 
 Prepare a concrete matrix for any row-native POLFED entrypoint. The helper resolves missing
@@ -21,6 +38,9 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
     # length-dim vector — the first column of a column block, the first row of a row block.
     if isnothing(mc.Emin) || isnothing(mc.Emax)
         v0 = x0 isa AbstractVector ? x0 : is_row ? view(x0, 1, :) : view(x0, :, 1)
+        polfed_log(POLFED_DEBUG_LEVEL, "Estimating spectral bounds with a Lanczos probe on H.",
+                   estimating = isnothing(mc.Emin) ? (isnothing(mc.Emax) ? "Emin+Emax" : "Emin") : "Emax",
+                   dim = size(H, 1))
         E1, E2 = lanczos_extrema(H; x0 = collect(v0))
         Emin = isnothing(mc.Emin) ? E1 : mc.Emin
         Emax = isnothing(mc.Emax) ? E2 : mc.Emax
@@ -39,7 +59,7 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
 
     mc_row = MappingConfig(optimize_mapping = mc.optimize_mapping,
                            f!_rescaled       = rowops.f!_rescaled,
-                           parallel_strategy = NoParallel(),
+                           parallel_strategy = BlockWise(),
                            Emin = Emin, Emax = Emax)
 
     return rowops.f!, x0_row, mc_row

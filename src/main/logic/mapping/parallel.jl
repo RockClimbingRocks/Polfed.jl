@@ -11,84 +11,49 @@ Abstract supertype for POLFED's mapping/transform parallelization strategies. Us
 for multiple dispatch: how the (block) operator application is parallelized is
 selected by the concrete strategy type.
 
-Concrete strategies: [`NoParallel`](@ref), [`MulColsParallel`](@ref),
-[`MulRowsParallel`](@ref), [`TwoLevelParallel`](@ref).
+Concrete strategies: [`BlockWise`](@ref), [`VectorWise`](@ref).
+
 """
 abstract type Parallelization end
 
 """
-    NoParallel()
+    BlockWise(; groups = nothing)
 
-Serial execution — no parallelization. Useful for debugging/testing, and when all
-parallelism is handled elsewhere (e.g. on the GPU, where the kernels are already
-parallel).
-"""
-mutable struct NoParallel <: Parallelization end
+Parallelism **inside** a single Clenshaw recurrence step: the Krylov block is handed to the
+operator in one call and split across threads there, so one parallel region is opened per step.
 
-"""
-    MulColsParallel(nt_per_col::Int = 1)
+`groups` is how many Krylov-vector groups the block is cut into; each group is served by
+`nthreads() ÷ groups` threads splitting its basis-state range. `groups = 1` is the pure
+basis-state split — the only parallelism available at block size 1. `nothing` resolves it from
+the block size, the thread count and the cache geometry.
 
-Column-parallel block operator application: the independent columns of the Krylov
-block are spread across threads (one `H·v` per column). Effective when the block
-size is comparable to the thread count; gives no parallelism for a single vector
-(block size `= 1`).
+On a [`GPU`](@ref) this is always the strategy: the device kernels own the decomposition.
 
 # Fields
-- `nt_per_col::Int`: threads used *within* each column's matvec (nested intra-column
-  parallelism); `1` means pure column parallelism.
-"""
-mutable struct MulColsParallel <: Parallelization
-    nt_per_col::Int
-    MulColsParallel(nt_per_col::Int = 1) = new(nt_per_col)
-end
-
-"""
-    MulRowsParallel(nt_per_row::Int = 1)
-
-Row-parallel block operator application: the operator's output **rows** are chunked
-across threads (each thread computes a band of output rows for all block columns).
-Unlike [`MulColsParallel`](@ref), this parallelizes **even for a single vector**
-(block size `= 1`), and pairs naturally with the row-major block layout
-([`RowLayout`](@ref)), where row chunks are contiguous and fast for sparse `H`.
-
-# Fields
-- `nt_per_row::Int`: reserved tuning value for row-parallel kernels. Current kernels
-  use `Threads.nthreads()` and do not inspect this field.
+- `groups::Union{Int,Nothing}`: vector groups, or `nothing` for automatic resolution.
 
 !!! note
-    Row-kernel implementations live in `Optimization`. Clenshaw supplies the whole
-    row-layout block in one call, and the selected kernel partitions output rows
-    across Julia threads.
+    `groups` is not read yet — resolution arrives with the block decomposition. Until then
+    every `BlockWise` behaves as the whole-block call this replaced.
 """
-mutable struct MulRowsParallel <: Parallelization
-    nt_per_row::Int
-    MulRowsParallel(nt_per_row::Int = 1) = new(nt_per_row)
+struct BlockWise <: Parallelization
+    groups::Union{Int,Nothing}
 end
+BlockWise(; groups::Union{Int,Nothing} = nothing) = BlockWise(groups)
 
 """
-    TwoLevelParallel(nt_per_col::Int)
+    VectorWise()
 
-Two-level parallelization for large problems:
-1. **Inter-column** — block columns are distributed across Distributed **worker
-   processes** (a `WorkerPool`).
-2. **Intra-column** — within each worker, `nt_per_col` threads parallelize the matvec.
+Parallelism **around** the Clenshaw call: the recurrence runs once per Krylov vector, each with
+its own buffer triplet. Nothing is shared between threads, so no per-step barrier is needed and
+one parallel region covers the whole `K`-step loop.
 
-The worker pool and a shared Clenshaw buffer are populated at run time by
-[`set_workers`](@ref) and torn down by [`remove_workers`](@ref).
-
-# Fields
-- `worker_pool::WorkerPool`: worker processes handling column-level tasks (empty
-  until `set_workers`).
-- `nt_per_col::Int`: threads per worker for intra-column parallelism.
-- `clenshaw_shared_buffer::Any`: scratch buffer shared across the Clenshaw recurrence
-  on workers (set during the transform; `nothing` until then).
+Currently splits the block by **columns**; layout-awareness (rows under [`RowLayout`](@ref))
+is not implemented yet. Gives no parallelism at block size 1 — use [`BlockWise`](@ref) there.
 """
-mutable struct TwoLevelParallel <: Parallelization
-    worker_pool::WorkerPool
-    nt_per_col::Int
-    clenshaw_shared_buffer::Any
-    TwoLevelParallel(nt_per_col::Int) = new(WorkerPool(), nt_per_col, nothing)
-end
+struct VectorWise <: Parallelization end
+
+
 
 # ── resolution & validation ───────────────────────────────────────────────────
 
@@ -97,18 +62,19 @@ end
 
 Resolve the effective parallelization strategy for a run.
 
-- On a [`GPU`](@ref) processing unit, always [`NoParallel`](@ref) (the GPU kernels
-  handle parallelism themselves).
-- On [`CPU`](@ref), `nothing` (auto) becomes [`MulColsParallel`](@ref); an explicit
+- On a [`GPU`](@ref) processing unit, always [`BlockWise`](@ref) (the device kernels
+  handle the decomposition themselves).
+- On [`CPU`](@ref), `nothing` (auto) becomes [`VectorWise`](@ref); an explicit
   strategy is returned unchanged.
 
 The default is intentionally *computed* (it depends on the processing unit) rather
 than stored as a constant — there is no parallelization entry in `Defaults`.
 """
 function resolve_parallelization(strategy::Union{Parallelization,Nothing}, pu::ProcessingUnit)
-    isa(pu, GPU) && return NoParallel()
-    isnothing(strategy) && return MulColsParallel()
-    return strategy
+    !isnothing(strategy) && return strategy
+    isa(pu, GPU) && return BlockWise()
+    isa(pu, CPU) && return VectorWise()
+    throw(ArgumentError("Unrecognized processing unit $pu"))
 end
 
 """
@@ -123,7 +89,7 @@ should_warn() = should_log(POLFED_WARN_LEVEL)
 
 Emit warnings for potentially suboptimal parallelization/device choices:
 
-- a [`MulColsParallel`](@ref) block whose column count differs from the thread count,
+- a [`VectorWise`](@ref) block whose column count differs from the thread count,
 - CUDA available while running on the [`CPU`](@ref),
 - multiple CUDA devices while only the default device is used.
 
@@ -141,17 +107,19 @@ function warn_parallelization(x0::AbstractVecOrMat, strategy::Parallelization, p
         end
     end
 
-    if strategy isa MulColsParallel && x0 isa AbstractMatrix
+    if strategy isa VectorWise && x0 isa AbstractMatrix
         ncols = size(x0, 2)
         nthreads = Threads.nthreads()
-        ncols != nthreads &&
-            @warn "MulColsParallel with column count different from thread count." columns = ncols threads = nthreads
+        ncols != nthreads && polfed_log(POLFED_WARN_LEVEL,
+            "VectorWise with column count different from thread count.",
+            columns = ncols, threads = nthreads)
     end
     if cuda_devices > 0 && isa(pu, CPU)
-        @warn "CUDA is available but input is on CPU; GPU not used."
+        polfed_log(POLFED_WARN_LEVEL, "CUDA is available but input is on CPU; GPU not used.")
     end
     if cuda_devices > 1 && isa(pu, GPU)
-        @warn "Multiple CUDA devices available; using default device only." devices = cuda_devices
+        polfed_log(POLFED_WARN_LEVEL, "Multiple CUDA devices available; using default device only.",
+                   devices = cuda_devices)
     end
     return nothing
 end

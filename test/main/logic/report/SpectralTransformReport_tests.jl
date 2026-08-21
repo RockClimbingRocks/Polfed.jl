@@ -2,7 +2,7 @@
 # section rendering.
 
 using LinearAlgebra
-using UniPolfed: MappingConfig, NoParallel, build_mapping_plan
+using UniPolfed: MappingConfig, BlockWise, build_mapping_plan
 import UniPolfed: SpectralTransformReport, format_target_strategy, render_transform,
               Interval, DeltaUpFilter, TargetMiddle, TargetMaxDoS, TargetOffset,
               TargetAbsolute, TargetRescaled, Formatter
@@ -21,7 +21,7 @@ import UniPolfed: SpectralTransformReport, format_target_strategy, render_transf
         A = Diagonal(range(-1.0, 1.0; length = D))
         f!(Y, X) = mul!(Y, A, X)
         mp = build_mapping_plan(MappingConfig(Emin = -2.0, Emax = 2.0,
-                                              parallel_strategy = NoParallel()),
+                                              parallel_strategy = BlockWise()),
                                 f!, randn(D, 2))  # a=2, b=0
         interval = Interval(-0.1, 0.1)
         filter = DeltaUpFilter(Interval(0.0, 0.1); order = 100)   # target = midpoint = 0.05, fixed order
