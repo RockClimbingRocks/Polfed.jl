@@ -98,11 +98,16 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
         include("optimization/patterns/hopping/validate_kernel_tests.jl")
         include("optimization/patterns/universal/kernels_tests.jl")
         include("optimization/patterns/universal/validate_kernel_tests.jl")
+        include("optimization/patterns/range_kernel_tests.jl")
         include("optimization/optimized_mapping_tests.jl")
     end
 
     @testset "main" begin
         @testset "logic" begin
+            @testset "mapping" begin
+                include("main/logic/mapping/parallel_tests.jl")
+            end
+
             @testset "dos" begin
                 include("main/logic/dos/dos_tests.jl")
             end

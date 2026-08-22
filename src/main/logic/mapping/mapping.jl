@@ -181,8 +181,9 @@ single source of orientation for every downstream stage that slices a vector out
 function build_mapping_plan(cfg::MappingConfig, f!::Fmap, x0::AbstractVecOrMat,
                             pu::ProcessingUnit = is_gpu_array(x0) ? GPU() : CPU();
                             layout::Layout = ColumnLayout()) where {Fmap}
-    strategy = resolve_parallelization(cfg.parallel_strategy, pu)
-    warn_parallelization(x0, strategy, pu)
+
+    strategy = resolve_parallelization(cfg.parallel_strategy, pu, blocksize(layout, x0))
+    warn_parallelization(x0, strategy, pu, layout)
 
     v0 = pu.Vector(_vector_slice(layout, x0, 1))
 

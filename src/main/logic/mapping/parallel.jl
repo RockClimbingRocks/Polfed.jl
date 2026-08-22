@@ -55,27 +55,38 @@ struct VectorWise <: Parallelization end
 
 
 
-# ── resolution & validation ───────────────────────────────────────────────────
-
 """
-    resolve_parallelization(strategy, pu::ProcessingUnit) -> Parallelization
+    resolve_parallelization(strategy, pu::ProcessingUnit, block_size::Int,
+                            nthreads::Int = Threads.nthreads()) -> Parallelization
 
-Resolve the effective parallelization strategy for a run.
+Resolve the effective parallelization strategy for a run. An explicit `strategy` is returned
+unchanged; `nothing` (auto) is decided from the block size and the thread count.
 
-- On a [`GPU`](@ref) processing unit, always [`BlockWise`](@ref) (the device kernels
-  handle the decomposition themselves).
-- On [`CPU`](@ref), `nothing` (auto) becomes [`VectorWise`](@ref); an explicit
-  strategy is returned unchanged.
+- [`GPU`](@ref) → always [`BlockWise`](@ref): the device kernels own the decomposition.
+- `block_size == 1` → [`BlockWise`](@ref). [`VectorWise`](@ref) is one Clenshaw per Krylov
+  vector, so at a single vector it is serial; the basis-state split is the only parallelism.
+- `nthreads <= block_size` → [`VectorWise`](@ref). Every thread gets at least one whole
+  vector, so no buffer is ever handed between cores.
+- otherwise (`nthreads > block_size`) → [`BlockWise`](@ref). `VectorWise` cannot use more
+  than `block_size` threads, so it would leave `nthreads - block_size` of them idle.
 
-The default is intentionally *computed* (it depends on the processing unit) rather
-than stored as a constant — there is no parallelization entry in `Defaults`.
+Divisibility does NOT enter here. `BlockWise` always has a valid decomposition — worst case
+one group, the pure basis-state split — so `nthreads % block_size != 0` needs no special
+case; it only affects how many groups `BlockWise` resolves internally.
+
+The default is intentionally *computed* rather than stored as a constant — there is no
+parallelization entry in `Defaults`.
 """
-function resolve_parallelization(strategy::Union{Parallelization,Nothing}, pu::ProcessingUnit)
+function resolve_parallelization(strategy::Union{Parallelization,Nothing}, pu::ProcessingUnit,
+                                 block_size::Int, nthreads::Int = Threads.nthreads())
     !isnothing(strategy) && return strategy
     isa(pu, GPU) && return BlockWise()
-    isa(pu, CPU) && return VectorWise()
-    throw(ArgumentError("Unrecognized processing unit $pu"))
+    isa(pu, CPU) || throw(ArgumentError("Unrecognized processing unit $pu"))
+    block_size == 1 && return BlockWise()
+    nthreads <= block_size && return VectorWise()
+    return BlockWise()
 end
+
 
 """
     should_warn() -> Bool
@@ -89,13 +100,16 @@ should_warn() = should_log(POLFED_WARN_LEVEL)
 
 Emit warnings for potentially suboptimal parallelization/device choices:
 
-- a [`VectorWise`](@ref) block whose column count differs from the thread count,
+- a [`VectorWise`](@ref) block with FEWER Krylov vectors than threads, which leaves threads
+  idle (auto-resolution never produces this — it picks [`BlockWise`](@ref) — so it means the
+  strategy was set explicitly),
 - CUDA available while running on the [`CPU`](@ref),
 - multiple CUDA devices while only the default device is used.
 
 No-op when warning-level logging is disabled.
 """
-function warn_parallelization(x0::AbstractVecOrMat, strategy::Parallelization, pu::ProcessingUnit)
+function warn_parallelization(x0::AbstractVecOrMat, strategy::Parallelization,
+                              pu::ProcessingUnit, layout::Layout = ColumnLayout())
     should_warn() || return nothing
 
     cuda_devices = 0
@@ -108,11 +122,16 @@ function warn_parallelization(x0::AbstractVecOrMat, strategy::Parallelization, p
     end
 
     if strategy isa VectorWise && x0 isa AbstractMatrix
-        ncols = size(x0, 2)
+        nvecs = blocksize(layout, x0)
         nthreads = Threads.nthreads()
-        ncols != nthreads && polfed_log(POLFED_WARN_LEVEL,
-            "VectorWise with column count different from thread count.",
-            columns = ncols, threads = nthreads)
+        # Only the wasteful direction. `nvecs > nthreads` is the INTENDED VectorWise case —
+        # each thread simply takes several whole vectors, and nothing is handed between cores.
+        # Counting with `size(x0, 2)` instead of the layout would read the Hilbert dimension
+        # as the vector count under RowLayout, and warn on every run.
+        nvecs < nthreads && polfed_log(POLFED_WARN_LEVEL,
+            "VectorWise has fewer Krylov vectors than threads, so threads sit idle; " *
+            "BlockWise would use them.",
+            vectors = nvecs, threads = nthreads)
     end
     if cuda_devices > 0 && isa(pu, CPU)
         polfed_log(POLFED_WARN_LEVEL, "CUDA is available but input is on CPU; GPU not used.")
