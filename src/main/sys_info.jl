@@ -73,22 +73,28 @@ Base.eltype(::Type{<:SysInfo{E}}) where {E} = E
 Base.eltype(sys::SysInfo) = eltype(typeof(sys))
 
 """
-    _vector_slice(layout::Layout, A::AbstractVecOrMat, i::Int) -> AbstractVector
+    _vector_slice(layout::Layout, A::AbstractVecOrMat, i::Int) -> AbstractVecOrMat
 
-The `i`-th Krylov vector of the block `A`, selected through the layout trait:
-`A[:, i]` under [`ColumnLayout`](@ref), `A[i, :]` under [`RowLayout`](@ref). A plain
-vector is a single Krylov vector and is returned as-is.
+The `i`-th Krylov vector of the block `A`, **shaped the way that layout's operator takes it**:
 
-Every stage that pulls one vector out of a block goes through this — assuming an axis is
-how a row-layout block silently gets sliced into `bs`-length fragments instead of
-`D`-length vectors.
+- [`ColumnLayout`](@ref) → `A[:, i]`, a length-`D` vector; the column operators are `mul!(y, H, x)`.
+- [`RowLayout`](@ref) → `A[i:i, :]`, a `1 × D` **matrix**; the row operators are `mul!(Y, X, H̃)`
+  over a `bs × D` block, and a `bs = 1` block is still two-dimensional.
+- a plain vector is a single Krylov vector already, returned as-is.
+
+The `i:i` is not cosmetic. `view(A, i, :)` drops the axis and yields a 1-D view, which has no
+`mul!` method against a `D × D` operator — that mismatch is why `VectorWise` on a row-layout
+block failed with a `TaskFailedException` rather than an error anyone could read.
+
+Every stage that pulls one vector out of a block goes through this. A caller that needs a bare
+length-`D` vector regardless of layout (a Lanczos probe seed, say) wraps the result in `vec`.
 
 !!! warning
     Under [`RowLayout`](@ref) the result is a **strided** view (stride `bs`, since Julia is
-    column-major). That is fine for generic operators and for `copyto!`, but the optimized
-    packed kernels take raw pointers and require a dense `Matrix` — they cannot act on this
-    view. Callers needing a kernel-compatible per-vector buffer must materialize one.
+    column-major). Generic `mul!` operators accept it; the optimized packed kernels take raw
+    pointers and require a dense `Matrix`, so they cannot. A caller needing a kernel-compatible
+    per-vector buffer must materialize one.
 """
 @inline _vector_slice(::Layout, x::AbstractVector, ::Int) = x
 @inline _vector_slice(::ColumnLayout, A::AbstractMatrix, i::Int) = view(A, :, i)
-@inline _vector_slice(::RowLayout, A::AbstractMatrix, i::Int) = view(A, i, :)
+@inline _vector_slice(::RowLayout, A::AbstractMatrix, i::Int) = view(A, i:i, :)

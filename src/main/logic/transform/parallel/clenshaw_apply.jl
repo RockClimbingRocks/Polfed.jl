@@ -43,9 +43,15 @@ end
 each with its own recurrence triplet. The vector axis is selected by `layout` through
 [`_vector_slice`](@ref) — columns under [`ColumnLayout`](@ref), rows under
 [`RowLayout`](@ref) — so a row-layout block is split into `bs` vectors of length `D`, not
-into `D` fragments of length `bs`."""
+into `D` fragments of length `bs`.
+
+Selected by the workspace being a vector of TRIPLETS (`b[i]` is itself a 3-element container),
+where the whole-block method takes a bare 3-element triplet. The inner buffers are
+`AbstractVecOrMat`, not `AbstractVector`: under [`RowLayout`](@ref) a single Krylov vector's
+buffer is a `1 × D` matrix, and requiring `AbstractVector` there sent row-layout runs to the
+whole-block method instead, which then failed with an unreadable `MethodError`."""
 function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
-                        b::AbstractVector{<:AbstractVector{<:AbstractVector}}, ::CPU, ::VectorWise,
+                        b::AbstractVector{<:AbstractVector{<:AbstractVecOrMat}}, ::CPU, ::VectorWise,
                         layout::Layout = ColumnLayout())
     @assert size(X) == size(Y) "Y and X must have the same size"
     nvecs = blocksize(layout, X)

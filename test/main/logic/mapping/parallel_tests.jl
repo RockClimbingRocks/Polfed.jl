@@ -13,8 +13,10 @@
 
 using Test
 using UniPolfed
+using LinearAlgebra, SparseArrays, Random
 import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
-                  _matrix_path_strategy, BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
+                  _matrix_path_strategy, _vector_slice, MappingConfig, polfed,
+                  BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
 
 @testset "resolve_parallelization" begin
 
@@ -118,4 +120,60 @@ end
     @test _matrix_path_strategy(VectorWise(), false) isa VectorWise
     @test_throws ArgumentError _matrix_path_strategy(VectorWise(), true)
     @test_throws ArgumentError _matrix_path_strategy(VectorWise(), :universal)
+end
+
+@testset "_vector_slice is shaped for the layout's operator" begin
+    # Not just "the right numbers" — the right SHAPE. Column operators take vectors; row
+    # operators take a `bs x D` block, and a one-vector block is `1 x D`, still 2-D. The `i:i`
+    # that keeps the axis is the whole point: `view(A, i, :)` drops it and has no `mul!` method
+    # against a D x D operator, which is how VectorWise on a row block used to die inside a
+    # task with an unreadable error instead of failing at the call.
+    col = reshape(1.0:12.0, 4, 3) |> collect          # ColumnLayout: D=4, bs=3
+    row = permutedims(col)                            # RowLayout:    bs=3, D=4
+
+    sc = _vector_slice(ColumnLayout(), col, 2)
+    @test sc isa AbstractVector && size(sc) == (4,)
+
+    sr = _vector_slice(RowLayout(), row, 2)
+    @test sr isa AbstractMatrix && size(sr) == (1, 4)
+
+    # same Krylov vector either way, whatever the container shape
+    @test vec(sr) == sc
+
+    # a bare vector is already a single Krylov vector
+    @test _vector_slice(RowLayout(), col[:, 1], 1) == col[:, 1]
+end
+
+@testset "BlockWise and VectorWise agree end to end on the matrix entrypoint" begin
+    # The matrix entrypoints run RowLayout, which is exactly where the shape mismatch lived.
+    # Ground truth is `eigvals`, not one strategy against the other, so a shared error cannot
+    # hide: both must land on the true spectrum.
+    L = 8; D = 2^L
+    rng = MersenneTwister(3)
+    Ii = Int[]; Jj = Int[]; Vv = Float64[]
+    for i in 0:(D - 1)
+        push!(Ii, i + 1); push!(Jj, i + 1); push!(Vv, randn(rng))
+        for m in 0:(L - 1)
+            push!(Ii, i + 1); push!(Jj, (i ⊻ (1 << m)) + 1); push!(Vv, 0.5)
+        end
+    end
+    H = sparse(Ii, Jj, Vv, D, D)
+    exact = sort(eigvals(Symmetric(Matrix(H))))
+    target = exact[cld(D, 2)]
+    x0 = rand(MersenneTwister(11), D, 4)
+
+    rb = polfed(H, x0, 4, target; verbosity = 0,
+                mc = MappingConfig(parallel_strategy = BlockWise()))
+    rv = polfed(H, x0, 4, target; verbosity = 0,
+                mc = MappingConfig(parallel_strategy = VectorWise(), optimize_mapping = false))
+
+    # Counts must MATCH, not hit a fixed number: POLFED returns what converged within the
+    # budget, so pinning it to `howmany` would make this a convergence test on a fixture chosen
+    # for something else. What the strategies must agree on is the answer, not the budget.
+    @test length(rb.vals) == length(rv.vals)
+    @test !isempty(rb.vals)
+    for r in (rb, rv), v in r.vals
+        @test minimum(abs.(exact .- v)) < 1e-10
+    end
+    @test sort(rb.vals) ≈ sort(rv.vals) atol = 1e-9
 end

@@ -185,7 +185,8 @@ function build_mapping_plan(cfg::MappingConfig, f!::Fmap, x0::AbstractVecOrMat,
     strategy = resolve_parallelization(cfg.parallel_strategy, pu, blocksize(layout, x0))
     warn_parallelization(x0, strategy, pu, layout)
 
-    v0 = pu.Vector(_vector_slice(layout, x0, 1))
+    # `vec`: the probe seed is a plain length-dim vector, but a row-layout slice is `1 × dim`.
+    v0 = pu.Vector(vec(_vector_slice(layout, x0, 1)))
 
     Emin, Emax = _resolve_bounds(cfg, f!, v0)
 

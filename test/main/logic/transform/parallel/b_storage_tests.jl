@@ -45,6 +45,22 @@ buffer_shapes(b) = map(size, b)
         end
     end
 
+    @testset "VectorWise buffer SHAPE follows the layout" begin
+        # The workspace goes to the same operator as the slice, so it must have the same shape.
+        # Column operators are `mul!(y, H, x)` and take vectors; row operators are
+        # `mul!(Y, X, H̃)` over a `bs x D` block, and a one-vector block is still 2-D. Handing a
+        # length-D vector to a row operator is not slow, it is a MethodError.
+        col = zeros(Float64, 5, 2)                     # ColumnLayout: D=5, bs=2
+        bc = UniPolfed.get_b_storage(UniPolfed.VectorWise(), pu, col, UniPolfed.ColumnLayout())
+        @test length(bc) == 2
+        @test all(buf isa AbstractVector && size(buf) == (5,) for t in bc for buf in t)
+
+        row = zeros(Float64, 2, 5)                     # RowLayout: bs=2, D=5 — same problem
+        br = UniPolfed.get_b_storage(UniPolfed.VectorWise(), pu, row, UniPolfed.RowLayout())
+        @test length(br) == 2
+        @test all(buf isa AbstractMatrix && size(buf) == (1, 5) for t in br for buf in t)
+    end
+
     @testset "element type is preserved" begin
         for T in (Float32, ComplexF64)
             x0 = zeros(T, 5, 2)
