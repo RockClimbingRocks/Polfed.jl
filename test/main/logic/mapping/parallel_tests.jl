@@ -14,7 +14,7 @@
 using Test
 using UniPolfed
 import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
-                  BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
+                  _matrix_path_strategy, BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
 
 @testset "resolve_parallelization" begin
 
@@ -92,4 +92,30 @@ end
             @test_logs warn_parallelization(one_vec, VectorWise(), CPU(), ColumnLayout())
         end
     end
+end
+
+@testset "BlockWise groups validation" begin
+    # A user-facing knob, so the error belongs at the call site that wrote it, not deep inside
+    # the decomposition that eventually reads it.
+    @test BlockWise(groups = 4).groups == 4
+    @test BlockWise().groups === nothing
+    @test_throws ArgumentError BlockWise(groups = 0)
+    @test_throws ArgumentError BlockWise(groups = -3)
+end
+
+@testset "_matrix_path_strategy" begin
+    # The matrix entrypoints build their transform at a fixed Val(bs), so VectorWise — which
+    # hands the operator 1xD slices — cannot run against the OPTIMIZED kernel. It is fine
+    # against the generic mul! row operator, which takes strided views.
+    #
+    # The point of the function is that an explicit request is never silently dropped: it is
+    # honoured, or refused with the reason. Before this, `mc.parallel_strategy` was overwritten
+    # unconditionally and a user asking for VectorWise got BlockWise with no indication.
+    @test _matrix_path_strategy(nothing, true) isa BlockWise
+    @test _matrix_path_strategy(nothing, false) isa BlockWise
+    @test _matrix_path_strategy(BlockWise(), true) isa BlockWise
+    @test _matrix_path_strategy(BlockWise(groups = 2), true).groups == 2
+    @test _matrix_path_strategy(VectorWise(), false) isa VectorWise
+    @test_throws ArgumentError _matrix_path_strategy(VectorWise(), true)
+    @test_throws ArgumentError _matrix_path_strategy(VectorWise(), :universal)
 end

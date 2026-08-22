@@ -38,6 +38,15 @@ On a [`GPU`](@ref) this is always the strategy: the device kernels own the decom
 """
 struct BlockWise <: Parallelization
     groups::Union{Int,Nothing}
+
+    # Validated at CONSTRUCTION, not where the decomposition eventually reads it: `groups` is a
+    # user-facing knob, and `groups = 0` should fail at the call site that wrote it rather than
+    # much later inside a resolution the caller never named.
+    function BlockWise(groups::Union{Int,Nothing})
+        isnothing(groups) || groups >= 1 || throw(ArgumentError(
+            "BlockWise: groups must be >= 1 (or nothing for automatic resolution), got $groups."))
+        return new(groups)
+    end
 end
 BlockWise(; groups::Union{Int,Nothing} = nothing) = BlockWise(groups)
 

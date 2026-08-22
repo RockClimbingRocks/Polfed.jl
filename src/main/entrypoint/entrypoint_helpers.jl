@@ -51,16 +51,52 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
     b = (Emax + Emin) / 2
 
     # Row-layout operators (fast value-grouped kernels, or generic mul! fallback).
-    bs = x0 isa AbstractVector ? 1 : minimum(size(x0))
+    # Block size comes from the same orientation decision as `is_row`, expressed once so the two
+    # cannot drift: under either layout `blocksize` is the smaller axis here by construction.
+    bs = x0 isa AbstractVector ? 1 : blocksize(is_row ? RowLayout() : ColumnLayout(), x0)
     rowops = _build_matrix_rowops(H, mc.optimize_mapping, bs, a, b)
 
     # x0 → row orientation (block_size × dim); reorient only a column block or a vector (→ 1×D).
     x0_row = is_row ? x0 : permutedims(x0)
 
-    mc_row = MappingConfig(optimize_mapping = mc.optimize_mapping,
-                           f!_rescaled       = rowops.f!_rescaled,
-                           parallel_strategy = BlockWise(),
+    mc_row = MappingConfig(optimize_mapping   = mc.optimize_mapping,
+                           f!_rescaled         = rowops.f!_rescaled,
+                           parallel_strategy   = _matrix_path_strategy(mc.parallel_strategy,
+                                                                       mc.optimize_mapping),
+                           clenshaw_recurrence = mc.clenshaw_recurrence,
+                           clenshaw_finalsum   = mc.clenshaw_finalsum,
                            Emin = Emin, Emax = Emax)
 
     return rowops.f!, x0_row, mc_row
+end
+
+"""
+    _matrix_path_strategy(requested, optimize_mapping) -> Parallelization
+
+The parallelization the matrix entrypoints may actually run under.
+
+`nothing` (auto) resolves to [`BlockWise`](@ref) rather than going through
+[`resolve_parallelization`](@ref): the matrix path builds its transform operator at a fixed
+`Val(bs)` (see [`_build_matrix_rowops`](@ref)), and [`VectorWise`](@ref) hands that operator
+`1 × D` slices of the block, which a kernel compiled for the whole block cannot act on.
+
+That restriction applies only to the OPTIMIZED operator. With `optimize_mapping = false` the
+transform is a generic `mul!` row operator, which is happy with strided `1 × D` views, so
+`VectorWise` is honoured there.
+
+An explicit request is never silently dropped — it is honoured, or refused with the reason.
+
+# Throws
+- `ArgumentError` if `VectorWise` is requested alongside an optimized mapping.
+"""
+function _matrix_path_strategy(requested::Union{Parallelization,Nothing}, optimize_mapping)
+    isnothing(requested) && return BlockWise()
+    if requested isa VectorWise && optimize_mapping !== false
+        throw(ArgumentError(
+            "polfed(H, …): VectorWise is not available with optimize_mapping = " *
+            "$(repr(optimize_mapping)). The row transform is compiled for the whole block " *
+            "(Val(bs)) and cannot act on the 1×D slices VectorWise hands it. Use BlockWise, " *
+            "or set optimize_mapping = false to take the generic row operator."))
+    end
+    return requested
 end
