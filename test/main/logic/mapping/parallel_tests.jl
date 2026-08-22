@@ -20,12 +20,25 @@ import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
 
 @testset "resolve_parallelization" begin
 
-    @testset "an explicit strategy is returned untouched" begin
-        # Including the combinations auto-resolution would never produce, which is the point:
-        # the user overrides the rule, the rule does not override the user.
+    # Two layers, tested separately because they can mask each other:
+    #   the RULE decides from (block_size, nthreads);
+    #   the DOWNGRADE then refuses VectorWise above one thread, because the Clenshaw combine
+    #   opens a `@threads :static` region inside VectorWise's own and Julia rejects that.
+    # The rule's VectorWise branch is therefore only OBSERVABLE at nthreads = 1. Testing the two
+    # together would let a broken rule hide behind the downgrade.
+
+    @testset "an explicit strategy is honoured where it can run" begin
         @test resolve_parallelization(BlockWise(), CPU(), 8, 8) isa BlockWise
-        @test resolve_parallelization(VectorWise(), CPU(), 2, 32) isa VectorWise
         @test resolve_parallelization(BlockWise(groups = 4), CPU(), 8, 8).groups == 4
+        @test resolve_parallelization(VectorWise(), CPU(), 2, 1) isa VectorWise
+    end
+
+    @testset "an explicit VectorWise is downgraded above one thread, not left to crash" begin
+        # Silently reaching "`@threads :static` cannot be used concurrently or nested" from
+        # inside a task is worse than being told the strategy was swapped.
+        for nt in (2, 8, 32)
+            @test resolve_parallelization(VectorWise(), CPU(), 32, nt) isa BlockWise
+        end
     end
 
     @testset "block size 1 takes BlockWise — VectorWise would be serial" begin
@@ -35,9 +48,10 @@ import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
     end
 
     @testset "threads <= block size takes VectorWise — every thread gets a whole vector" begin
-        @test resolve_parallelization(nothing, CPU(), 8, 8) isa VectorWise    # one each
-        @test resolve_parallelization(nothing, CPU(), 16, 4) isa VectorWise   # four each
-        @test resolve_parallelization(nothing, CPU(), 32, 1) isa VectorWise   # single thread
+        # At nthreads = 1, where the downgrade does not apply and the rule is visible.
+        @test resolve_parallelization(nothing, CPU(), 8, 1) isa VectorWise
+        @test resolve_parallelization(nothing, CPU(), 32, 1) isa VectorWise
+        @test resolve_parallelization(nothing, CPU(), 2, 1) isa VectorWise
     end
 
     @testset "threads > block size takes BlockWise — VectorWise would idle threads" begin
@@ -47,15 +61,21 @@ import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
         @test resolve_parallelization(nothing, CPU(), 4, 7) isa BlockWise     # coprime
     end
 
-    @testset "divisibility does not change the answer" begin
-        # The pairs below straddle every divisibility relation at a fixed block size; the
-        # strategy depends only on which side of `block_size` the thread count falls.
-        bs = 6
-        for nt in 1:bs
-            @test resolve_parallelization(nothing, CPU(), bs, nt) isa VectorWise
-        end
-        for nt in (bs + 1):(4 * bs)
+    @testset "auto never returns a strategy that cannot run" begin
+        # The property that matters most: whatever the shape, an automatic choice must be
+        # runnable. Above one thread that means never VectorWise.
+        for bs in (1, 2, 3, 4, 8, 16, 32), nt in (2, 3, 4, 8, 16, 32)
             @test resolve_parallelization(nothing, CPU(), bs, nt) isa BlockWise
+        end
+    end
+
+    @testset "divisibility does not change the answer" begin
+        # The rule depends only on which side of `block_size` the thread count falls, never on
+        # whether one divides the other. Checked at nthreads = 1 for the VectorWise side, where
+        # the downgrade does not mask it.
+        @test resolve_parallelization(nothing, CPU(), 6, 1) isa VectorWise
+        for nt in 7:24
+            @test resolve_parallelization(nothing, CPU(), 6, nt) isa BlockWise
         end
     end
 
@@ -159,7 +179,9 @@ end
     rv = polfed(f!, x0, 4, target; verbosity = 0,
                 mc = MappingConfig(parallel_strategy = VectorWise()))
     @test rb.report.mapping.parallel == "BlockWise"
-    @test rv.report.mapping.parallel == "VectorWise"     # genuinely ran, not coerced
+    # Above one thread `resolve_parallelization` downgrades VectorWise (the Clenshaw combine
+    # nests a `:static` region inside it), so the strategies genuinely differ only at nt = 1.
+    @test rv.report.mapping.parallel == (Threads.nthreads() > 1 ? "BlockWise" : "VectorWise")
 
     # Counts must MATCH, not hit a fixed number: POLFED returns what converged within the
     # budget, so pinning it to `howmany` would make this a convergence test on a fixture chosen

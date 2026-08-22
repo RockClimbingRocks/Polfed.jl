@@ -74,10 +74,19 @@ unchanged; `nothing` (auto) is decided from the block size and the thread count.
 - [`GPU`](@ref) → always [`BlockWise`](@ref): the device kernels own the decomposition.
 - `block_size == 1` → [`BlockWise`](@ref). [`VectorWise`](@ref) is one Clenshaw per Krylov
   vector, so at a single vector it is serial; the basis-state split is the only parallelism.
-- `nthreads <= block_size` → [`VectorWise`](@ref). Every thread gets at least one whole
-  vector, so no buffer is ever handed between cores.
+- `nthreads <= block_size` → [`VectorWise`](@ref), **when it can run** (see below). Every
+  thread gets at least one whole vector, so no buffer is ever handed between cores.
 - otherwise (`nthreads > block_size`) → [`BlockWise`](@ref). `VectorWise` cannot use more
   than `block_size` threads, so it would leave `nthreads - block_size` of them idle.
+
+!!! warning "VectorWise is currently unusable above one thread"
+    [`VectorWise`](@ref) opens a parallel region per Krylov vector, and the Clenshaw combine
+    (`_threaded_combine!`) opens a `Threads.@threads :static` region inside it whenever
+    `nthreads() > 1`. Julia rejects `:static` regions running concurrently, so such a run raises
+    "`@threads :static` cannot be used concurrently or nested". Until the recurrence can be built
+    serial for a caller that owns the threads, auto-resolution will not hand out `VectorWise`
+    above one thread, and an explicit request is coerced with a warning — an automatic choice
+    must never be one that cannot run.
 
 Divisibility does NOT enter here. `BlockWise` always has a valid decomposition — worst case
 one group, the pure basis-state split — so `nthreads % block_size != 0` needs no special
@@ -88,11 +97,31 @@ parallelization entry in `Defaults`.
 """
 function resolve_parallelization(strategy::Union{Parallelization,Nothing}, pu::ProcessingUnit,
                                  block_size::Int, nthreads::Int = Threads.nthreads())
-    !isnothing(strategy) && return strategy
+    !isnothing(strategy) && return _usable(strategy, nthreads)
     isa(pu, GPU) && return BlockWise()
     isa(pu, CPU) || throw(ArgumentError("Unrecognized processing unit $pu"))
     block_size == 1 && return BlockWise()
-    nthreads <= block_size && return VectorWise()
+    nthreads <= block_size && return _usable(VectorWise(), nthreads)
+    return BlockWise()
+end
+
+"""
+    _usable(strategy::Parallelization, nthreads::Int) -> Parallelization
+
+Downgrade a strategy that cannot run at this thread count, warning when it does.
+
+Only [`VectorWise`](@ref) above one thread is affected, and only because the Clenshaw combine
+opens a `Threads.@threads :static` region inside VectorWise's own — see the note on
+[`resolve_parallelization`](@ref). This is applied to an EXPLICIT request too: silently running
+into "`@threads :static` cannot be used concurrently or nested" from deep inside a task is worse
+than being told the strategy was swapped.
+"""
+function _usable(strategy::Parallelization, nthreads::Int)
+    (strategy isa VectorWise && nthreads > 1) || return strategy
+    polfed_log(POLFED_WARN_LEVEL,
+               "VectorWise cannot run above one thread — the Clenshaw combine opens its own " *
+               "`@threads :static` region inside VectorWise's. Using BlockWise instead.",
+               threads = nthreads)
     return BlockWise()
 end
 
