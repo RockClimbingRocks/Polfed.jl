@@ -15,7 +15,7 @@ using Test
 using UniPolfed
 using LinearAlgebra, SparseArrays, Random
 import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
-                  _matrix_path_strategy, _vector_slice, MappingConfig, polfed,
+                  _vector_slice, MappingConfig, polfed,
                   BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
 
 @testset "resolve_parallelization" begin
@@ -105,22 +105,6 @@ end
     @test_throws ArgumentError BlockWise(groups = -3)
 end
 
-@testset "_matrix_path_strategy" begin
-    # The matrix entrypoints build their transform at a fixed Val(bs), so VectorWise — which
-    # hands the operator 1xD slices — cannot run against the OPTIMIZED kernel. It is fine
-    # against the generic mul! row operator, which takes strided views.
-    #
-    # The point of the function is that an explicit request is never silently dropped: it is
-    # honoured, or refused with the reason. Before this, `mc.parallel_strategy` was overwritten
-    # unconditionally and a user asking for VectorWise got BlockWise with no indication.
-    @test _matrix_path_strategy(nothing, true) isa BlockWise
-    @test _matrix_path_strategy(nothing, false) isa BlockWise
-    @test _matrix_path_strategy(BlockWise(), true) isa BlockWise
-    @test _matrix_path_strategy(BlockWise(groups = 2), true).groups == 2
-    @test _matrix_path_strategy(VectorWise(), false) isa VectorWise
-    @test_throws ArgumentError _matrix_path_strategy(VectorWise(), true)
-    @test_throws ArgumentError _matrix_path_strategy(VectorWise(), :universal)
-end
 
 @testset "_vector_slice is shaped for the layout's operator" begin
     # Not just "the right numbers" — the right SHAPE. Column operators take vectors; row
@@ -144,8 +128,15 @@ end
     @test _vector_slice(RowLayout(), col[:, 1], 1) == col[:, 1]
 end
 
-@testset "BlockWise and VectorWise agree end to end on the matrix entrypoint" begin
-    # The matrix entrypoints run RowLayout, which is exactly where the shape mismatch lived.
+@testset "BlockWise and VectorWise agree end to end" begin
+    # Deliberately the OPERATOR entrypoint, not the matrix one: the matrix entrypoints coerce
+    # VectorWise to BlockWise (see `_row_path_strategy`), so running this there would compare
+    # BlockWise against itself and assert nothing.
+    #
+    # This is also single-threaded-only in practice — above one thread VectorWise hits the
+    # concurrent `@threads :static` in the Clenshaw combine. The suite runs at one thread, so the
+    # test is meaningful here and would need the recurrence made serial to extend.
+    #
     # Ground truth is `eigvals`, not one strategy against the other, so a shared error cannot
     # hide: both must land on the true spectrum.
     L = 8; D = 2^L
@@ -162,10 +153,13 @@ end
     target = exact[cld(D, 2)]
     x0 = rand(MersenneTwister(11), D, 4)
 
-    rb = polfed(H, x0, 4, target; verbosity = 0,
+    f!(Y, X) = mul!(Y, H, X)
+    rb = polfed(f!, x0, 4, target; verbosity = 0,
                 mc = MappingConfig(parallel_strategy = BlockWise()))
-    rv = polfed(H, x0, 4, target; verbosity = 0,
-                mc = MappingConfig(parallel_strategy = VectorWise(), optimize_mapping = false))
+    rv = polfed(f!, x0, 4, target; verbosity = 0,
+                mc = MappingConfig(parallel_strategy = VectorWise()))
+    @test rb.report.mapping.parallel == "BlockWise"
+    @test rv.report.mapping.parallel == "VectorWise"     # genuinely ran, not coerced
 
     # Counts must MATCH, not hit a fixed number: POLFED returns what converged within the
     # budget, so pinning it to `howmany` would make this a convergence test on a fixture chosen
