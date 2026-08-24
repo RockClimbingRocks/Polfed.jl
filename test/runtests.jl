@@ -179,6 +179,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
                 include("main/logic/report/SpectralTransformReport_tests.jl")
                 include("main/logic/report/PolfedResult_tests.jl")
                 include("main/logic/report/report_tests.jl")
+                include("main/logic/report/display_report_tests.jl")
                 include("main/logic/report/PatchedReport_tests.jl")
             end
         end

@@ -8,6 +8,7 @@ permutation allocation-free.
 """
 const permutation = SVector{3,Int64}(3, 1, 2)
 
+
 """
     clenshaw_algorithm!(coefficients, order, recurrence!, finalsum!, b, X, Y) -> Y
 
@@ -42,11 +43,14 @@ applied to the zero buffers — i.e. the constant term alone.
     X,
     Y::AbstractVecOrMat{<:Number},
 )
-    @inbounds for k in order:-1:1
-        recurrence!(b[1], b[2], b[3], coefficients(k), k, X)
-        permute!(b, permutation)
-    end
 
+    # print("order = $order,  takes: ")
+    # @time begin 
+        @inbounds for k in order:-1:1
+            recurrence!(b[1], b[2], b[3], coefficients(k), k, X)
+            permute!(b, permutation)
+        end
+    # end
     finalsum!(b[2], b[3], coefficients(0), Y, X)
     return Y
 end
@@ -81,7 +85,7 @@ and normalization constants `ϕ₀`, `ϕ₁` directly.
     b::AbstractVector{<:Number},
     x::Number,
 )
-    @inbounds @fastmath for k in order:-1:1
+    @inbounds for k in order:-1:1
         b[1] = scalar_recurrence(coefficients(k), α(k), β(k + 1), x, b[2], b[3])
         permute!(b, permutation)
     end

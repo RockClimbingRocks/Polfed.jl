@@ -1,0 +1,262 @@
+# [Results, Reports, Logging](@id api_results_reports)
+
+Reports are part of every solver result; there is no flag to enable them.
+
+**Every entrypoint returns a result object that destructures as `(vals, vecs, report)`** — the
+same protocol as [`lanczos`](@ref UniPolfed.Numerics.Lanczos.lanczos):
+
+| Entrypoint | Returns | Report type |
+| :--- | :--- | :--- |
+| [`polfed`](@ref UniPolfed.polfed) | [`PolfedResult`](@ref UniPolfed.PolfedResult) | [`Report`](@ref UniPolfed.Report) |
+| [`patched_polfed`](@ref UniPolfed.patched_polfed) | [`PatchedResult`](@ref UniPolfed.PatchedResult) | [`PatchedReport`](@ref UniPolfed.PatchedReport) |
+| [`full_polfed`](@ref UniPolfed.full_polfed) | [`PatchedResult`](@ref UniPolfed.PatchedResult) | [`PatchedReport`](@ref UniPolfed.PatchedReport) |
+| [`double_polfed`](@ref UniPolfed.double_polfed) | `DoublePolfedResult` | two `Report`s |
+
+`double_polfed` is the exception: it has two windows, so it destructures into the two
+`PolfedResult`s — each of which then unpacks as `(vals, vecs, report)`.
+
+## Results
+
+### [`PolfedResult`](@id UniPolfed.PolfedResult)
+
+The standard solver result. Fields:
+
+| Field | Contents |
+| :--- | :--- |
+| `vals` | eigenvalues, ascending, as true energies of ``H`` |
+| `vecs` | matching eigenvectors |
+| `residuals` | ``\lVert H v - \lambda v \rVert`` per pair |
+| `converged` | number of converged pairs |
+| `layout` | the Krylov block layout used |
+| `report` | the structured [`Report`](@ref UniPolfed.Report) |
+
+`vals`, `vecs` and `residuals` are filtered to the requested interval and sorted with
+respect to ``H``. Because the in-interval pairs form a contiguous run, the eigenvector
+subset is a **view**, not a copy.
+
+`PolfedResult` destructures as `(vals, vecs, report)`. There is deliberately **no** `length`
+method — the count is `length(result.vals)` — and no `getindex`; use
+[`eigenvector`](@ref UniPolfed.eigenvector) instead. If fewer than `howmany` pairs land inside
+the interval it **warns rather than throwing**.
+
+### [`PatchedResult`](@id UniPolfed.PatchedResult)
+
+Returned by `patched_polfed` and `full_polfed`. Fields:
+
+| Field | Contents |
+| :--- | :--- |
+| `vals` | eigenvalues, ascending, true energies of ``H`` |
+| `vecs` | eigenvectors — a dense matrix in count/full mode, a **vector of vectors** in window mode |
+| `report` | the aggregate [`PatchedReport`](@ref UniPolfed.PatchedReport) |
+| `layout` | the Krylov block layout a matrix `vecs` uses |
+
+There is no `residuals` field: a patched run has no single convergence history, so per-eigenpair
+residuals live in the per-patch reports inside `report`.
+
+### Per-eigenvector access
+
+### [`eigenvector`](@id UniPolfed.eigenvector)
+
+```julia
+eigenvector(result, i) -> AbstractVector
+```
+
+The `i`-th eigenvector as a length-``D`` view, for either result type.
+
+Returned eigenvectors are **always columns**: `vecs[:, i]` is the `i`-th eigenvector for every
+entrypoint, regardless of the Krylov layout the run used internally. This accessor returns a view
+rather than a copy, and additionally covers **window-mode** patched runs, where `vecs` is a vector
+of independently owned vectors rather than a matrix.
+
+### [`eigenpair`](@id UniPolfed.eigenpair)
+
+```julia
+eigenpair(result, i) -> (val, vec)
+```
+
+The `i`-th `(eigenvalue, eigenvector)` pair.
+
+```julia
+for i in eachindex(result.vals)
+    λ, v = eigenpair(result, i)
+end
+```
+
+## Report types
+
+### [`Report`](@id UniPolfed.Report)
+
+A standard report combines a [`MappingReport`](@ref UniPolfed.MappingReport), a
+[`SpectralTransformReport`](@ref UniPolfed.SpectralTransformReport), the Lanczos
+[`FactorizationReport`](@ref UniPolfed.Numerics.Lanczos.FactorizationReport), and stage
+timings.
+
+### [`MappingReport`](@id UniPolfed.MappingReport)
+
+Snapshot of the resolved operator, rescaling, layout, processing unit and parallelization
+strategy.
+
+### [`SpectralTransformReport`](@id UniPolfed.SpectralTransformReport)
+
+Snapshot of the target interval, selected filter, polynomial order, cutoff and estimated
+transformation cost.
+
+### [`FactorizationReport`](@id UniPolfed.Numerics.Lanczos.FactorizationReport)
+
+Lanczos convergence history, residuals, Krylov-budget usage and internal timings.
+
+### [`PatchReport`](@id UniPolfed.PatchReport)
+
+Diagnostics for one interval solved by a patched or full run: kind, filter, order, interval,
+budget, the complete per-run `FactorizationReport`, coverage and retry count.
+
+A run's **kind** (`:edge_lowest`, `:edge_highest`, `:interior`) is not its filter **type** —
+an interior patch near ``\pm 1`` can use an `EdgeFilter`, so the `EdgeFilter` count in a
+histogram is always at least the number of edge peels.
+
+### [`PatchedReport`](@id UniPolfed.PatchedReport)
+
+Aggregate report for a patched or full run, carrying one `PatchReport` per run. Sections:
+
+- **Decomposition** — run counts, filter histogram, order min/max/mean, aggregate cost
+  ``\sum_p K_p \cdot bs_p \cdot iters_p``.
+- **Mapping**.
+- **Convergence** — aggregated; the quoted figure is the worst **eigen** residual, not the
+  pool's worst Ritz residual.
+- **Timings**.
+
+## [Displaying a report](@id api_display_report)
+
+### [`display_report`](@id UniPolfed.display_report)
+
+```julia
+display_report(r; io = stdout, convergence_details = false, color = auto)
+display_report(io::IO, r; convergence_details = false, color = auto)
+```
+
+The print verb for every result and report type on this page — `PolfedResult`,
+`PatchedResult`, `DoublePolfedResult`, `Report`, `PatchedReport`:
+
+```julia
+result = polfed(H, x0, howmany, target)
+display_report(result)         # header followed by the complete report
+display_report(result.report)  # report only
+```
+
+Two keywords tune the rendering:
+
+| Keyword | Default | Effect |
+| :--- | :--- | :--- |
+| `color` | auto | colored on a terminal, plain for every other sink |
+| `convergence_details` | `false` | appends the per-check (or per-run) table |
+
+`io` is accepted positionally as well, which is what you want for a file — `color` then
+defaults to `false`, so nothing but text reaches the file:
+
+```julia
+open(io -> display_report(io, result.report; convergence_details = true),
+     "polfed-report.txt", "w")
+```
+
+### The `show` methods underneath
+
+`display_report` renders nothing of its own: it packs those two keywords into an `IOContext`
+and calls `Base.show(::IO, ::MIME"text/plain", …)`, which is where every report type's
+rendering lives. So `display(result)`, `show(io, MIME"text/plain"(), result)` and typing a
+result at the REPL all print the same thing, and the two switches are equally available as
+**IO properties** — `:color` and `:convergence_details` — for when they should travel with a
+sink rather than be spelled at the call site:
+
+```julia
+show(IOContext(stdout, :convergence_details => true), MIME"text/plain"(), result.report)
+```
+
+`display_report` exists because `Base.display` accepts no keyword arguments —
+`display(report; convergence_details = true)` is a `MethodError`.
+
+## [Logging](@id api_logging)
+
+Every solver keyword `verbosity` raises the level for **one call** and restores it afterwards;
+`UniPolfed.Common.verbosity[]` sets it globally, and
+[`with_verbosity`](@ref UniPolfed.Common.with_verbosity) scopes it around a block.
+
+```julia
+polfed(H, x0, 50, :maxdos; verbosity = 3)     # trace this run only
+UniPolfed.Common.verbosity[] = 2              # …or set the level globally
+```
+
+| Level | Constant | Emits |
+| :--- | :--- | :--- |
+| `0` | [`POLFED_SILENT_LEVEL`](@ref UniPolfed.Common.POLFED_SILENT_LEVEL) | nothing |
+| `1` | [`POLFED_WARN_LEVEL`](@ref UniPolfed.Common.POLFED_WARN_LEVEL) | potential issues, suboptimal setup |
+| `2` | [`POLFED_INFO_LEVEL`](@ref UniPolfed.Common.POLFED_INFO_LEVEL) | one line per pipeline stage |
+| `3` | [`POLFED_DEBUG_LEVEL`](@ref UniPolfed.Common.POLFED_DEBUG_LEVEL) | bound probes, filter ladder, per-check convergence |
+| `4` | [`POLFED_DEEP_DEBUG_LEVEL`](@ref UniPolfed.Common.POLFED_DEEP_DEBUG_LEVEL) | per-iteration tracing |
+
+Each level strictly adds to the one below. Level `0` is genuinely silent: POLFED routes its
+own warnings through [`polfed_log`](@ref UniPolfed.Common.polfed_log) rather than `@warn`,
+so `verbosity[] = 0` suppresses those too. Level `4` scales with the run and can reach
+thousands of lines.
+
+Everything a run decides happens *before* Lanczos starts, so that is where the trace is richest:
+
+- **Level 2** reads as the run's story, one line per stage — mapping (`Emin`/`Emax`/`a`/`b`),
+  DoS, the resolved target, the interval and how many states it holds, the resolved filter, then
+  a **pre-Lanczos summary**: the filter and its order, the exposed window in *both* rescaled and
+  true-energy coordinates, the `EigTarget` stop rule the run is given, the Krylov budget, and the
+  projected `H·v` cost (`K · blocksize` per iteration — POLFED's bottleneck). The run closes with
+  the converged count, iterations and residuals.
+- **Level 3** adds the decisions behind those lines: the DoS sum-rule check and density profile,
+  the max-DoS search, the window bisection, **every filter-ladder rung with the reason it was
+  rejected**, the Clenshaw coefficient profile, the tolerances in the units they are applied in
+  (a window run measures Ritz values against the *rescaled* operator), and the selection rule
+  that turned the Lanczos output into the returned eigenpairs.
+- **Level 4** adds the inner loops: order bisection, window-bisection steps, where a filter leaks,
+  and per-iteration Lanczos tracing.
+
+```@docs
+UniPolfed.Common.POLFED_SILENT_LEVEL
+UniPolfed.Common.POLFED_WARN_LEVEL
+UniPolfed.Common.POLFED_INFO_LEVEL
+UniPolfed.Common.POLFED_DEBUG_LEVEL
+UniPolfed.Common.POLFED_DEEP_DEBUG_LEVEL
+UniPolfed.Common.verbosity
+UniPolfed.Common.with_verbosity
+UniPolfed.Common.should_log
+UniPolfed.Common.polfed_log
+```
+
+## Defaults
+
+Defaults live in the registry `UniPolfed.Defaults`, as one submodule **per entrypoint** plus one
+**cross-cutting** submodule for filters:
+
+- `Defaults.polfed` — DoS, mapping and factorization defaults for the standard solver.
+  `patched_polfed` also uses these for its public `mc`, `dosc`, `tol`, `eigentol` and
+  `overestimate_iters` keywords.
+- `Defaults.patched_polfed` — patched decomposition and its internal factorization defaults.
+- `Defaults.full_polfed` — the full-spectrum equivalents.
+- `Defaults.double_polfed` — the two-window knobs (notably `double_ratio`, `krylov_overhead`).
+- `Defaults.filters` — filter shape defaults, one submodule per filter
+  (`Defaults.filters.delta_up.cutoff`, `Defaults.filters.edge.order`, …), plus the shared
+  geometry knob `Defaults.filters.edge_tol` and the resolution chains
+  `INTERIOR_FILTER_CHAIN` / `EDGE_FILTER_CHAIN`. A *sibling* of the entrypoint modules, not a
+  child of one, because every entrypoint resolves filters.
+
+Override them through [`DoSConfig`](@ref UniPolfed.DoSConfig),
+[`MappingConfig`](@ref UniPolfed.MappingConfig) or solver keywords rather than by modifying
+the constants.
+
+### Standard `polfed` defaults
+
+- DoS: `N = 250`, `R = 300`, `kernel = :Jackson`.
+- Mapping: `optimize_mapping = false`, `maxdos_edge_margin = 0.01`.
+- Lanczos: `rot = FullRO()`, `basistype = MatrixBasis`, `tol = 1e-14`, `eigentol = 1e-9`,
+  `overestimate_iters = 1.25`.
+- Convergence checks start at `check_start_frac = 1.0`; the `conv_checking(expected_dim)`
+  callback then adapts the interval between checks to the current residual.
+
+### Patched and full defaults
+
+Both registries use `howmany_pad = 3` and `max_glue_retries = 3`. `retry_budget_growth` is
+`2.0` for `patched_polfed` and `1.5` for `full_polfed`.

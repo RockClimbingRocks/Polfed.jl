@@ -39,7 +39,12 @@ using UniPolfed: ColumnLayout, RowLayout, _DenseResultBuffer, _WindowResultBuffe
     _store_pair!(rows, -0.5, permutedims(source), 1, row)
     row_vals, row_vecs = _finalize_result!(rows)
     @test row_vals ≈ [-0.5, 0.3]
-    @test size(row_vecs) == (2, 4)
+    # Returned eigenvectors are ALWAYS columns (dim × n), whatever layout the buffer used
+    # internally — a row-layout buffer is transposed on the way out.
+    @test size(row_vecs) == (4, 2)
+    @test size(row_vecs) == size(target_vecs)
+    # and the i-th column is the i-th eigenvector, matching the column-layout path
+    @test row_vecs[:, 2] ≈ target_vecs[:, 2]
 
     window = _WindowResultBuffer(
         Float64[], Vector{Vector{Float64}}(), column, 1e-8,

@@ -75,7 +75,7 @@ whereas `DoSConfig` is already concrete and needs no plan.
 ## Filters and mappings
 
 Each filter owns its type, coefficients, construction, and validation in one
-folder under `main/logic/filter/filters/`. Shared code talks to filters through
+folder under `main/logic/filter/filter_types/`. Shared code talks to filters through
 the `AbstractFilter` interface. Interior windows use delta filters; spectral-edge
 windows use a monotone `EdgeFilter` that cannot develop side lobes.
 
@@ -106,6 +106,4 @@ julia --project=. examples/reporting.jl
 ```
 
 CUDA behavior is provided by `ext/UniPolfedCUDAExt.jl` and is testable only on a
-CUDA-capable host. Distributed workers load the package through
-`remotecall_eval(Main, worker, :(using UniPolfed))`; a direct `using` expression
-inside a function is not valid during precompilation.
+CUDA-capable host.

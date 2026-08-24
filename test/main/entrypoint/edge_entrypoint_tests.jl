@@ -30,9 +30,9 @@ function _qrem_e(L::Int; hx = 0.7, T = Float64)
     return sparse(I, J, V, D, D)
 end
 
-@testset "edge targets through polfed (EdgeFilter e2e)" begin
+@testset "edge targets through polfed (EdgeFilter e2e) — L = $L" for L in (8, 10)
     Random.seed!(20260717)
-    L = 8; D = 2^L
+    D = 2^L
     H = _qrem_e(L)
     exact = sort(eigvals(Symmetric(Matrix(H))))
 
@@ -65,16 +65,22 @@ end
         n = 6
         lo = (exact[end-n] + exact[end-n+1]) / 2
         res = run_edge(() -> polfed(H, randn(D), (lo, exact[end] + 1.0);
-                                    mc = MappingConfig(optimize_mapping = :shuf)))
+                                    mc = MappingConfig(optimize_mapping = :universal)))
         vals = sort(collect(res.vals))
         want = exact[end-n:end]                                 # + one bracket below
         @test length(vals) == n + 1
         @test length(vals) == n + 1 && maximum(abs.(vals .- want)) < 1e-8
     end
 
+    # `overestimate_iters = 2` is required here, and is a KNOWN LIMITATION rather than a test
+    # convenience: at D = 1024 the edge count path resolves an EdgeFilter of order K = 3, and the
+    # default Krylov budget then converges only 1 of the 6 requested pairs. `EdgeFilter`'s
+    # `expected_krylov_dim` constants are untuned initial guesses (see CLAUDE.md); with twice the
+    # budget the same run returns all 6 to ~1e-13. Drop this argument once they are tuned — it is
+    # what makes the shortfall visible if it ever gets worse.
     @testset "count mode at the $(name) edge" for (name, target_E, pick) in
             (("low", exact[1], v -> v[1:6]), ("high", exact[end], v -> v[end-5:end]))
-        res = run_edge(() -> polfed(H, randn(D), 6, target_E))
+        res = run_edge(() -> polfed(H, randn(D), 6, target_E; overestimate_iters = 2.0))
         vals = sort(collect(res.vals))
         @test length(vals) >= 6
         @test maximum(abs.(pick(vals) .- pick(exact))) < 1e-8

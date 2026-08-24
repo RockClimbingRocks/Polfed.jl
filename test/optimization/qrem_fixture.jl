@@ -3,8 +3,12 @@
 # visible to the per-source test files.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: MappingStructure, value_grouping, build_row_mapping,
-                            benchmark_mappings, list_mappings, MappingBench
+import UniPolfed.Optimization: ValueGroup, MappingStructure, classify, rescale,
+                               n_values, is_regular, KernelInfo, REGISTRY,
+                               MappingKernel, kernel_name, build_kernel,
+                               can_apply, why_not, verify_kernel, mapping_kernels,
+                               resolve_mapping_kernel, build_optimized_mapping,
+                               benchmark_mapping, best, MappingBench
 
 """
     qrem(L; hx=0.7, T=Float64) -> SparseMatrixCSC

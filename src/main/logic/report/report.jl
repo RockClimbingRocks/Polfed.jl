@@ -151,18 +151,10 @@ function render_convergence(io::IO, f::Formatter, fr::FactorizationReport; detai
 
     if details && fr.numofchecks > 0
         println(io, "- Convergence check ran ", cyan(f, string(fr.numofchecks)), " times:")
-        data = hcat(collect(1:fr.numofchecks), fr.krylovbasisdim_history,
-                    fr.converged_history, fr.maxresidual_history)
-        kwargs = (; header = ["Checking", "Krylov dim.", "Converged", "Residual"],
-                  formatters = (ft_printf("%d", [1, 2, 3]), ft_printf("%.2e", [4])),
-                  tf = tf_unicode_rounded)
-        # White header (not blue): blue is the section-title color here, and reusing it made the
+        # Bold (not blue) header: blue is the section-title color here, and reusing it made the
         # table read as a new section rather than as detail hanging off the Convergence one.
-        if f.color
-            pretty_table(io, data; kwargs..., header_crayon = crayon"white bold")
-        else
-            pretty_table(io, data; kwargs...)
-        end
+        render_detail_table(io, CONVERGENCE_TABLE_HEADER, convergence_table_rows(fr);
+                            bold_header = f.color)
     end
     return nothing
 end
@@ -249,4 +241,7 @@ Base.show(io::IO, ::Report) = print(io, "Report(Mapping/Transform/Convergence/Ti
 
 include("PatchedReport.jl")   # aggregate report for the patched variants (reuses the helpers above)
 include("PolfedResult.jl")
+include("PatchedResult.jl")   # the (vals, vecs, report) object returned by patched_polfed / full_polfed
+include("DoublePolfedResult.jl")   # the two-window pair returned by double_polfed
+include("display_report.jl")  # the `display_report(…)` print verb over the show methods above
 include("build_report.jl")

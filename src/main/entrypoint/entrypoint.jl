@@ -5,5 +5,6 @@
 
 include("entrypoint_helpers.jl") # shared matrix row-prep for the polfed(H, …) methods
 include("polfed.jl")             # polfed(f!, …) and polfed(H, …) — the canonical entrypoints
+include("double_polfed.jl")      # two-window target/window operator + matrix entrypoints
 include("patched_polfed.jl")     # patched target/window operator + matrix entrypoints
 include("full_polfed.jl")        # full-spectrum operator + matrix entrypoints

@@ -1,57 +1,55 @@
-import UniPolfed.Optimization: build_optimized_mapping, rescale, resolve_mapping_kernel
+# resolve_mapping_kernel + build_optimized_mapping: the boundary the POLFED pipeline consumes.
 
-@testset "optimized mapping builder" begin
-    L = 4
-    D = 2^L
-    H = qrem(L)                       # single off-diagonal value, regular structure (from fixture)
-    Hd = Matrix(H)
-    Emin, Emax = -12.0, 12.0
-    a = (Emax - Emin) / 2             # 12
-    b = (Emax + Emin) / 2             # 0
+using LinearAlgebra, SparseArrays
+using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
 
-    # row reference: Yr[k,:] = X[k,:] · A  (row operator X·A)
-    rowop(X, A) = X * A
+@testset "resolve + build_optimized_mapping" begin
+    H = xxz_hamiltonian(10, 5, 1.0, 0.55, 0.0; boundary=:periodic, field=0.0, use_sparse=true)
+    s = classify(H)
 
-    @testset "rescale structure" begin
-        s = value_grouping(H)
-        sr = rescale(s, a, b)
-        @test sr.hx ≈ s.hx / a
-        @test sr.diags ≈ (s.diags .- b) ./ a
-        @test sr.nb32 == s.nb32       # sparsity pattern unchanged by rescaling
-        @test sr.L == s.L && sr.dim == s.dim
+    @testset "every accepted spelling resolves to the same kernel" begin
+        for choice in (true, :auto, :universal, :universal_row_read,
+                       MappingKernel(:universal), MappingKernel(:universal, :row_read))
+            k = resolve_mapping_kernel(choice, s, 4)
+            @test k.pattern === :universal && k.variant === :row_read
+        end
+        # named-tuple spelling still works
+        @test resolve_mapping_kernel((kernel = :universal,), s, 4).variant === :row_read
     end
 
-    @testset "f!_rescaled = H̃·X (bs×D transform kernel), forced, bs=$bs" for bs in (1, 2, 4)
-        opt = build_optimized_mapping(H, :ell32_svec, Val(bs), a, b)
-        @test opt.id == :ell32_svec
-
-        # f!_rescaled feeds the Clenshaw filter — a bs×D block, rescaled: X·H̃ = (X·H − bX)/a.
-        # (This is the only operator built here; the one-time map-back is a generic mul! in the
-        #  POLFED matrix entrypoint, not a value-grouped kernel — see build_optimized_mapping.)
-        X = randn(bs, D)
-        Y = zeros(bs, D); opt.f!_rescaled(Y, X)
-        @test isapprox(Y, (rowop(X, Hd) .- b .* X) ./ a; rtol = 1e-10)
+    @testset "auto-selection depends on the block size" begin
+        # H here is single-value, so row_bucketed applies — but only earns selection at bs = 1
+        @test resolve_mapping_kernel(true, s, 1).variant === :row_bucketed
+        @test resolve_mapping_kernel(true, s, 2).variant === :row_read
+        @test resolve_mapping_kernel(true, s, 4).variant === :row_read
+        # asking by name overrides the preference at any block size
+        @test resolve_mapping_kernel(:universal_row_bucketed, s, 8).variant === :row_bucketed
     end
 
-    @testset ":auto picks a reads kernel and is correct" begin
-        opt = build_optimized_mapping(H, :auto, Val(2), a, b; secs = 0.02)
-        @test opt.id in (:csr_simd, :ell32_svec, :csr64_svec)
-        X = randn(2, D); Y = zeros(2, D); opt.f!_rescaled(Y, X)
-        @test isapprox(Y, (rowop(X, Hd) .- b .* X) ./ a; rtol = 1e-10)
+    @testset "rejected requests" begin
+        @test_throws ArgumentError resolve_mapping_kernel(false, s, 1)   # generic path, not here
+        @test_throws ArgumentError resolve_mapping_kernel(:no_such, s, 1)
+        @test_throws ArgumentError resolve_mapping_kernel(3.14, s, 1)
+        # row_bucketed cannot run on a multi-value structure, even asked for by name
+        s2 = classify(j1j2_hamiltonian(10, 5, 1.0, 0.5, 1.0, 1.0, 0.0; use_sparse=true))
+        @test_throws ArgumentError resolve_mapping_kernel(:universal_row_bucketed, s2, 1)
     end
 
-    @testset "NamedTuple pins kernel + params" begin
-        opt = build_optimized_mapping(H, (kernel = :csr64_svec, G = 2), Val(2), a, b)
-        @test opt.id == :csr64_svec
-        @test opt.G == 2
-        @test resolve_mapping_kernel((kernel = :shuf, W = 8, G = 4), H, Val(1)) == (:shuf, 4, 8)
+    @testset "build_optimized_mapping returns a working rescaled operator" begin
+        a, b = 4.0, 0.25
+        nt = build_optimized_mapping(H, true, Val(2), a, b)
+        @test nt.kernel.variant === :row_read
+
+        D = size(H, 1)
+        X = rand(2, D); Y = similar(X)
+        nt.f!_rescaled(Y, X)
+        want = permutedims((H * permutedims(X) .- b .* permutedims(X)) ./ a)
+        @test maximum(abs.(Y .- want)) < 1e-12
     end
 
-    @testset "MappingConfig accepts the widened optimize_mapping" begin
-        @test UniPolfed.MappingConfig(optimize_mapping = false).optimize_mapping === false
-        @test UniPolfed.MappingConfig(optimize_mapping = :auto).optimize_mapping === :auto
-        @test UniPolfed.MappingConfig(optimize_mapping = :ell32_svec).optimize_mapping === :ell32_svec
-        @test UniPolfed.MappingConfig(optimize_mapping = (kernel = :shuf, G = 4)).optimize_mapping ==
-              (kernel = :shuf, G = 4)
+    @testset "mapping_kernels lists what applies" begin
+        out = sprint(io -> mapping_kernels(io, H))
+        @test occursin("universal_row_read", out)
+        @test occursin("✓", out)
     end
 end

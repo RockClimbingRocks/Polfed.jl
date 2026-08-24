@@ -29,8 +29,9 @@ function full_polfed(
     howmany_pad::Integer = Defaults.full_polfed.howmany_pad,
     max_retries::Integer = Defaults.full_polfed.max_glue_retries,
     retry_growth::Real = Defaults.full_polfed.retry_budget_growth,
+    verbosity::Union{Nothing,Integer} = nothing,
 )
-    return run_full_polfed_pipeline(
+    return @with_verbosity verbosity run_full_polfed_pipeline(
         f!, x0, howmany_per_patch;
         mc, dosc, tol, eigentol, overestimate_iters,
         edge_distance, howmany_pad, max_retries, retry_growth,
@@ -62,9 +63,10 @@ function full_polfed(
     howmany_pad::Integer = Defaults.full_polfed.howmany_pad,
     max_retries::Integer = Defaults.full_polfed.max_glue_retries,
     retry_growth::Real = Defaults.full_polfed.retry_budget_growth,
+    verbosity::Union{Nothing,Integer} = nothing,
 )
     f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
-    return run_full_polfed_pipeline(
+    return @with_verbosity verbosity run_full_polfed_pipeline(
         f!, x0_row, howmany_per_patch;
         mc = mc_row, dosc, tol, eigentol, overestimate_iters,
         layout = RowLayout(),

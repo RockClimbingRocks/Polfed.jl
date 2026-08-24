@@ -122,6 +122,12 @@ or orthonormalized (block) automatically.
 - **Thread configuration is the caller's responsibility** — the primitive does not
   mutate global BLAS/MKL/Julia thread settings (that would fight `f!`'s own
   parallelization, e.g. POLFED's per-mapping `ParallelizationStrategy`).
+- **Linear-algebra backend:** block QR/LQ and the projected symmetric eigendecomposition
+  use LAPACK; dense overlap, projection, MatrixBasis reorthogonalization, and Ritz-vector
+  reconstruction use BLAS `mul!`; scalar recurrence/reorthogonalization uses BLAS-style
+  `dot`/`axpy!`/`norm`. Loading `MKL.jl` in the application switches the CPU BLAS *and*
+  LAPACK calls through Julia's libblastrampoline. Lanczos never imports MKL itself, so it
+  cannot unexpectedly switch the process-wide backend used by the mapping callback.
 - **Factorization layout:** the abstract base (`KrylovFactorization`, `_breakdown_tol`,
   `update!`, `lanczositer`, `lanczositer!`) lives in `Factorization/Factorization.jl`;
   the two concrete types are in `Factorization/FactorizationType/Lanczos.jl` (scalar)

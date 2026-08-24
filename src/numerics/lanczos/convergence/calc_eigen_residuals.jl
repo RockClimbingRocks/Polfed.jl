@@ -81,13 +81,14 @@ function _reconstruct_eigenvectors!(::Layout, vecs::AbstractMatrix, krylovbasis:
     krylovdim = length(krylovbasis)
     for i in 1:howmany
         veci = view(vecs, :, i)
-        veci .= 0
+        fill!(veci, zero(eltype(veci)))
         gpu_allowscalar() do
             for j in 1:krylovdim
-                veci .+= krylovbasis[j] * ϕ[j, i]
+                axpy!(ϕ[j, i], krylovbasis[j], veci)
             end
         end
     end
+    return nothing
 end
 
 """Vector-of-blocks basis overload (column semantics — `VectorBasis` is column-only)."""
@@ -96,13 +97,15 @@ function _reconstruct_eigenvectors!(::Layout, vecs::AbstractMatrix, krylovbasis:
     krylovdim = size(ϕ, 1)
     s = size(krylovbasis[1], 2)
     @inbounds for i in 1:howmany
-        vecs[:, i] .= 0
+        veci = view(vecs, :, i)
+        fill!(veci, zero(eltype(veci)))
         for j in 1:s:krylovdim
             l = (j+s-1) ÷ s
             ϕ_ = @view(ϕ[j:j+s-1, i])
-            vecs[:, i] .+= krylovbasis[l] * ϕ_
+            mul!(veci, krylovbasis[l], ϕ_, one(eltype(veci)), one(eltype(veci)))
         end
     end
+    return nothing
 end
 
 # --- eigenvalues and residuals ---------------------------------------------------------
@@ -144,7 +147,7 @@ function build_residuals(layout::Layout, vecs::AbstractMatrix, vals::AbstractVec
     for i in 1:nconv
         v = _eigvec(layout, vecs, i)
         valsmap!(r, v)
-        r .-= vals_cpu[i] .* v
+        axpy!(-vals_cpu[i], vec(v), vec(r))
         res[i] = norm(vec(r))
     end
     return res

@@ -7,7 +7,9 @@
 function resolve_target(target, howmany::Integer, dos::DoSResult, a::Real, b::Real)
     spec = normalize_target_spec(target)
     center = _resolve_center(spec, dos, Float64(a), Float64(b))
-    
+    polfed_log(POLFED_INFO_LEVEL, "Target resolved.",
+               strategy = format_target_strategy(spec), rescaled = center,
+               energy = a * center + b, howmany = Int(howmany))
     return Target(center, Int(howmany), :center)
 end
 
@@ -37,6 +39,8 @@ _resolve_center(spec::TargetRescaled, ::DoSResult, ::Float64, ::Float64) =
 
 function _resolve_center(spec::TargetAbsolute, ::DoSResult, a::Float64, b::Float64)
     λ̃ = (Float64(spec.value) - b) / a
+    polfed_log(POLFED_DEBUG_LEVEL, "Target energy rescaled: λ̃ = (E - b)/a.",
+               E = spec.value, a = a, b = b, rescaled = λ̃)
     return _check_rescaled(λ̃; energy=spec.value)
 end
 
@@ -52,7 +56,10 @@ end
 
 function _resolve_center(spec::TargetOffset, dos::DoSResult, a::Float64, b::Float64)
     εmaxdos = _resolve_center(TargetMaxDoS(), dos, a, b)
-    return _offset_from_maxdos(εmaxdos, Float64(spec.frac))
+    center = _offset_from_maxdos(εmaxdos, Float64(spec.frac))
+    polfed_log(POLFED_DEBUG_LEVEL, "Target offset from the max-DoS energy toward a spectrum edge.",
+               maxdos = εmaxdos, frac = spec.frac, rescaled = center)
+    return center
 end
 
 function _refined_argmax(f; left::Float64, right::Float64, npts::Int, refinements::Int)
@@ -71,6 +78,8 @@ function _refined_argmax(f; left::Float64, right::Float64, npts::Int, refinement
         ihi = min(lastindex(xs), imax + 1)
         lo = Float64(xs[ilo])
         hi = Float64(xs[ihi])
+        polfed_log(POLFED_DEEP_DEBUG_LEVEL, "Max-DoS grid refinement.",
+                   best = best, bracket = (lo, hi))
     end
 
     return best
@@ -85,8 +94,12 @@ function _resolve_center(::TargetMaxDoS, dos::DoSResult, ::Float64, ::Float64;
     # large numerical artifact in a thin shell near ±1. Scanning all the way to the edge therefore
     # makes `argmax` snap to the endpoint regardless of where the real peak is. Keep a physical
     # `edge_margin` away from ±1 (matching the legacy `[-0.99, 0.99]` search) so the bulk mode wins.
-    return _refined_argmax(dos.ρ; left = -1.0 + edge_margin, right = 1.0 - edge_margin,
-                           npts = npts, refinements = refinements)
+    center = _refined_argmax(dos.ρ; left = -1.0 + edge_margin, right = 1.0 - edge_margin,
+                             npts = npts, refinements = refinements)
+    polfed_log(POLFED_DEBUG_LEVEL, "Max-DoS target located.",
+               rescaled = center, ρ = dos.ρ(center), search = (-1.0 + edge_margin, 1.0 - edge_margin),
+               npts = npts, refinements = refinements)
+    return center
 end
 
 
@@ -107,7 +120,13 @@ the target is genuinely outside the estimated spectrum and the error stands.
 """
 function _check_rescaled(λ̃::Float64; energy=nothing, atol::Float64=1e-8)
     -1 <= λ̃ <= 1 && return λ̃
-    -1 - atol <= λ̃ <= 1 + atol && return clamp(λ̃, -1.0, 1.0)
+    if -1 - atol <= λ̃ <= 1 + atol
+        polfed_log(POLFED_WARN_LEVEL,
+                   "The target rescales to just outside [-1, 1] and was snapped onto the spectrum " *
+                   "edge — it sits at (or past) an estimated spectral bound.",
+                   rescaled = λ̃, snapped_to = clamp(λ̃, -1.0, 1.0), energy = energy)
+        return clamp(λ̃, -1.0, 1.0)
+    end
     detail = isnothing(energy) ? "" : " (from unrescaled energy $energy)"
     throw(ArgumentError("Rescaled target λ̃ = $λ̃$detail is outside [-1, 1]; " *
                         "the target energy lies outside the estimated spectrum [Emin, Emax]."))

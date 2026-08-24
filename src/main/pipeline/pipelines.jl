@@ -4,6 +4,8 @@ include("helpers/helpers.jl")
 
 include("pipeline_polfed_target.jl")
 include("pipeline_polfed_window.jl")
+include("pipeline_double_polfed_target.jl")
+include("pipeline_double_polfed_window.jl")
 include("pipeline_patched_polfed_target.jl")
 include("pipeline_patched_polfed_window.jl")
 include("pipeline_full_polfed.jl")

@@ -36,16 +36,16 @@ function runwin(f)
     return res
 end
 
-@testset "window entrypoint polfed(…, target::window)" begin
+@testset "window entrypoint polfed(…, target::window) — L = $L" for L in (8, 10)
     Random.seed!(20260714)
-    L = 8; D = 2^L
+    D = 2^L
     H = _qrem_w(L)
     exact = sort(eigvals(Symmetric(Matrix(H))))
 
     # Interior block of the spectrum; window bounds placed in the GAPS on either side so the closed
     # interval [lo, hi] unambiguously encloses exactly exact[i0:i1]. The bounds are midpoints of the
     # bracketing gaps — not eigenvalues — so ~1e-12 reconstruction rounding cannot move the count.
-    i0, i1 = 100, 119                         # 20 interior eigenvalues
+    i0 = cld(D, 2) - 9; i1 = i0 + 19          # 20 interior eigenvalues, mid-spectrum
     lo = (exact[i0-1] + exact[i0]) / 2
     hi = (exact[i1]   + exact[i1+1]) / 2
     want = exact[i0:i1]
@@ -71,7 +71,7 @@ end
     end
 
     @testset "matrix entrypoint, unrescaled window, optimize=$(repr(choice))" for choice in
-            (false, :ell32_svec, :shuf)
+            (false, :universal, true)
         res = runwin() do
             polfed(H, randn(D), (:unrescaled, (lo, hi)); mc = MappingConfig(optimize_mapping = choice))
         end
@@ -91,7 +91,7 @@ end
 
     @testset "block seed (bs=2) window" begin
         res = runwin() do
-            polfed(H, randn(D, 2), (:unrescaled, (lo, hi)); mc = MappingConfig(optimize_mapping = :shuf))
+            polfed(H, randn(D, 2), (:unrescaled, (lo, hi)); mc = MappingConfig(optimize_mapping = :universal))
         end
         check(res)
     end

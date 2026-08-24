@@ -68,12 +68,16 @@ function _pipeline_qrem(L::Int; hx::Float64 = 0.7)
     return sparse(rows, columns, values, dim, dim)
 end
 
-@testset "patched window matches exact QREM spectrum" begin
-    H = _pipeline_qrem(5)
+@testset "patched window matches exact QREM spectrum — L = $L" for L in (5, 10)
+    H = _pipeline_qrem(L)
+    D = 1 << L
     exact = sort(eigvals(Symmetric(Matrix(H))))
-    lo = (exact[9] + exact[10]) / 2
-    hi = (exact[23] + exact[24]) / 2
-    expected = exact[10:23]
+    # 14 interior eigenvalues, bounds in the gaps either side, placed relative to D so the
+    # block stays in the bulk at every size
+    i0 = max(2, cld(D, 3)); i1 = i0 + 13
+    lo = (exact[i0 - 1] + exact[i0]) / 2
+    hi = (exact[i1] + exact[i1 + 1]) / 2
+    expected = exact[i0:i1]
     x0 = normalize(randn(MersenneTwister(9), size(H, 1)))
 
     vals, vecs, report = patched_polfed(

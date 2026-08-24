@@ -1,15 +1,21 @@
 # ── filter/ — per-filter layout ───────────────────────────────────────────────────────────────
 #
+# The slice has three parts, and the folder names say which is which:
+#
+#   filter.jl        this file — the `AbstractFilter` seam
+#   resolution/      how a filter gets PICKED (chain walk, order bisection, window geometry)
+#   filter_types/    the concrete filters that exist, one self-contained folder each
+#
 # Filters are organized PER FILTER, not per concern: everything about one filter (its type,
-# coefficients, order/build, validation) lives in its own folder under `filters/`, so adding a
-# filter = drop a folder and implement the interface — no editing of shared concern-folders.
+# coefficients, order/build, validation) lives in its own folder under `filter_types/`, so adding
+# a filter = drop a folder and implement the interface — no editing of shared concern-folders.
 #
 # This file is the shared top: the `AbstractFilter` seam (interface function stubs every filter
 # adds methods to), the one genuinely-shared evaluation primitive `_scalar_filter`, and the
 # includes. Everything that reads a filter's own parameters lives with that filter.
 #
-# Shared here / cross-filter:            Per filter (filters/<name>/):
-#   AbstractFilter + interface stubs       the struct + <Name>Defaults module
+# Shared here / cross-filter:            Per filter (filter_types/<name>/):
+#   AbstractFilter + interface stubs       the struct + type-tag methods
 #   _scalar_filter (evaluate P(x))         coefficients / _coefficients_nonnormalized
 #   bisect_order (order_bisection.jl)      exposed_end / expected_krylov_dim / polynomial_type
 #   edge_side (window geometry)            analytical_order / build_filter / resolve_order!
@@ -23,7 +29,7 @@
     AbstractFilter
 
 Supertype for POLFED spectral filters. A concrete filter is a self-contained folder under
-`filters/` implementing this interface; the resolution/transform machinery only ever calls
+`filter_types/` implementing this interface; the resolution/transform machinery only ever calls
 through it.
 
 Interface a filter implements (all dispatched on the filter type):
@@ -37,7 +43,7 @@ Interface a filter implements (all dispatched on the filter type):
 - [`resolve_order!`](@ref)`(filter)` / [`resolve_bounds_from_order`](@ref)`(filter)` — order ⇄ passband.
 - [`validate_filter`](@ref)`(filter)` — leakage check toward the exposed end.
 
-See `filters/delta_up/` for the reference implementation.
+See `filter_types/delta_up/` for the reference implementation.
 """
 abstract type AbstractFilter end
 
@@ -94,6 +100,17 @@ passband edges (a delta filter's resolved `cutoff` field, e.g. `0.17`). Filters 
 """
 cutoff(::AbstractFilter) = NaN
 
+"""
+    filter_target(filter::AbstractFilter, interval::Interval) -> Float64
+
+The rescaled center the filter's peak sits at, for the window `interval` — what the report prints
+as the target energy. Single-peak filters carry it in their `target` field and ignore `interval`
+(the generic method below); a composite filter with more than one peak (e.g.
+[`DoubleDeltaFilter`](@ref)) uses `interval` to say WHICH peak is being reported, since one report
+section is built per requested window.
+"""
+filter_target(filter::AbstractFilter, ::Interval) = Float64(filter.target)
+
 # ── resolution interface (consumed by resolve_filter's chain walk) ────────────
 # Each filter TYPE declares its own parameter candidates and how to consume one; the shared
 # `_first_valid` loop in resolve_filter.jl then works for every filter without knowing any of
@@ -135,6 +152,40 @@ _scalar_filter(filter::AbstractFilter) =
         coefficients(filter),
         polynomial_order(filter)::Int,
     )
+
+# ── ladder diagnostics (DEBUG tracing of the filter resolution) ───────────────
+# One line per candidate, emitted where the verdict is actually known: `_reject` from inside the
+# filter's own `validate_filter` (which is the only place that knows WHY a rung failed), the
+# accept/error lines from `_first_valid`. Both go through `_filter_tag`, so every rung — rejected,
+# accepted, or from any filter type — prints in the same shape.
+
+"""
+    _filter_tag(filter::AbstractFilter) -> String
+
+One-line identity of a filter candidate for the ladder trace: type, resolved order, cutoff (only
+if it has one — an [`EdgeFilter`](@ref) does not), and passband (only if bounded). Built lazily —
+callers gate it on [`should_log`](@ref).
+"""
+function _filter_tag(filter::AbstractFilter)
+    tag = string(nameof(typeof(filter)), " K=", polynomial_order(filter))
+    c = cutoff(filter)
+    isnan(c) || (tag *= @sprintf(" cutoff=%.4g", c))
+    band = passband(filter)
+    return isfinite(band.left) && isfinite(band.right) ? tag * " passband=" * _fmt_iv(band) : tag
+end
+
+"""
+    _reject(filter::AbstractFilter, why::AbstractString) -> false
+
+Log one rejected ladder rung at DEBUG (`filter tag — why`) and return `false`. Every
+[`validate_filter`](@ref) failure path returns through this instead of a bare `false`, so the
+resolution trace says which rung failed *and* what disqualified it.
+"""
+function _reject(filter::AbstractFilter, why::AbstractString)
+    should_log(POLFED_DEBUG_LEVEL) &&
+        polfed_log(POLFED_DEBUG_LEVEL, "filter ladder ✗ $(_filter_tag(filter)) — $why")
+    return false
+end
 
 """
     resolve_eig_target(exposed::Symbol, howmany::Integer) -> EigTarget
@@ -212,7 +263,8 @@ end
 
 
 
-include("order_bisection.jl")     # shared: bisect_order (bracket-double + bisect, predicate-driven)
-include("edge_side.jl")           # shared: window geometry (edge_side — the family decision)
-include("filters/filters.jl")     # the concrete filters (one folder each)
-include("resolve_filter.jl")      # shared: geometry + cutoff-ladder orchestrator (single & pair)
+include("resolution/order_bisection.jl")  # shared: bisect_order (bracket-double + bisect, predicate-driven)
+include("resolution/edge_side.jl")        # shared: window geometry (edge_side — the family decision)
+include("filter_types/filter_types.jl")   # the concrete filters (one folder each)
+include("resolution/resolve_filter.jl")   # shared: geometry + cutoff-ladder orchestrator (single & pair)
+include("resolution/resolve_double_strategy.jl")  # shared: cost-aware joint-vs-separate decision (two windows)

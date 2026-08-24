@@ -57,13 +57,14 @@ format_target_strategy(spec::TargetAbsoluteWindow) = @sprintf("(:unrescaled, (%.
     SpectralTransformReport(interval, filter, mp, spec, blocksize, itersneeded, howmany)
 
 Build the [`SpectralTransformReport`](@ref) from the resolved window, filter, mapping plan and
-target spec. The rescaled target center is read from `filter.target`; its true-energy image and
+target spec. The rescaled target center is read through [`filter_target`](@ref)`(filter, interval)`
+(so a multi-peak filter reports the peak serving *this* window); its true-energy image and
 the window's true-energy endpoints are recovered through the mapping (`E = spread·x̃ + center`).
 The `H·v` cost is `polynomial_order(filter) · blocksize · itersneeded + howmany`.
 """
 function SpectralTransformReport(interval::Interval, filter::AbstractFilter, mp::MappingPlan,
                                  spec::TargetSpec, blocksize::Int, itersneeded::Int, howmany::Int)
-    x̃ = Float64(filter.target)
+    x̃ = filter_target(filter, interval)
     order = polynomial_order(filter)
     matvecs = order * blocksize * itersneeded + howmany
     return SpectralTransformReport(

@@ -1,5 +1,10 @@
 # [XXZ](@id xxz_model)
 
+!!! tip "You do not need this model"
+    The shipped Hamiltonians are conveniences for testing and for the tutorials. POLFED
+    works with any Hermitian matrix, and with any operator `f!` — see
+    [Bring your own operator](@ref operator_interface).
+
 The spin-1/2 XXZ chain is available from the common `UniPolfed.Models`
 namespace through [`xxz_hamiltonian`](@ref UniPolfed.Models.xxz_hamiltonian).
 
@@ -96,14 +101,13 @@ target = :middle
 vals, vecs = polfed(H, x0, howmany, target)
 ```
 
-## Relation to Advanced Tutorials
+## Relation to the optimization pages
 
-The advanced tutorial pages build on this same model and show how to exploit
-its structure for faster mappings and GPU workflows:
-- [Optimization of the XXZ Model](@ref optimization_xxz_model)
-- [Custom Mapping](@ref tutorial_xxz_custom_mapping)
-- [Automatic Optimization](@ref tutorial_xxz_baseline)
-- [GPU Implementation](@ref tutorial_xxz_rescaled_clenshaw)
+XXZ is the model used as the worked example for faster mappings, because a single
+constant offdiagonal value makes its structure especially easy to exploit:
+- [Optimized kernels — a worked example: XXZ](@ref optimized_kernels_xxz)
+- [GPU](@ref going_faster_gpu)
+- [Bring your own operator](@ref operator_interface)
 
 For the detailed Julia constructor reference, see
 [Models](@ref docs_models_reference).

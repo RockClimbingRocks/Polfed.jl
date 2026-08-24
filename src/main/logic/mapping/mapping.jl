@@ -182,7 +182,8 @@ function build_mapping_plan(cfg::MappingConfig, f!::Fmap, x0::AbstractVecOrMat,
                             pu::ProcessingUnit = is_gpu_array(x0) ? GPU() : CPU();
                             layout::Layout = ColumnLayout()) where {Fmap}
 
-    strategy = resolve_parallelization(cfg.parallel_strategy, pu, blocksize(layout, x0))
+    strategy = resolve_parallelization(cfg.parallel_strategy, pu, blocksize(layout, x0),
+                                       cfg.optimize_mapping)
     warn_parallelization(x0, strategy, pu, layout)
 
     # `vec`: the probe seed is a plain length-dim vector, but a row-layout slice is `1 × dim`.

@@ -3,6 +3,11 @@
 The spin-1/2 `J1-J2` chain is available from the common `UniPolfed.Models`
 namespace through [`j1j2_hamiltonian`](@ref UniPolfed.Models.j1j2_hamiltonian).
 
+!!! tip "You do not need this model"
+    The shipped Hamiltonians are conveniences for testing and for the tutorials. POLFED
+    works with any Hermitian matrix, and with any operator `f!` — see
+    [Bring your own operator](@ref operator_interface).
+
 ```julia
 using UniPolfed.Models: j1j2_hamiltonian
 

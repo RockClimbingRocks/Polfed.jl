@@ -13,7 +13,8 @@ Numerically scan the closed interval `[lo, hi]` for same-direction filter leakag
 threshold (and the passband boundary sits exactly on it by construction), a side lobe only counts
 as a leak once it overshoots the cutoff by more than `rtol`. `rtol = 0` reproduces the strict test.
 
-Returns `true` when none of the sampled points leaks, and `false` on the first sampled leak.
+Returns `true` when none of the sampled points leaks, and `false` on the first sampled leak
+(whose location and value are traced at deep-debug level).
 The interval is sampled uniformly with `npts` points, including both endpoints.
 
 This is a numerical guard, not a proof: if `npts` is too small, a narrow side lobe between two
@@ -39,7 +40,13 @@ function validate_no_leakage_in_interval_numerically(
     # leak. Only overshoots beyond `oriented_cutoff·(1 + rtol)` count.
     oriented_cutoff = direction * cutoff * (1 + rtol)
     for x in range(lo, hi; length = npts)
-        direction * P(x) >= oriented_cutoff && return false
+        if direction * P(x) >= oriented_cutoff
+            # WHERE a scan leaks is what tells a filter ladder rung apart from the next; the
+            # boolean alone cannot. Emitted here (the only place x is known) at deep-debug level.
+            polfed_log(POLFED_DEEP_DEBUG_LEVEL, "Filter leak sampled.",
+                       x = x, P = P(x), cutoff = cutoff, direction = direction, scan = (lo, hi))
+            return false
+        end
     end
     return true
 end

@@ -20,7 +20,9 @@ in place. The block variant subtracts both couplings via [`project!`](@ref), so 
 of each multiplication follows `layout`.
 """
 @inline function orthogonalization!(::Layout, r::AbstractVector, v1::AbstractVector, v2::AbstractVector, α::Real, β::Real)
-    @. r -= (α*v1 + β*v2)
+    axpy!(-α, v1, r)
+    axpy!(-β, v2, r)
+    return r
 end
 
 @inline function orthogonalization!(layout::Layout, r::AbstractMatrix, v1::AbstractMatrix, v2::AbstractMatrix, α::AbstractMatrix, β::AbstractMatrix)
@@ -33,5 +35,12 @@ end
 
 """Mixed vector/block overload of `orthogonalization!` (column-only edge case)."""
 @inline function orthogonalization!(::Layout, r::AbstractMatrix, v1::AbstractVector, v2::AbstractVector, α::AbstractMatrix, β::AbstractMatrix)
-    r .-= (v1*α + v2*β')
+    size(r, 2) == 1 || throw(DimensionMismatch("vector basis requires a one-column residual"))
+    rv = view(r, :, 1)
+    # The one-element coefficient access must also be legal for device matrices.
+    gpu_allowscalar() do
+        axpy!(-α[1, 1], v1, rv)
+        axpy!(-conj(β[1, 1]), v2, rv)
+    end
+    return r
 end

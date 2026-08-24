@@ -13,7 +13,7 @@ Built by [`MappingReport`](@ref)`(mp, layout)` from the resolved [`MappingPlan`]
 [`Layout`](@ref) Lanczos ran in. Rendered as the "Mapping" section by [`Report`](@ref)'s `show`.
 
 # Fields
-- `optimize_mapping::Union{Bool,Symbol,NamedTuple}`: the mapping-optimization request carried on
+- `optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}`: the mapping-optimization request carried on
   the plan (`false` → generic operator; a kernel `Symbol`/`NamedTuple` → value-grouped kernel).
 - `center::Float64`, `spread::Float64`: the rescaling shift/scale (`b`/`a` on the plan), so
   `H̃ = (H - center)/spread`.
@@ -23,7 +23,7 @@ Built by [`MappingReport`](@ref)`(mp, layout)` from the resolved [`MappingPlan`]
 - `parallel::String`: name of the resolved parallelization strategy.
 """
 struct MappingReport
-    optimize_mapping::Union{Bool,Symbol,NamedTuple}
+    optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}
     center::Float64
     spread::Float64
     Emin::Float64
@@ -55,11 +55,14 @@ MappingReport(mp::MappingPlan, layout::Layout) = MappingReport(
 
 Human-readable description of the operator the mapping applied, from the
 `optimize_mapping` request: `false` → a generic `mul!`/user operator; `true`/`:auto` → an
-auto-selected value-grouped kernel; a kernel `Symbol`/`NamedTuple` → that named kernel.
+auto-selected value-grouped kernel; a [`MappingKernel`](@ref) → that kernel and its parameters;
+a kernel `Symbol`/`NamedTuple` → that named kernel.
 """
 function _operator_str(om)
     om === false && return "generic operator (mul! / user f!)"
     (om === true || om === :auto) && return "value-grouped kernel (auto)"
+    om isa MappingKernel && return "value-grouped kernel :$(kernel_name(om))" *
+        (isempty(om.params) ? "" : " (" * join(("$k = $v" for (k, v) in pairs(om.params)), ", ") * ")")
     om isa Symbol && return "value-grouped kernel :$(om)"
     om isa NamedTuple && return "value-grouped kernel :$(get(om, :kernel, :auto))"
     return string(om)

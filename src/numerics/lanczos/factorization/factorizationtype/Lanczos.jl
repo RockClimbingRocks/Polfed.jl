@@ -11,6 +11,7 @@ mutable struct LanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: KrylovFact
     v_secondlast::AbstractVector{T}
     βs::AbstractVector{S}
     αs::AbstractVector{S}
+    reorth_coeff::Union{Nothing,AbstractVector{T}}
     pu::P
     layout::L                      # always ColumnLayout — a vector is orientation-free
 
@@ -24,8 +25,15 @@ mutable struct LanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: KrylovFact
 
         αs = zeros(S, maxdim)
         βs = zeros(S, maxdim-1)
+        # MatrixBasis reorthogonalization uses BLAS twice:
+        # coeff ← Q' * r; r ← r - Q * coeff.  Keep the largest required coefficient
+        # vector here and use a view of its active prefix at each iteration.  VectorBasis is
+        # intentionally allocation-on-growth and may receive a huge maxdim, so do not reserve
+        # maxdim-dependent workspace for that backend.
+        reorth_coeff = basis isa MatrixBasis ? pu.zeros(T, maxdim) : nothing
 
-        return new{S,T,P,L}(0, basis, r, v_last, v_secondlast, βs, αs, pu, layout)
+        return new{S,T,P,L}(0, basis, r, v_last, v_secondlast, βs, αs,
+                            reorth_coeff, pu, layout)
     end
 end
 

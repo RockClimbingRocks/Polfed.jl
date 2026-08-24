@@ -38,23 +38,46 @@ function _size_window_from_dos(target::Float64, position_of_target::Symbol, howm
         return win(1.0)
     end
     # bfun(0) = +1 (empty window), bfun(1) = -1 (holds ≥ howmany): brackets the crossing.
-    bfun(δ) = state_count(win(δ)...) >= howmany ? -1.0 : 1.0
+    function bfun(δ)
+        n = state_count(win(δ)...)
+        polfed_log(POLFED_DEEP_DEBUG_LEVEL, "Window bisection step.",
+                   δ = δ, window = win(δ), states = n)
+        return n >= howmany ? -1.0 : 1.0
+    end
     δ = bisection(bfun, 0.0, 1.0; tol=1e-8)
-    return win(δ)
+    window = win(δ)
+    should_log(POLFED_DEBUG_LEVEL) && polfed_log(POLFED_DEBUG_LEVEL,
+        "Window grown from the DoS to hold the requested states.",
+        half_width = δ, position = position_of_target, states = state_count(window...),
+        clamped = window != win_reshaped(δ), available_in_spectrum = available)
+    return window
 end
 
 
-function resolve_interval(target::Target, dos::DoSResult)
+"""
+    resolve_interval(target::Target, dos::DoSResult; level=POLFED_INFO_LEVEL) -> Interval
+
+Grow the resolved [`Target`](@ref) into the rescaled [`Interval`](@ref) holding its requested state
+count, by bisecting the window half-width against the DoS ([`_size_window_from_dos`](@ref)).
+
+`level` selects the log level of the one-line summary. It exists because this function has two
+callers with very different cardinalities: a single POLFED run resolves ONE interval (INFO — part
+of the run's stage story), while [`intervalize_interval`](@ref) calls it once per patch, where the
+same line at INFO would bury everything else (DEBUG).
+"""
+function resolve_interval(target::Target, dos::DoSResult; level::Int = POLFED_INFO_LEVEL)
     left, right = _size_window_from_dos(
         target.rescaled_energy,
         target.rescaled_energy_position,
         target.howmany,
         dos,
     )
-    polfed_log(POLFED_INFO_LEVEL, "Target interval resolved from the DoS (rescaled coordinates).",
-               left = left, right = right, width = right - left,
-               center = target.rescaled_energy, howmany = target.howmany)
-    return Interval(left, right)
+    interval = Interval(left, right)
+    should_log(level) && polfed_log(level,
+        "Target interval resolved from the DoS: $(_fmt_iv(interval)) (rescaled).",
+        width = right - left, center = target.rescaled_energy, requested = target.howmany,
+        states_in_interval = integrate_chebyshev_weighted(dos.coefficients, left, right) / π)
+    return interval
 end
 
 
@@ -69,5 +92,8 @@ rather than sampled.
 """
 function howmany_in_interval(dos::DoSResult, interval::Interval)
     count = integrate_chebyshev_weighted(dos.coefficients, interval.left, interval.right) / π
-    return max(1, ceil(Int, count))
+    howmany = max(1, ceil(Int, count))
+    polfed_log(POLFED_DEBUG_LEVEL, "DoS state count over $(_fmt_iv(interval)).",
+               states = count, budget = howmany)
+    return howmany
 end

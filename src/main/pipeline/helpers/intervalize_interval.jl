@@ -30,7 +30,7 @@ function intervalize_interval(
             break
         end
 
-        resolved = resolve_interval(Target(left, howmany, :left), dos)
+        resolved = resolve_interval(Target(left, howmany, :left), dos; level = POLFED_DEBUG_LEVEL)
         right = min(resolved.right, interval.right)
         right > left || error(
             "DoS interval resolution did not advance past $left toward $(interval.right).",

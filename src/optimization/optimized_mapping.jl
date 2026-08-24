@@ -1,82 +1,118 @@
-# Build the optimized ROW-layout operators for a structured Hamiltonian: the rescaled
-# `f!_rescaled` (H̃ = (H-b)/a, fed to the Clenshaw filter) and the unscaled `f!` (H, used as
-# the Lanczos map-back `mapvals`). This is the piece the matrix `polfed(H, …)` entrypoint calls:
-# it value-groups H, resolves which kernel/params to use, and returns row operators. It does NOT
-# estimate Emin/Emax or run the pipeline — the caller supplies the rescaling `(a, b)`.
+# The boundary the POLFED pipeline consumes. `_build_matrix_rowops` calls exactly one function
+# here — `build_optimized_mapping` — so everything above this line is free to change shape.
+#
+# `resolve_mapping_kernel` turns whatever the user put in `optimize_mapping` into a concrete
+# `MappingKernel`; `build_optimized_mapping` then builds it, VERIFIES it against `mul!`, and hands
+# back the closure.
 
 """
-    rescale(s::MappingStructure, a::Real, b::Real) -> MappingStructure
+    resolve_mapping_kernel(choice, s::MappingStructure, bs::Integer) -> MappingKernel
 
-The value-grouped structure of the **rescaled** operator `H̃ = (H - b)/a`: the diagonal becomes
-`(diag - b)/a` and the single off-diagonal value becomes `hx/a`. The neighbour arrays are
-unchanged (the sparsity pattern is invariant under rescaling).
-"""
-function rescale(s::MappingStructure{T}, a::Real, b::Real) where {T}
-    diags_r = convert(Vector{T}, (s.diags .- b) ./ a)
-    hx_r = convert(T, s.hx / a)
-    return MappingStructure{T}(s.dim, s.L, hx_r, diags_r, s.nb32, s.flat, s.starts)
-end
+Turn an `optimize_mapping` request into a concrete kernel for the matrix described by `s`, at
+Krylov block size `bs`.
 
-"""
-    resolve_mapping_kernel(choice, H, ::Val{bs}; secs=0.5) -> (id::Symbol, G::Int, W::Int)
+| `choice` | meaning |
+|:---|:---|
+| `true`, `:auto` | let POLFED pick — see [`_default_kernel`](@ref); the choice depends on `bs` |
+| `:universal` | that pattern's default variant |
+| `:universal_row_read` | that exact kernel |
+| [`MappingKernel`](@ref) | pin the kernel and its parameters |
+| `(kernel = …, G = …)` named tuple | legacy spelling, converted to a `MappingKernel` |
 
-Resolve the `optimize_mapping` request into a concrete kernel id and tuning params:
-
-- `true` / `:auto` → benchmark the applicable kernels at block size `bs` and pick the fastest;
-- a kernel `Symbol` (`:ell32_svec`, `:csr_simd`, `:csr64_svec`, `:shuf`) → that kernel, default
-  `G`/`W`;
-- a `NamedTuple` `(kernel=…, G=…, W=…)` → those pinned values.
+`false` never reaches here — the caller takes the generic path instead.
 
 # Throws
-- `ArgumentError`: on an unrecognized `choice` (or a NamedTuple missing `:kernel`).
+- `ArgumentError` if the request names an unknown kernel, or one that cannot run on `s`.
 """
-function resolve_mapping_kernel(choice, H::AbstractMatrix, ::Val{bs}; secs::Real = 0.5) where {bs}
-    if choice === true || choice === :auto
-        report = benchmark_mappings(H; bs_list = (bs,), G_list = (1, 2, 4, 8), secs = secs)
-        haskey(report.best, bs) ||
-            error("optimize_mapping = :auto — no applicable kernel passed the benchmark at bs=$bs.")
-        best = report.best[bs]
-        return (best.kernel, best.G, 8)
-    elseif choice isa Symbol
-        return (choice, 4, 8)                        # default G; W used only by :shuf
-    elseif choice isa NamedTuple
-        haskey(choice, :kernel) ||
-            throw(ArgumentError("optimize_mapping NamedTuple must have a :kernel field, got $choice."))
-        return (choice.kernel, get(choice, :G, 4), get(choice, :W, 8))
-    else
-        throw(ArgumentError(
-            "optimize_mapping must be false, true/:auto, a kernel Symbol, or a " *
-            "(kernel=…, G=…, W=…) NamedTuple; got $(repr(choice))."))
-    end
+function resolve_mapping_kernel(choice, s::MappingStructure, bs::Integer;
+                                require_range::Bool = false)
+    k = _as_kernel(choice, s, bs; require_range = require_range)
+    can_apply(Val(k.pattern), Val(k.variant), s) || throw(ArgumentError(
+        "resolve_mapping_kernel: $(k) cannot run on this matrix — " *
+        "$(why_not(Val(k.pattern), Val(k.variant), s)). " *
+        "Run mapping_kernels(H) to see what applies."))
+    return k
 end
 
+_as_kernel(k::MappingKernel, ::MappingStructure, ::Integer; require_range::Bool = false) = k
+
+_as_kernel(choice::Bool, s::MappingStructure, bs::Integer; require_range::Bool = false) =
+    choice ? _default_kernel(s, bs; require_range = require_range) :
+             throw(ArgumentError("resolve_mapping_kernel: `false` takes the generic path."))
+
+function _as_kernel(choice::Symbol, s::MappingStructure, bs::Integer; require_range::Bool = false)
+    choice === :auto && return _default_kernel(s, bs; require_range = require_range)
+    # a bare pattern name — `:universal`
+    isnothing(_default_variant(choice)) || return MappingKernel(choice)
+    # `pattern_variant` — split at each underscore and take the first split that resolves, so a
+    # variant containing an underscore (`:row_read`) still works
+    name = String(choice)
+    for (i, c) in enumerate(name)
+        c == '_' || continue
+        info = _find(Symbol(name[1:i-1]), Symbol(name[i+1:end]))
+        isnothing(info) || return MappingKernel(info.pattern, info.variant)
+    end
+    throw(ArgumentError(
+        "resolve_mapping_kernel: unknown kernel :$(choice). Registered: $(_kernel_names())."))
+end
+
+function _as_kernel(choice::NamedTuple, s::MappingStructure, bs::Integer; require_range::Bool = false)
+    haskey(choice, :kernel) || throw(ArgumentError(
+        "resolve_mapping_kernel: a named-tuple request must carry `kernel`, got $(keys(choice))."))
+    rest = Base.structdiff(choice, NamedTuple{(:kernel,)})
+    k = _as_kernel(choice.kernel, s, bs; require_range = require_range)
+    return MappingKernel(k.pattern, k.variant; rest...)
+end
+
+_as_kernel(choice, ::MappingStructure, ::Integer; require_range::Bool = false) = throw(ArgumentError(
+    "resolve_mapping_kernel: cannot interpret optimize_mapping = $(repr(choice)). Use `true`, " *
+    "a kernel name, or a MappingKernel."))
+
 """
-    build_optimized_mapping(H, choice, ::Val{bs}, a::Real, b::Real; secs=0.5)
-        -> (; f!_rescaled, id, G, W)
+    build_optimized_mapping(H, choice, ::Val{bs}, a, b) -> (; f!_rescaled, kernel, structure)
 
-Build the fast row-layout **transform** operator for `H` under the rescaling `H̃ = (H - b)/a`:
+Build the row-layout action of the **rescaled** operator ``\\tilde H = (H - b)/a`` for the POLFED
+transform. This is the single entry point the pipeline uses.
 
-- `f!_rescaled(Y, X)`: the fast row kernel of `H̃` over `bs × D` **blocks** — the operator the
-  Clenshaw filter (and thus every Lanczos matvec) runs on, so it is specialized to the Krylov
-  block size `bs`. This is the POLFED bottleneck, and the only place the value-grouped kernel
-  earns its keep;
-- `id`, `G`, `W`: the resolved kernel and its params.
+```
+classify(H) → resolve the kernel → rescale the structure → build → verify against mul!
+```
 
-Only the rescaled transform operator is returned. The Lanczos map-back `mapvals` (applied a
-handful of times per convergence check, to a *single* strided `1 × D` eigenvector) is **not**
-built here: a value-grouped SIMD kernel neither pays off nor even loads from a strided row view
-(the `:shuf` kernel needs contiguous memory). The matrix entrypoint uses a generic `mul!`-based
-row map-back instead (see `_build_matrix_rowops`).
+The verification is not optional: a row kernel walks index tables by hand, and a mistake there
+returns a slightly wrong matvec rather than an error, which POLFED would happily converge on. One
+block checked against `mul!` costs two matvecs against the thousands a run performs. See
+[`verify_kernel`](@ref).
 
-`choice` is the `optimize_mapping` request (see [`resolve_mapping_kernel`](@ref)); `H` must be a
-structured Hamiltonian [`value_grouping`](@ref) accepts (single off-diagonal value, regular row
-length).
+# Arguments
+- `H`: the Hamiltonian; any structured matrix `classify` accepts.
+- `choice`: the `optimize_mapping` request — see [`resolve_mapping_kernel`](@ref).
+- `bs`: Krylov block size, as a `Val` so the kernel specializes on it.
+- `a`, `b`: the rescaling, ``\\tilde H = (H - b)/a``.
+- `serial`: build the kernel's SERIAL range form over the whole domain instead of the
+  self-threading whole-block form. Required when the caller opens its own parallel region —
+  [`VectorWise`](@ref) runs one task per Krylov vector, and a kernel opening
+  `Threads.@threads :static` inside that is illegal. Restricts auto-selection to kernels that
+  have a range form (see [`supports_range`](@ref)).
+
+# Returns
+A named tuple `(; f!_rescaled, kernel, structure)`.
 """
 function build_optimized_mapping(H::AbstractMatrix, choice, ::Val{bs}, a::Real, b::Real;
-                                 secs::Real = 0.5) where {bs}
-    s = value_grouping(H)
-    id, G, W = resolve_mapping_kernel(choice, H, Val(bs); secs = secs)
-    s_rescaled = rescale(s, a, b)
-    f!_rescaled = build_row_mapping(id, s_rescaled, Val(bs); G = G, W = W)   # bs×D block (transform)
-    return (; f!_rescaled, id, G, W)
+                                 serial::Bool = false) where {bs}
+    s = classify(H)
+    kernel = resolve_mapping_kernel(choice, s, bs; require_range = serial)
+    sr = rescale(s, a, b)
+    f!_rescaled = if serial
+        supports_range(kernel) || throw(ArgumentError(
+            "build_optimized_mapping: $(kernel) has no serial range form, so it cannot be built " *
+            "for a caller that owns the threads. Name a kernel with one, or use a parallelization " *
+            "that lets the kernel thread itself."))
+        fr! = build_range_kernel(kernel, sr, Val(bs))
+        n = range_units(kernel, sr, Val(bs))
+        (Y, X) -> (fr!(Y, X, 1, n); nothing)
+    else
+        build_kernel(kernel, sr, Val(bs))
+    end
+    verify_kernel(f!_rescaled, H, a, b, Val(bs), kernel_name(kernel))
+    return (; f!_rescaled, kernel, structure = s)
 end

@@ -17,10 +17,10 @@ The rescaled [`Interval`](@ref) a window spec names directly — no DoS growth:
 
 `a`, `b` are the mapping spread/center (`a = (Emax-Emin)/2`, `b = (Emax+Emin)/2`).
 """
-function resolve_window(spec::TargetRescaledWindow, ::Real, ::Real)
+function resolve_window(spec::TargetRescaledWindow, a::Real, b::Real)
     left  = _check_rescaled(Float64(spec.left))
     right = _check_rescaled(Float64(spec.right))
-    return Interval(left, right)
+    return _logged_window(Interval(left, right), a, b)
 end
 
 function resolve_window(spec::TargetAbsoluteWindow, a::Real, b::Real)
@@ -33,5 +33,17 @@ function resolve_window(spec::TargetAbsoluteWindow, a::Real, b::Real)
                    "Unrescaled window exceeds the estimated spectrum [Emin, Emax]; clamping to [-1, 1].",
                    window = (spec.left, spec.right), rescaled = (l̃, r̃))
     end
-    return Interval(lo, hi)
+    return _logged_window(Interval(lo, hi), a, b)
+end
+
+"""
+Log a resolved window target in both coordinate systems (INFO) and return it unchanged.
+(`interval` is left unannotated: this slice is included before `interval/`, so the `Interval`
+type does not exist yet at definition time.)
+"""
+function _logged_window(interval, a::Real, b::Real)
+    should_log(POLFED_INFO_LEVEL) && polfed_log(POLFED_INFO_LEVEL,
+        "Window target resolved: $(_fmt_iv(interval)) rescaled, " *
+        "$(_fmt_iv(interval, a, b)) in energy.")
+    return interval
 end

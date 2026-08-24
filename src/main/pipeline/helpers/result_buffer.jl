@@ -275,10 +275,15 @@ function _finalize_result!(buffer::_DenseResultBuffer)
     isnothing(buffer.target) && _sort_result_buffer!(buffer)
     n = buffer.used
     vals = collect(view(buffer.vals, 1:n))
+    full = n == length(buffer.vals)
+
+    # Internally the buffer may be row-major (the matrix entrypoints run in RowLayout), but the
+    # RETURNED eigenvectors are always columns — `vecs[:, i]` is the i-th eigenvector whatever the
+    # run used. Row layout pays one transpose here, a real copy rather than a lazy adjoint.
     vecs = buffer.layout isa RowLayout ?
-        view(buffer.vecs, 1:n, :) :
-        view(buffer.vecs, :, 1:n)
-    return vals, n == length(buffer.vals) ? buffer.vecs : vecs
+        permutedims(full ? buffer.vecs : view(buffer.vecs, 1:n, :)) :
+        (full ? buffer.vecs : view(buffer.vecs, :, 1:n))
+    return vals, vecs
 end
 
 function _finalize_result!(buffer::_WindowResultBuffer)

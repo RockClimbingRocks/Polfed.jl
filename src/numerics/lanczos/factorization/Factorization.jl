@@ -57,7 +57,7 @@ function lanczositer(iterator::LanczosIterator, basis::OrthonormalBasis, maxdim:
     # orthogonalize the residual against the seed
     α = getoverlap(factorization)
     if x0 isa AbstractVector
-        factorization.r -= x0 * α                          # scalar α
+        axpy!(-α, x0, factorization.r)                     # scalar α; BLAS AXPY on CPU
     else
         project!(iterator.layout, factorization.r, x0, α)  # block: r ← r − x0·α (col) / α·x0 (row)
     end

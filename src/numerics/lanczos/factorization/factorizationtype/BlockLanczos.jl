@@ -11,6 +11,7 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
     v_last::AbstractMatrix{T}
     v_secondlast::AbstractMatrix{T}
     mat::AbstractMatrix{T}
+    reorth_coeff::Union{Nothing,AbstractMatrix{T}}
     pu::P
     layout::L                      # block storage orientation (Column/Row)
 
@@ -22,8 +23,18 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
         v_last = pu.zeros(T, size(v0))
         v_secondlast = pu.zeros(T, size(v0))
         mat = pu.zeros(T, maxdim, maxdim)
+        bs = blocksize(layout, v0)
+        # One persistent coefficient matrix removes both temporary products from
+        # MatrixBasis reorthogonalization.  Its orientation matches the BLAS operation:
+        # column layout: Q'W is maxdim×bs; row layout: WQ' is bs×maxdim.
+        reorth_coeff = if basis isa MatrixBasis
+            layout isa RowLayout ? pu.zeros(T, bs, maxdim) : pu.zeros(T, maxdim, bs)
+        else
+            nothing
+        end
 
-        return new{S,T,P,L}(0, blocksize(layout, v0), basis, r, v_last, v_secondlast, mat, pu, layout)
+        return new{S,T,P,L}(0, bs, basis, r, v_last, v_secondlast, mat,
+                            reorth_coeff, pu, layout)
     end
 end
 
@@ -77,7 +88,7 @@ function calcoverlap!(fact::BlockLanczosFactorization)
     krylovdim = fact.krylovdim
     blocksize = fact.blocksize
     α_k = view(fact.mat, krylovdim-blocksize+1:krylovdim, krylovdim-blocksize+1:krylovdim)
-    α_k .= overlap(fact.layout, fact.v_last, fact.r)
+    overlap!(fact.layout, α_k, fact.v_last, fact.r)
     α_k .= Hermitian(α_k)
 end
 

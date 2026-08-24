@@ -65,45 +65,43 @@ struct VectorWise <: Parallelization end
 
 
 """
-    resolve_parallelization(strategy, pu::ProcessingUnit, block_size::Int,
-                            nthreads::Int = Threads.nthreads()) -> Parallelization
+    resolve_parallelization(strategy, pu, block_size, optimize_mapping,
+                            nthreads = Threads.nthreads()) -> Parallelization
 
-Resolve the effective parallelization strategy for a run. An explicit `strategy` is returned
-unchanged; `nothing` (auto) is decided from the block size and the thread count.
+GPU: always [`BlockWise`](@ref) — there is no VectorWise device kernel, so an explicit request is
+coerced with a warning.
 
-- [`GPU`](@ref) → always [`BlockWise`](@ref): the device kernels own the decomposition.
-- `block_size == 1` → [`BlockWise`](@ref). [`VectorWise`](@ref) is one Clenshaw per Krylov
-  vector, so at a single vector it is serial; the basis-state split is the only parallelism.
-- `nthreads <= block_size` → [`VectorWise`](@ref), **when it can run** (see below). Every
-  thread gets at least one whole vector, so no buffer is ever handed between cores.
-- otherwise (`nthreads > block_size`) → [`BlockWise`](@ref). `VectorWise` cannot use more
-  than `block_size` threads, so it would leave `nthreads - block_size` of them idle.
+CPU: an explicit `strategy` wins (via [`_usable`](@ref)); `nothing` resolves as
 
-!!! warning "VectorWise is currently unusable above one thread"
-    [`VectorWise`](@ref) opens a parallel region per Krylov vector, and the Clenshaw combine
-    (`_threaded_combine!`) opens a `Threads.@threads :static` region inside it whenever
-    `nthreads() > 1`. Julia rejects `:static` regions running concurrently, so such a run raises
-    "`@threads :static` cannot be used concurrently or nested". Until the recurrence can be built
-    serial for a caller that owns the threads, auto-resolution will not hand out `VectorWise`
-    above one thread, and an explicit request is coerced with a warning — an automatic choice
-    must never be one that cannot run.
+    block_size == 1          -> BlockWise   (VectorWise is serial at one vector)
+    optimize_mapping ==false -> BlockWise   (generic mul! takes its own MKL threads)
+    block_size == nthreads   -> VectorWise  (one whole vector per thread)
+    otherwise                -> BlockWise
 
-Divisibility does NOT enter here. `BlockWise` always has a valid decomposition — worst case
-one group, the pure basis-state split — so `nthreads % block_size != 0` needs no special
-case; it only affects how many groups `BlockWise` resolves internally.
+`=== false`, not `!optimize_mapping`: `true`/`:auto`/`:universal`/a kernel all mean optimized.
 
-The default is intentionally *computed* rather than stored as a constant — there is no
-parallelization entry in `Defaults`.
+!!! warning
+    [`_usable`](@ref) downgrades VectorWise above one thread, so auto never actually returns it
+    today — the branch is live only once the Clenshaw combine can be built serial.
 """
 function resolve_parallelization(strategy::Union{Parallelization,Nothing}, pu::ProcessingUnit,
-                                 block_size::Int, nthreads::Int = Threads.nthreads())
-    !isnothing(strategy) && return _usable(strategy, nthreads)
-    isa(pu, GPU) && return BlockWise()
+                                 block_size::Int, optimize_mapping,
+                                 nthreads::Int = Threads.nthreads())
+    # GPU before the explicit branch, or a requested VectorWise is returned unchanged and fails later.
+    if isa(pu, GPU)
+        strategy isa VectorWise && polfed_log(POLFED_WARN_LEVEL,
+            "VectorWise is not supported on the GPU. Using BlockWise instead.")
+        return BlockWise()
+    end
     isa(pu, CPU) || throw(ArgumentError("Unrecognized processing unit $pu"))
+
+    !isnothing(strategy) && return _usable(strategy, nthreads)
     block_size == 1 && return BlockWise()
-    nthreads <= block_size && return _usable(VectorWise(), nthreads)
+    optimize_mapping === false && return BlockWise()
+    optimize_mapping === true && block_size == nthreads && return _usable(VectorWise(), nthreads)
     return BlockWise()
 end
+
 
 """
     _usable(strategy::Parallelization, nthreads::Int) -> Parallelization

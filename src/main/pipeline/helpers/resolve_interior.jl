@@ -80,6 +80,15 @@ function _resolve_interior(
         dos, Interval(left, right), howmany_per_patch, howmany_pad,
     )
     patch_count = length(patches.unpadded)
+    if should_log(POLFED_INFO_LEVEL)
+        polfed_log(POLFED_INFO_LEVEL,
+                   "Interior decomposed into $patch_count patches over $(_fmt_iv(Interval(left, right))).",
+                   howmany_per_patch = Int(howmany_per_patch), howmany_pad = Int(howmany_pad))
+        for i in eachindex(patches.unpadded)
+            polfed_log(POLFED_DEBUG_LEVEL, "Patch $i/$patch_count.",
+                       owns = _fmt_iv(patches.unpadded[i]), padded = _fmt_iv(patches.padded[i]))
+        end
+    end
     for i in eachindex(patches.unpadded)
         own = patches.unpadded[i]
         solve = _interior_solve_interval(
@@ -102,6 +111,11 @@ function _resolve_interior(
             (result.report.complete || retries == max_retries) && break
             retries += 1
             inflation *= retry_growth
+            polfed_log(POLFED_DEBUG_LEVEL,
+                       "Interior patch $i/$patch_count did not bracket its interval; widening " *
+                       "the overlap and the Krylov budget.",
+                       retry = retries, of = max_retries, overestimate_iters = inflation,
+                       howmany_pad = Int(howmany_pad) * (retries + 1))
             wider = _pad_interval(
                 dos, own, Int(howmany_pad) * (retries + 1),
             )

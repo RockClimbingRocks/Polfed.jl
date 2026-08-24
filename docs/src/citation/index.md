@@ -1,4 +1,4 @@
-# Citation
+# [Citation](@id citation)
 
 If `UniPolfed.jl` helps your research, please cite the original `Polfed.jl`
 scientific article and the `UniPolfed.jl` software. Citations are one of the

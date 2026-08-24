@@ -22,19 +22,38 @@ LZ = UniPolfed.Numerics.Lanczos
             @test av[2] == [2.0, 2.0, 2.0]
         end
 
-        @testset "add! overflow shifts the oldest entry out" begin
+        @testset "growth past maxdim keeps every entry" begin
+            # `maxdim` is a capacity HINT for this backend, not a limit: the basis grows on
+            # demand and never drops a vector (dropping one would leave full reorthogonalization
+            # projecting against an incomplete basis).
             b = LZ.createbasis(3, zeros(2), VectorBasis, pu)
-            for k in 1:3
+            for k in 1:6                     # deliberately twice the hint
                 LZ.add!(b, Float64[k, k])
             end
-            @test b.nvecs == 3
-
-            LZ.add!(b, [4.0, 4.0])           # full → drop oldest entry
-            @test b.nvecs == 3
+            @test b.nvecs == 6
             av = LZ.allvecs(b)
-            @test av[1] == [2.0, 2.0]
-            @test av[2] == [3.0, 3.0]
-            @test av[3] == [4.0, 4.0]
+            @test length(av) == 6
+            @test av[1] == [1.0, 1.0]        # oldest still present
+            @test av[6] == [6.0, 6.0]
+        end
+
+        @testset "no preallocation before the first add!" begin
+            b = LZ.createbasis(1000, zeros(2), VectorBasis, pu)
+            @test b.nvecs == 0
+            @test isempty(b.basis)           # a huge budget costs nothing up front
+        end
+
+        @testset "add! copies, never aliases the caller's buffer" begin
+            # Lanczos reuses one work buffer across iterations; storing it by reference would
+            # make every entry the same vector.
+            b = LZ.createbasis(4, zeros(2), VectorBasis, pu)
+            work = [1.0, 1.0]
+            LZ.add!(b, work)
+            work .= [9.0, 9.0]               # caller reuses the buffer
+            LZ.add!(b, work)
+            av = LZ.allvecs(b)
+            @test av[1] == [1.0, 1.0]
+            @test av[2] == [9.0, 9.0]
         end
 
         @testset "allvecs on an empty basis throws" begin
@@ -67,12 +86,11 @@ LZ = UniPolfed.Numerics.Lanczos
     @testset "block (blocksize 2)" begin
         blk(a, b) = Float64[a b; a b; a b]   # 3×2 block with constant columns a, b
 
-        @testset "constructor sizes entries by the column budget" begin
-            # maxdim is a column budget → cld(6, 2) = 3 entries, each a 3×2 block.
+        @testset "constructor allocates no entries" begin
             b = LZ.createbasis(6, zeros(3, 2), VectorBasis, pu)
             @test b.blocksize == 2
             @test b.nvecs == 0
-            @test length(b.basis) == 3
+            @test isempty(b.basis)           # entries appear only as blocks are added
         end
 
         @testset "add! appends whole blocks" begin
@@ -85,15 +103,16 @@ LZ = UniPolfed.Numerics.Lanczos
             @test av[2] == blk(3, 4)
         end
 
-        @testset "add! overflow shifts the oldest block out" begin
-            b = LZ.createbasis(4, zeros(3, 2), VectorBasis, pu)   # cld(4,2) = 2 entries
+        @testset "growth past maxdim keeps every block" begin
+            b = LZ.createbasis(4, zeros(3, 2), VectorBasis, pu)   # hint of cld(4,2) = 2 entries
             LZ.add!(b, blk(1, 2))
-            LZ.add!(b, blk(3, 4))                                 # full
-            LZ.add!(b, blk(5, 6))                                 # drop oldest block
-            @test b.nvecs == 2
+            LZ.add!(b, blk(3, 4))
+            LZ.add!(b, blk(5, 6))                                 # past the hint — no drop
+            @test b.nvecs == 3
             av = LZ.allvecs(b)
-            @test av[1] == blk(3, 4)
-            @test av[2] == blk(5, 6)
+            @test av[1] == blk(1, 2)
+            @test av[2] == blk(3, 4)
+            @test av[3] == blk(5, 6)
         end
 
         @testset "all_withoutlasttwo excludes the last two blocks" begin

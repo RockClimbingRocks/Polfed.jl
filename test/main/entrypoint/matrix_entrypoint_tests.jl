@@ -30,9 +30,9 @@ end
 # The `k` values in `vals` closest to `E`, sorted — for comparing against the exact spectrum.
 _closest(vals, E, k) = sort(sort(collect(vals); by = λ -> abs(λ - E))[1:k])
 
-@testset "matrix entrypoint polfed(H, …)" begin
+@testset "matrix entrypoint polfed(H, …) — L = $L" for L in (8, 10)
     Random.seed!(20260707)
-    L = 8; D = 2^L
+    D = 2^L
     H = _qrem(L)
     exact = sort(eigvals(Symmetric(Matrix(H))))
     target_E = exact[cld(D, 2)] + 0.13     # an interior, non-degenerate target energy
@@ -55,14 +55,14 @@ _closest(vals, E, k) = sort(sort(collect(vals); by = λ -> abs(λ - E))[1:k])
     end
 
     @testset "optimize_mapping = $(repr(choice)) (vector seed, bs=1)" for choice in
-            (false, :ell32_svec, :csr_simd, :csr64_svec, :shuf, :auto)
+            (false, true, :auto, :universal, MappingKernel(:universal, :row_bucketed))
         x0 = randn(D)
         res = polfed(H, x0, howmany, target_E; mc = MappingConfig(optimize_mapping = choice))
         check(res)
     end
 
     @testset "block seed bs=$bs, optimize_mapping=$(repr(choice))" for (bs, choice) in
-            ((2, :ell32_svec), (4, :shuf), (4, false))
+            ((2, :universal), (4, MappingKernel(:universal, :row_read)), (4, false))
         x0 = randn(D, bs)
         res = polfed(H, x0, howmany, target_E; mc = MappingConfig(optimize_mapping = choice))
         check(res)
@@ -71,14 +71,14 @@ _closest(vals, E, k) = sort(sort(collect(vals); by = λ -> abs(λ - E))[1:k])
     @testset "NamedTuple pins kernel + params" begin
         x0 = randn(D, 2)
         res = polfed(H, x0, howmany, target_E;
-                     mc = MappingConfig(optimize_mapping = (kernel = :csr64_svec, G = 2)))
+                     mc = MappingConfig(optimize_mapping = (kernel = :universal,)))
         check(res)
     end
 
     @testset "explicit Emin/Emax skips the bounds probe" begin
         Emin, Emax = first(exact) - 0.5, last(exact) + 0.5
         res = polfed(H, randn(D), howmany, target_E;
-                     mc = MappingConfig(optimize_mapping = :ell32_svec, Emin = Emin, Emax = Emax))
+                     mc = MappingConfig(optimize_mapping = :universal, Emin = Emin, Emax = Emax))
         check(res)
     end
 

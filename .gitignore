@@ -22,11 +22,24 @@
 /notebooks/**/*.h5
 /notebooks/**/*.pdf
 /notebooks/**/*.png
+/notebooks/**/*.log
+/notebooks/**/*.xlsx
+
+# Raw machine-specific benchmark output. notebooks/README.md keeps the notebook set
+# "curated, source-backed" and deliberately excludes archived timings — they are tied to
+# CPU model, thread count and layout, so they are not portable evidence. Drivers,
+# READMEs and RESULTS.md summaries stay committable; the raw numbers they produced do not.
+/notebooks/**/results/*
+!/notebooks/**/results/.gitkeep
+/notebooks/benchmarks/**/*.txt
+!/notebooks/benchmarks/**/README.txt
 .CondaPkg/
 **/.CondaPkg/
 
 # Local/generated project files
 /Polfed_Models_Details.txt
+.vscode/
+.idea/
 .DS_Store
 **/.DS_Store
 .AppleDouble/

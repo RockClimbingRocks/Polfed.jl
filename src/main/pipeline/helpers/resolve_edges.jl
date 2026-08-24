@@ -30,6 +30,8 @@ function _run_filtered_patch(
     maxdim = expected_krylov_dim(
         filter, n, mp.sys.block_size, max(2.5, Float64(overestimate_iters)),
     )
+    log_prelanczos(mp, filter, eig_target, n, expected_dim, maxdim, tol, eigentol_rescaled;
+                   label = label, rescaled_values = true)
     result = @stage timer :lanczos lanczos(transformed, mp.sys.x0, eig_target;
         rot = algorithm_defaults.rot,
         basistype = algorithm_defaults.basistype,
@@ -41,12 +43,7 @@ function _run_filtered_patch(
         next_check = algorithm_defaults.conv_checking(expected_dim),
         warn_incomplete = false,
     )
-    polfed_log(POLFED_DEBUG_LEVEL, "$label finished.";
-        complete = result.report.complete,
-        converged = result.converged,
-        iterations = result.report.itersneeded,
-        maxdim = maxdim,
-    )
+    log_lanczos_outcome(result; label = label)
     return result
 end
 
@@ -121,6 +118,9 @@ function _resolve_edges(
     left_cut, right_cut = -1.0 + distance, 1.0 - distance
     left_active = request.left < left_cut
     right_active = request.right > right_cut
+    polfed_log(POLFED_INFO_LEVEL, "Edge bands (peeled first, with a count target).",
+               left_active = left_active, right_active = right_active,
+               cuts = (left_cut, right_cut), request = _fmt_iv(request))
     (left_active || right_active) || return nothing, nothing
 
     left_band = Interval(-1.0, left_cut)
@@ -147,6 +147,9 @@ function _resolve_edges(
         (result.report.complete || retries == max_retries) && break
         retries += 1
         inflation *= retry_growth
+        polfed_log(POLFED_DEBUG_LEVEL,
+                   "Edge band incomplete; retrying with a larger Krylov budget.",
+                   retry = retries, of = max_retries, overestimate_iters = inflation)
     end
 
     vals, vecs = Float64.(collect(result.vals)), result.vecs
@@ -181,6 +184,10 @@ function _resolve_edges(
         "Edge resolution exhausted $retries retries before completeness was certified ($kind).",
     )
 
+    should_log(POLFED_DEBUG_LEVEL) && polfed_log(POLFED_DEBUG_LEVEL, "Edge bands resolved.",
+        left_converged = length(left_indices), right_converged = length(right_indices),
+        left_seam = left_active ? _edge_seam(vals, left_indices, :left, left_cut) : nothing,
+        right_seam = right_active ? _edge_seam(vals, right_indices, :right, right_cut) : nothing)
     left_edge = left_active ? (
         seam = _edge_seam(vals, left_indices, :left, left_cut),
         band = left_band,

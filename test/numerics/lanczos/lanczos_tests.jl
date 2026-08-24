@@ -184,6 +184,27 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
         @test report isa UniPolfed.Numerics.Lanczos.FactorizationReport
     end
 
+    @testset "does not change the caller's BLAS thread configuration" begin
+        saved_threads = BLAS.get_num_threads()
+        try
+            BLAS.set_num_threads(min(2, Sys.CPU_THREADS))
+            expected_threads = BLAS.get_num_threads()
+            observed_threads = Int[]
+            function threaded_probe!(y, x)
+                push!(observed_threads, BLAS.get_num_threads())
+                return mul!(y, A, x)
+            end
+
+            r = lanczos(threaded_probe!, x0, LowestEigs(2); maxdim=md)
+            @test r.converged == 2
+            @test !isempty(observed_threads)
+            @test all(==(expected_threads), observed_threads)
+            @test BLAS.get_num_threads() == expected_threads
+        finally
+            BLAS.set_num_threads(saved_threads)
+        end
+    end
+
     @testset "lanczos_extrema" begin
         Emin, Emax = lanczos_extrema(A; x0=x0, maxdim=200)
         @test Emin ≈ exact[1]

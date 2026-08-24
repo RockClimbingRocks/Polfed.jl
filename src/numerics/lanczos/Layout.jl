@@ -48,10 +48,14 @@ columns, `β` upper-triangular `R`) or `X = β·Q` (row: `lq`, orthonormal rows,
 lower-triangular `L`). `β` is the block analogue of the Lanczos norm coupling.
 """
 function orthonormalize(::ColumnLayout, X::AbstractMatrix)
+    # For strided CPU BlasFloat matrices Julia dispatches `qr` to LAPACK.  If MKL.jl
+    # was loaded by the caller, libblastrampoline sends that LAPACK call to MKL.
     F = qr(X)
     return Matrix(F.Q), Matrix(F.R)
 end
 function orthonormalize(::RowLayout, X::AbstractMatrix)
+    # Likewise, CPU `lq` dispatches to LAPACK; device arrays retain their backend's
+    # own method.  Lanczos deliberately does not select a backend or thread count here.
     F = lq(X)
     return Matrix(F.Q), Matrix(F.L)
 end
@@ -67,6 +71,17 @@ used by [`project!`](@ref); it doubles as the orthogonality probe (`≈ 0` ⇔ `
 """
 @inline overlap(::ColumnLayout, V::AbstractMatrix, R::AbstractMatrix) = V' * R
 @inline overlap(::RowLayout,    V::AbstractMatrix, R::AbstractMatrix) = R * V'
+
+"""
+    overlap!(layout, α, V, R) -> α
+
+Write [`overlap`](@ref) into caller-owned storage. On strided CPU arrays this is a BLAS
+GEMM; it also preserves GPU/backend dispatch through `mul!`.
+"""
+@inline overlap!(::ColumnLayout, α::AbstractMatrix, V::AbstractMatrix, R::AbstractMatrix) =
+    mul!(α, V', R)
+@inline overlap!(::RowLayout, α::AbstractMatrix, V::AbstractMatrix, R::AbstractMatrix) =
+    mul!(α, R, V')
 
 # --- projection (orthogonalization step) -------------------------------------
 
@@ -92,11 +107,33 @@ Remove the component of `W` in the span of the orthonormal basis block `Q` (whic
 `W ← W − (WQ')Q` (row). After the call, `overlap(layout, Q, W) ≈ 0`.
 """
 @inline function reorthogonalize!(::ColumnLayout, W::AbstractVecOrMat, Q::AbstractMatrix)
-    W .-= Q * (Q' * W)
-    return W
+    coeff = W isa AbstractVector ?
+            similar(W, eltype(W), size(Q, 2)) :
+            similar(W, eltype(W), size(Q, 2), size(W, 2))
+    return reorthogonalize!(ColumnLayout(), W, Q, coeff)
 end
 @inline function reorthogonalize!(::RowLayout, W::AbstractMatrix, Q::AbstractMatrix)
-    W .-= (W * Q') * Q
+    coeff = similar(W, eltype(W), size(W, 1), size(Q, 1))
+    return reorthogonalize!(RowLayout(), W, Q, coeff)
+end
+
+"""
+    reorthogonalize!(layout, W, Q, coeff) -> W
+
+Allocation-free version of [`reorthogonalize!`](@ref). `coeff` is caller-owned workspace
+with shape `k` (scalar column layout), `k × bs` (block column layout), or `bs × k`
+(block row layout), where `k` is the number of accumulated basis vectors.
+"""
+@inline function reorthogonalize!(::ColumnLayout, W::AbstractVecOrMat,
+                                  Q::AbstractMatrix, coeff::AbstractVecOrMat)
+    mul!(coeff, Q', W)
+    mul!(W, Q, coeff, -one(eltype(W)), one(eltype(W)))
+    return W
+end
+@inline function reorthogonalize!(::RowLayout, W::AbstractMatrix,
+                                  Q::AbstractMatrix, coeff::AbstractMatrix)
+    mul!(coeff, W, Q')
+    mul!(W, coeff, Q, -one(eltype(W)), one(eltype(W)))
     return W
 end
 
@@ -109,5 +146,13 @@ Reconstruct the eigenvectors in the original space from the Krylov `basis` (`k` 
 and the Ritz coefficient matrix `ϕ` (`k × m`). Column layout returns `basis·ϕ` (`D × m`,
 eigenvectors as columns); row layout returns `ϕ'·basis` (`m × D`, eigenvectors as rows).
 """
-@inline reconstruct(::ColumnLayout, basis::AbstractMatrix, ϕ::AbstractMatrix) = basis * ϕ
-@inline reconstruct(::RowLayout,    basis::AbstractMatrix, ϕ::AbstractMatrix) = ϕ' * basis
+@inline function reconstruct(::ColumnLayout, basis::AbstractMatrix, ϕ::AbstractMatrix)
+    T = promote_type(eltype(basis), eltype(ϕ))
+    vecs = similar(basis, T, size(basis, 1), size(ϕ, 2))
+    return mul!(vecs, basis, ϕ)
+end
+@inline function reconstruct(::RowLayout, basis::AbstractMatrix, ϕ::AbstractMatrix)
+    T = promote_type(eltype(basis), eltype(ϕ))
+    vecs = similar(basis, T, size(ϕ, 2), size(basis, 2))
+    return mul!(vecs, ϕ', basis)
+end

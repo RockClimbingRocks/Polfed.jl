@@ -1,21 +1,26 @@
 # `filter/` — per-filter layout
 
 Filters are organized **per filter**, not per concern: everything about one filter (its type,
-coefficients, order/build, validation) lives in its own folder under `filters/`, so *adding a
+coefficients, order/build, validation) lives in its own folder under `filter_types/`, so *adding a
 filter = drop a folder + implement the interface* — no touching shared concern-folders.
+
+The slice has three parts, and the folder names say which is which: `filter.jl` is the seam,
+`resolution/` is how a filter gets **picked**, `filter_types/` is which filters **exist**.
 
 ## Layout
 
 ```
 filter/
   filter.jl              # AbstractFilter + interface stubs + _scalar_filter (shared) + includes
-  order_bisection.jl     # bisect_order — bracket-double + bisect, PREDICATE-driven (shared)
-  edge_side.jl           # window geometry: edge_side — the family decision (shared)
-  resolve_filter.jl      # geometry + cutoff-LADDER orchestrator (single & pair) + AVAILABLE_FILTERS
-  filters/
-    filters.jl           # includes each filter folder
+  resolution/            # HOW a filter is chosen — shared, filter-agnostic
+    order_bisection.jl   #   bisect_order — bracket-double + bisect, PREDICATE-driven
+    edge_side.jl         #   window geometry: edge_side — the family decision
+    resolve_filter.jl    #   geometry + cutoff-LADDER orchestrator (single & pair) + the chains
+    resolve_double_strategy.jl  # two windows: cost-aware joint(double)-vs-separate decision
+  filter_types/          # WHICH filters exist — one self-contained folder each
+    filter_types.jl      # includes each filter folder
     delta_up/            # reference filter — fully documented
-      delta_up.jl        #   DeltaUpFilterDefaults module + struct + type-tag methods + includes
+      delta_up.jl        #   the struct + type-tag methods + includes
       coefficients.jl    #   _coefficients_nonnormalized + coefficients (normalized to +1)
       build.jl           #   analytical_order + resolve_order! + resolve_bounds_from_order + build_filter
       validate.jl        #   validate_filter (leakage toward the exposed end)
@@ -23,6 +28,7 @@ filter/
       delta_down.jl  coefficients.jl  build.jl  validate.jl
     double_delta/        # two windows in one polynomial (peaks +1 / −1), :both exposed ends
       double_delta.jl  coefficients.jl  build.jl  validate.jl
+      eig_target.jl    #   the :both Lanczos targets — window 1 is the +1 peak ⇒ the HIGH end
     edge/                # spectrum-edge windows — a MONOTONE monomial power ("basically H³"):
                          #   −((1−x)/2)ᵖ / ((1+x)/2)ᵖ / xᵖ for :lowest/:highest/:both (:Taylor);
                          #   fixed order (default 3), no bisection/passband, cannot leak
@@ -62,13 +68,16 @@ The numerical leakage scan itself lives in `common/utils/validate_leakage.jl`
   edge member always resolves separately). A returned passband may be WIDER than the request —
   the pipeline trims to the requested interval.
 
-**Per-filter** (`filters/<name>/`): the mutable struct + a `<Name>Defaults` module, and every method
-that reads the filter's own parameters.
+**Per-filter** (`filter_types/<name>/`): the mutable struct and every method that reads the
+filter's own parameters. Its *default values* are not here — they live in the central registry
+as `Defaults.filters.<name>` (`src/main/defaults/filters/`), alongside `Defaults.filters.edge_tol`
+and the two resolution chains.
 
 ## Design decisions
 
-- **No per-filter module** — plain includes into `module UniPolfed`; only the *defaults* get a small
-  module (`DeltaUpFilterDefaults`) to avoid `cutoff`/`order`/… name collisions.
+- **No per-filter module** — plain includes into `module UniPolfed`; only the *defaults* get a
+  small module, and those now live centrally as `Defaults.filters.<name>`, which keeps
+  `cutoff`/`order`/… from colliding between filters and puts every tunable knob in one registry.
 - **Two intervals on the filter**: `interval` (from the DoS — the requested window; sets `target`,
   drives order resolution, and is what results are filtered to) and `passband` (from
   `resolve_bounds_from_order` — the *effective* exposed window `[left, right]` where `P` sits at/above
@@ -89,4 +98,9 @@ that reads the filter's own parameters.
   (above), the scan just backs off `ε` from each edge and flags any point that reaches `cutoff`
   outside. `leak_rtol` (default `0`) remains only as a knob to treat `cutoff` as softer if desired.
 
-`double_delta` is not in `AVAILABLE_FILTERS`, so it is intentionally not part of this layout yet.
+`double_delta` is not in `AVAILABLE_FILTERS` (no single-window chain contains it) — it is reached
+through `resolve_double_strategy`, which `double_polfed` calls with two windows. That function owns
+the cost model: it resolves both windows singly for `K₁`/`K₂` (free — scalar bisection, no
+matvecs), takes the joint filter when `min(K₁,K₂)/max(K₁,K₂) ≥ Defaults.double_polfed.double_ratio`,
+and falls back to two runs whenever the joint filter cannot be built (edge-touching window, or an
+exhausted ladder). See `Defaults.double_polfed` for why the threshold is the Krylov overhead − 1.

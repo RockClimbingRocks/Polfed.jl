@@ -5,8 +5,9 @@ Default parameter values for the `polfed` entrypoint and its pipeline, reference
 (e.g. `Defaults.polfed.N`) so the names never leak into `module UniPolfed`'s namespace. Defaults are
 **per function**: a variant like `patched_polfed` carries its own [`Defaults.patched_polfed`](@ref).
 
-Filter-specific defaults live beside their filter implementations; this module contains
-algorithm-wide defaults shared by the `polfed` pipeline.
+Filter-specific defaults live in [`Defaults.filters`](@ref) (a sibling, not a child — every
+entrypoint resolves filters); this module contains algorithm-wide defaults shared by the
+`polfed` pipeline.
 """
 module polfed
 
@@ -63,10 +64,11 @@ physical margin inside `[-1, 1]`. With the default margin, the scan covers
 """
 const maxdos_edge_margin = 0.01
 
-# Transform / filter shape defaults are **per-filter** and live next to their filter
-# type (module `<Filter>Defaults`), because they vary from one filter to the next (a delta
-# filter's cutoff is not an edge filter's). They are intentionally *not* here — this module
-# holds only the filter-agnostic, algorithm-wide defaults.
+# Transform / filter shape defaults are **per-filter** and live in the cross-cutting sibling
+# module `Defaults.filters` (one submodule per filter: `Defaults.filters.delta_up.cutoff`, …),
+# because they vary from one filter to the next (a delta filter's cutoff is not an edge
+# filter's) AND because every entrypoint resolves filters — they belong to no single one. This
+# module holds only the filter-agnostic, algorithm-wide defaults.
 
 # ── Factorization (Lanczos) ───────────────────────────────────────────────────
 
@@ -109,6 +111,9 @@ its iterations without converging everything.
 """
 const overestimate_iters = 1.25
 
+
+const overestimate_howmany = 5
+
 # ── Convergence-check scheduling ──────────────────────────────────────────────
 
 """
@@ -148,6 +153,25 @@ conv_checking(expected_dim::Real) =
         return ε > 1e-3 ? k + 20 : ε > 1e-3 ? k + 10 : k + 5
     end
 
-    
+
+# ── Diagnostic thresholds (logging only — never change what a run computes) ───
+
+"""
+    Defaults.polfed.dos_sum_rule_rtol::Float64 = 0.05
+
+Relative slack allowed on the KPM sum rule `∫ρ = dim` before the DoS stage warns. The DoS is a
+stochastic estimate, so a few percent is normal; a large miss means `f!_rescaled` is not the
+Hermitian operator KPM assumes (or the spectrum is not in `[-1, 1]`), and every window sizing
+downstream inherits the error.
+"""
+const dos_sum_rule_rtol = 0.05
+
+"""
+    Defaults.polfed.passband_warn_ratio::Float64 = 5.0
+
+Warn before launching Lanczos when the resolved filter's passband is wider than this multiple of
+the requested window: the run will then converge far more eigenpairs than were asked for.
+"""
+const passband_warn_ratio = 5.0
 
 end # module polfed

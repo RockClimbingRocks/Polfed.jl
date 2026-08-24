@@ -41,6 +41,11 @@ makeblock(::RowLayout,    ::Type{T}, D, bs) where {T} = randn(T, bs, D)
             R = makeblock(L, T, D, bs)
             α = LZ.overlap(L, V, R)
             @test size(α) == (bs, bs)
+
+            α_preallocated = similar(α)
+            @test LZ.overlap!(L, α_preallocated, V, R) === α_preallocated
+            @test α_preallocated ≈ α
+
             LZ.project!(L, R, V, α)
             @test norm(LZ.overlap(L, V, R)) < tol                 # R now ⟂ V
         end

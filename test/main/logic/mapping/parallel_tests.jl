@@ -1,15 +1,17 @@
 # Parallelization strategy resolution.
 #
 # The rule is stated in terms of what each strategy CAN do, not in terms of arithmetic:
-#   VectorWise runs one Clenshaw per Krylov vector, so it can never occupy more than
-#   `block_size` threads, and at `block_size == 1` it is serial.
+#   VectorWise runs one Clenshaw per Krylov vector, so it pays off only when every thread gets
+#   exactly one whole vector, and at `block_size == 1` it is serial.
 #   BlockWise splits inside one recurrence step and always has a valid decomposition — worst
 #   case a single group, the pure basis-state split — so it works at any thread count.
 # Everything below follows from those two facts. In particular divisibility never decides the
 # STRATEGY; it only affects how many groups BlockWise resolves internally.
 #
-# `nthreads` is passed explicitly throughout: a test that reads `Threads.nthreads()` asserts
-# something different on every machine it runs on.
+# `optimize_mapping` and `nthreads` are BOTH passed explicitly throughout. `nthreads` because a
+# test that reads `Threads.nthreads()` asserts something different on every machine it runs on;
+# `optimize_mapping` because it sits before `nthreads` in the signature, so omitting it silently
+# binds a thread count to the mapping flag and the thread count then defaults to the host's.
 
 using Test
 using UniPolfed
@@ -21,61 +23,66 @@ import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
 @testset "resolve_parallelization" begin
 
     # Two layers, tested separately because they can mask each other:
-    #   the RULE decides from (block_size, nthreads);
+    #   the RULE decides from (block_size, optimize_mapping, nthreads);
     #   the DOWNGRADE then refuses VectorWise above one thread, because the Clenshaw combine
     #   opens a `@threads :static` region inside VectorWise's own and Julia rejects that.
-    # The rule's VectorWise branch is therefore only OBSERVABLE at nthreads = 1. Testing the two
-    # together would let a broken rule hide behind the downgrade.
+    # Testing the two together would let a broken rule hide behind the downgrade.
 
     @testset "an explicit strategy is honoured where it can run" begin
-        @test resolve_parallelization(BlockWise(), CPU(), 8, 8) isa BlockWise
-        @test resolve_parallelization(BlockWise(groups = 4), CPU(), 8, 8).groups == 4
-        @test resolve_parallelization(VectorWise(), CPU(), 2, 1) isa VectorWise
+        @test resolve_parallelization(BlockWise(), CPU(), 8, true, 8) isa BlockWise
+        @test resolve_parallelization(BlockWise(groups = 4), CPU(), 8, true, 8).groups == 4
+        @test resolve_parallelization(VectorWise(), CPU(), 2, true, 1) isa VectorWise
     end
 
     @testset "an explicit VectorWise is downgraded above one thread, not left to crash" begin
         # Silently reaching "`@threads :static` cannot be used concurrently or nested" from
         # inside a task is worse than being told the strategy was swapped.
         for nt in (2, 8, 32)
-            @test resolve_parallelization(VectorWise(), CPU(), 32, nt) isa BlockWise
+            @test resolve_parallelization(VectorWise(), CPU(), 32, true, nt) isa BlockWise
         end
     end
 
     @testset "block size 1 takes BlockWise — VectorWise would be serial" begin
         for nt in (1, 2, 8, 32)
-            @test resolve_parallelization(nothing, CPU(), 1, nt) isa BlockWise
+            @test resolve_parallelization(nothing, CPU(), 1, true, nt) isa BlockWise
         end
     end
 
-    @testset "threads <= block size takes VectorWise — every thread gets a whole vector" begin
-        # At nthreads = 1, where the downgrade does not apply and the rule is visible.
-        @test resolve_parallelization(nothing, CPU(), 8, 1) isa VectorWise
-        @test resolve_parallelization(nothing, CPU(), 32, 1) isa VectorWise
-        @test resolve_parallelization(nothing, CPU(), 2, 1) isa VectorWise
+    @testset "an unoptimized mapping takes BlockWise — generic mul! brings its own threads" begin
+        # Checked at `block_size == nthreads`, the one shape that would otherwise resolve
+        # VectorWise, so it is the flag deciding here and not the arithmetic.
+        for nt in (1, 2, 8, 32)
+            @test resolve_parallelization(nothing, CPU(), nt, false, nt) isa BlockWise
+        end
     end
 
-    @testset "threads > block size takes BlockWise — VectorWise would idle threads" begin
-        @test resolve_parallelization(nothing, CPU(), 4, 8) isa BlockWise     # divides
-        @test resolve_parallelization(nothing, CPU(), 8, 32) isa BlockWise    # divides
-        @test resolve_parallelization(nothing, CPU(), 4, 6) isa BlockWise     # does NOT divide
-        @test resolve_parallelization(nothing, CPU(), 4, 7) isa BlockWise     # coprime
+    @testset "block size /= threads takes BlockWise" begin
+        # VectorWise wants one whole vector per thread and nothing else; any other shape either
+        # idles threads or hands a buffer between cores.
+        @test resolve_parallelization(nothing, CPU(), 4, true, 8) isa BlockWise    # divides
+        @test resolve_parallelization(nothing, CPU(), 8, true, 32) isa BlockWise   # divides
+        @test resolve_parallelization(nothing, CPU(), 4, true, 6) isa BlockWise    # does NOT divide
+        @test resolve_parallelization(nothing, CPU(), 4, true, 7) isa BlockWise    # coprime
+        @test resolve_parallelization(nothing, CPU(), 32, true, 1) isa BlockWise   # fewer threads
     end
 
     @testset "auto never returns a strategy that cannot run" begin
         # The property that matters most: whatever the shape, an automatic choice must be
-        # runnable. Above one thread that means never VectorWise.
+        # runnable. Above one thread that means never VectorWise — including at
+        # `block_size == nthreads`, where the rule selects it and the downgrade takes it away
+        # again. That pairing is why auto cannot hand out VectorWise at all today.
         for bs in (1, 2, 3, 4, 8, 16, 32), nt in (2, 3, 4, 8, 16, 32)
-            @test resolve_parallelization(nothing, CPU(), bs, nt) isa BlockWise
+            @test resolve_parallelization(nothing, CPU(), bs, true, nt) isa BlockWise
         end
     end
 
     @testset "divisibility does not change the answer" begin
-        # The rule depends only on which side of `block_size` the thread count falls, never on
-        # whether one divides the other. Checked at nthreads = 1 for the VectorWise side, where
-        # the downgrade does not mask it.
-        @test resolve_parallelization(nothing, CPU(), 6, 1) isa VectorWise
+        # The rule turns on `block_size == nthreads` exactly, never on whether one divides the
+        # other — a divisor and a coprime thread count land in the same place.
+        @test resolve_parallelization(nothing, CPU(), 6, true, 3) isa BlockWise    # divides
+        @test resolve_parallelization(nothing, CPU(), 6, true, 12) isa BlockWise   # divides
         for nt in 7:24
-            @test resolve_parallelization(nothing, CPU(), 6, nt) isa BlockWise
+            @test resolve_parallelization(nothing, CPU(), 6, true, nt) isa BlockWise
         end
     end
 

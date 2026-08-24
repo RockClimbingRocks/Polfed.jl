@@ -115,11 +115,50 @@ function calculate_dos(
     moments = kpm_moments(f!, cfg.N, cfg.R, sys.x0, sys.pu)
     coefficients = kpm_coeffs(moments, cfg.kernel)
     ρ = kpm_density(moments; kernel = cfg.kernel)
+    dos = DoSResult(moments, coefficients, ρ)
 
-    # μ₀ is the total state count (unnormalized traces), so it is the one number that says
-    # whether the moment estimate is sane before anything downstream consumes ρ.
-    polfed_log(POLFED_DEBUG_LEVEL, "Density of states computed.",
-               num_moments = length(moments), total_states = first(moments))
+    _log_dos(dos, sys.dim, cfg)
+    return dos
+end
 
-    return DoSResult(moments, coefficients, ρ)
+"""
+    _log_dos(dos::DoSResult, dim::Int, cfg::DoSConfig) -> nothing
+
+Diagnose the estimated density before anything consumes it. Two things are checked, because every
+window sizing downstream (`resolve_interval`, `howmany_in_interval`, the patch decomposition)
+integrates this density and inherits its error:
+
+- **sum rule** (WARN) — `∫ρ` over `[-1, 1]` must recover the Hilbert-space dimension. A large
+  miss means `f!_rescaled` is not the Hermitian, `[-1, 1]`-rescaled operator KPM assumes.
+- **profile** (DEBUG) — `ρ` sampled across the spectrum, its peak, the moment decay, and the
+  `1/√R` statistical error scale. A negative sample is a Gibbs artifact and is called out.
+
+Deep-debug adds the head of the raw moment sequence. Everything here is scalar work on the
+already-computed coefficients — no operator applications — but the profile is still gated so a
+level-2 run does not pay for samples it will not print.
+"""
+function _log_dos(dos::DoSResult, dim::Int, cfg::DoSConfig)
+    total = integrate_chebyshev_weighted(dos.coefficients, -1.0, 1.0) / π
+    relerr = abs(total - dim) / max(dim, 1)
+    relerr > Defaults.polfed.dos_sum_rule_rtol && polfed_log(POLFED_WARN_LEVEL,
+        "The KPM sum rule ∫ρ = dim is violated: the estimated density is unreliable, and every " *
+        "window/state count derived from it will be too. Check that the operator is Hermitian " *
+        "and that its spectrum really is rescaled into [-1, 1].",
+        integrated_states = total, dim = dim, relative_error = relerr)
+
+    should_log(POLFED_DEBUG_LEVEL) || return nothing
+    xs = range(-0.98, 0.98; length = 9)
+    ys = [dos.ρ(x) for x in xs]
+    imax = argmax(ys)
+    minimum(ys) < 0 && polfed_log(POLFED_WARN_LEVEL,
+        "The estimated density is negative somewhere (Gibbs oscillation); increase N or use a " *
+        "stronger kernel.", min_ρ = minimum(ys))
+    polfed_log(POLFED_DEBUG_LEVEL, "Density of states estimated.",
+        total_states = total, dim = dim, sum_rule_error = relerr, μ₀ = first(dos.moments),
+        peak = (xs[imax], ys[imax]), moment_decay = abs(last(dos.moments) / first(dos.moments)),
+        statistical_error = 1 / sqrt(cfg.R),
+        profile = join((@sprintf("%.2g:%.3g", x, y) for (x, y) in zip(xs, ys)), "  "))
+    polfed_log(POLFED_DEEP_DEBUG_LEVEL, "KPM moments (head).",
+               moments = first(dos.moments, min(10, length(dos.moments))))
+    return nothing
 end

@@ -5,7 +5,7 @@
 # matrix methods own `H` and go row-native via `_prepare_matrix_row_pipeline` (entrypoint_helpers.jl).
 
 """
-    polfed(f!, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters) -> PolfedResult
+    polfed(f!, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Polynomial-Filtered Exact Diagonalization on an operator: compute `howmany` eigenpairs of `f!`
 (in-place action `f!(Y, X)` computing `Y ← H·X`) near `target`, via polynomial-filtered Lanczos.
@@ -18,6 +18,10 @@ Returns a [`PolfedResult`](@ref): the eigenpairs (true energies of `H`) **filter
 interval** and sorted ascending, iterable as `(val, vec)` pairs, carrying the structured
 [`Report`](@ref). A `@warn` (not an error) is emitted if fewer than `howmany` land in-interval.
 
+`verbosity` (default `nothing`) raises the POLFED log level for this call only and restores it
+afterwards — `3` traces every stage decision, including the full pre-Lanczos setup. Every POLFED
+entrypoint takes it; see [`with_verbosity`](@ref) for the scoped form.
+
 Thin wrapper over [`run_polfed_target_pipeline`](@ref), in the default column layout — a caller's
 `f!`/`x0` orientation is left untouched.
 """
@@ -26,13 +30,14 @@ polfed(f!, x0::AbstractVecOrMat, howmany::Integer, target;
        dosc::DoSConfig          = DoSConfig(),
        tol::Real                = Defaults.polfed.tol,
        eigentol::Real           = Defaults.polfed.eigentol,
-       overestimate_iters::Real = Defaults.polfed.overestimate_iters) =
-    run_polfed_target_pipeline(f!, x0, howmany, target;
+       overestimate_iters::Real = Defaults.polfed.overestimate_iters,
+       verbosity::Union{Nothing,Integer} = nothing) =
+    @with_verbosity verbosity run_polfed_target_pipeline(f!, x0, howmany, target;
                  mc = mc, dosc = dosc, tol = tol, eigentol = eigentol,
                  overestimate_iters = overestimate_iters)   # column layout (default)
 
 """
-    polfed(H::AbstractMatrix, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters) -> PolfedResult
+    polfed(H::AbstractMatrix, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Matrix (count-based) entrypoint: compute `howmany` eigenpairs of the concrete Hermitian matrix `H`
 near `target`, using the fast **row-layout** path. Owns `H`, so it probes `Emin`/`Emax`, builds the
@@ -47,10 +52,11 @@ function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany::Integer, targe
                 dosc::DoSConfig          = DoSConfig(),
                 tol::Real                = Defaults.polfed.tol,
                 eigentol::Real           = Defaults.polfed.eigentol,
-                overestimate_iters::Real = Defaults.polfed.overestimate_iters)
+                overestimate_iters::Real = Defaults.polfed.overestimate_iters,
+                verbosity::Union{Nothing,Integer} = nothing)
 
     f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
-    return run_polfed_target_pipeline(f!, x0_row, howmany, target;
+    return @with_verbosity verbosity run_polfed_target_pipeline(f!, x0_row, howmany, target;
                         mc = mc_row, dosc = dosc, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, layout = RowLayout())
 end
@@ -63,7 +69,7 @@ end
 
 
 """
-    polfed(f!, x0, target; mc, dosc, tol, eigentol, overestimate_iters) -> PolfedResult
+    polfed(f!, x0, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Window-target POLFED on an operator: compute **all** eigenpairs of `f!` whose true energy lies in
 the target window `target`, via polynomial-filtered Lanczos. Unlike the count-based
@@ -83,8 +89,9 @@ polfed(f!, x0::AbstractVecOrMat, target;
        dosc::DoSConfig          = DoSConfig(),
        tol::Real                = Defaults.polfed.tol,
        eigentol::Real           = Defaults.polfed.eigentol,
-       overestimate_iters::Real = Defaults.polfed.overestimate_iters) =
-    run_polfed_window_pipeline(f!, x0, target;
+       overestimate_iters::Real = Defaults.polfed.overestimate_iters,
+       verbosity::Union{Nothing,Integer} = nothing) =
+    @with_verbosity verbosity run_polfed_window_pipeline(f!, x0, target;
                  mc = mc, dosc = dosc, tol = tol, eigentol = eigentol,
                  overestimate_iters = overestimate_iters)   # column layout (default)
 
@@ -92,7 +99,7 @@ polfed(f!, x0::AbstractVecOrMat, target;
 
 
 """
-    polfed(H::AbstractMatrix, x0, target; mc, dosc, tol, eigentol, overestimate_iters) -> PolfedResult
+    polfed(H::AbstractMatrix, x0, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Matrix **window-target** entrypoint: compute all eigenpairs of `H` whose true energy lies in the
 window `target`, using the fast row-layout path. Same row-prep as the count-based matrix method
@@ -104,10 +111,11 @@ function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target;
                 dosc::DoSConfig          = DoSConfig(),
                 tol::Real                = Defaults.polfed.tol,
                 eigentol::Real           = Defaults.polfed.eigentol,
-                overestimate_iters::Real = Defaults.polfed.overestimate_iters)
+                overestimate_iters::Real = Defaults.polfed.overestimate_iters,
+                verbosity::Union{Nothing,Integer} = nothing)
 
     f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
-    return run_polfed_window_pipeline(f!, x0_row, target;
+    return @with_verbosity verbosity run_polfed_window_pipeline(f!, x0_row, target;
                         mc = mc_row, dosc = dosc, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, layout = RowLayout())
 end

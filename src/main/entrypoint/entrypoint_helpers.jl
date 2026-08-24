@@ -59,7 +59,8 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
     # threads each apply may take. Building first and choosing after is what let a VectorWise run
     # reach a `Val(bs)` kernel it could not call.
     pu = is_gpu_array(x0) ? GPU() : CPU()
-    strategy = _row_path_strategy(resolve_parallelization(mc.parallel_strategy, pu, bs))
+    strategy = _row_path_strategy(
+        resolve_parallelization(mc.parallel_strategy, pu, bs, mc.optimize_mapping))
     rowops = _build_matrix_rowops(H, mc.optimize_mapping, bs, a, b, strategy)
 
     # x0 → row orientation (block_size × dim); reorient only a column block or a vector (→ 1×D).

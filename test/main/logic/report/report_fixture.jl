@@ -1,5 +1,5 @@
 # Shared fixture for the report tests: one real POLFED run (matrix entrypoint, row-native,
-# :shuf kernel) whose PolfedResult + Report the behavioral tests below inspect. Running polfed
+# :universal kernel) whose PolfedResult + Report the behavioral tests below inspect. Running polfed
 # once here keeps the report testset fast.
 
 using LinearAlgebra, SparseArrays, Random
@@ -28,7 +28,7 @@ const REPORT_EXACT   = sort(eigvals(Symmetric(Matrix(REPORT_H))))
 const REPORT_HOWMANY = 6
 const REPORT_TARGET  = REPORT_EXACT[cld(REPORT_D, 2)] + 0.13
 const RES            = polfed(REPORT_H, randn(REPORT_D), REPORT_HOWMANY, REPORT_TARGET;
-                              mc = MappingConfig(optimize_mapping = :shuf))
+                              mc = MappingConfig(optimize_mapping = :universal))
 
 # Render a Report/PolfedResult to a String with explicit IO context (color / details).
 _render(r; color::Bool = false, details::Bool = false) =

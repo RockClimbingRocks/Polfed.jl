@@ -1,4 +1,5 @@
-import Logging: @info, @warn
+# `@info` / `@warn` are Base exports (Base.CoreLogging), so no `using Logging` is needed here.
+# The `Logging` stdlib is a TEST-only dependency of this package.
 
 """
     POLFED_SILENT_LEVEL::Int = 0
@@ -86,4 +87,27 @@ function polfed_log(level::Int, msg; kwargs...)
         @warn msg kwargs...
     end
     return nothing
+end
+
+"""
+    with_verbosity(f, level::Int)
+
+Run `f()` with [`verbosity`](@ref) temporarily set to `level`, restoring the previous level
+afterwards — also when `f` throws. This is the scoped alternative to assigning the global
+`verbosity[]`, and what the entrypoints' `verbosity` keyword uses internally.
+
+```julia
+with_verbosity(POLFED_DEBUG_LEVEL) do
+    polfed(H, x0, 50, :maxdos)
+end
+```
+"""
+function with_verbosity(f, level::Int)
+    previous = verbosity[]
+    verbosity[] = level
+    try
+        return f()
+    finally
+        verbosity[] = previous
+    end
 end

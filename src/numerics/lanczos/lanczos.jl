@@ -166,9 +166,25 @@ function _power_iterate!(f!::Function, v::AbstractVector, k::Int)
     return v
 end
 
+"""Cap on the extrema probe's Krylov budget; the actual default is `min(cap, dim)`."""
+const EXTREMA_MAXDIM_CAP = 5_000
+
 """
-    lanczos_extrema(mat::AbstractMatrix; x0=nothing, maxdim=100, tol=1e-14, eigentol=1e-8, power_iters=3, kwargs...)
-    lanczos_extrema(f!::Function, x0::AbstractVector; maxdim=100, tol=1e-14, eigentol=1e-8, power_iters=3, kwargs...)
+    _extrema_maxdim(dim::Integer) -> Int
+
+The extrema probe's default Krylov budget: `min(`[`EXTREMA_MAXDIM_CAP`](@ref)`, dim)`.
+
+The probe stores its basis in a [`VectorBasis`](@ref), which grows on demand, so this is a
+generous *ceiling* rather than a reservation — a probe that converges in 108 iterations
+allocates 108 vectors regardless of the cap. Sizing it this way removes the failure mode a
+small fixed budget had: the number of iterations the extremes need grows with `dim`, so a
+fixed `100` silently stopped certifying both ends past a few thousand dimensions.
+"""
+_extrema_maxdim(dim::Integer) = min(EXTREMA_MAXDIM_CAP, Int(dim))
+
+"""
+    lanczos_extrema(mat::AbstractMatrix; x0=nothing, maxdim=min(5000, dim), tol=1e-14, eigentol=1e-8, power_iters=3, kwargs...)
+    lanczos_extrema(f!::Function, x0::AbstractVector; maxdim=min(5000, dim), tol=1e-14, eigentol=1e-8, power_iters=3, kwargs...)
 
 Estimate the smallest and largest eigenvalues of a Hermitian/symmetric matrix or
 operator. Returns `(Emin, Emax)`.
@@ -184,8 +200,14 @@ A provided `x0` is copied and normalized; for matrix input without `x0`, a rando
 normalized seed is used.
 
 # Keyword Arguments
-- `maxdim::Int=100`: Krylov budget *cap*. The basis is preallocated to `dim × maxdim`,
-  so keep it modest — the extremes converge in far fewer iterations.
+- `maxdim::Int=`[`_extrema_maxdim`](@ref)`(dim)`: Krylov budget *cap*, defaulting to
+  `min(`[`EXTREMA_MAXDIM_CAP`](@ref)`, dim)`. Paired with the default `basistype` below the cap
+  is not a reservation, so it is deliberately generous: the probe pays only for the iterations
+  it actually takes.
+- `basistype::Type{<:OrthonormalBasis}=VectorBasis`: basis storage. [`VectorBasis`](@ref) grows
+  on demand, which is what makes a large `maxdim` free; [`MatrixBasis`](@ref) would preallocate
+  `dim × maxdim` and reserve gigabytes for a two-number probe. Column-oriented, so do not pass
+  `layout = RowLayout()` through `kwargs` with this backend (see [`lanczos`](@ref)).
 - `power_iters::Int=3`: normalized power-iteration steps applied to the seed before the
   probe (`0` disables).
 - `return_result::Bool=false`: return the full [`LanczosResult`](@ref) (convergence info,
@@ -199,34 +221,46 @@ normalized seed is used.
 function lanczos_extrema(
     mat::AbstractMatrix;
     x0::Union{Nothing,AbstractVector}=nothing,
-    maxdim::Int=100,
+    maxdim::Int=_extrema_maxdim(size(mat, 1)),
     tol::Real=1e-14,
     eigentol::Real=1e-8,
     power_iters::Int=3,
+    basistype::Type{<:OrthonormalBasis}=VectorBasis,
     kwargs...
 )
     size(mat, 1) == size(mat, 2) || throw(DimensionMismatch("lanczos_extrema requires a square matrix."))
     seed = isnothing(x0) ? _default_extrema_seed(mat) : _normalize_extrema_seed(x0)
     length(seed) == size(mat, 1) || throw(DimensionMismatch("x0 length must match the matrix dimension."))
     f!(Y::AbstractVecOrMat, X::AbstractVecOrMat) = mul!(Y, mat, X)
-    return lanczos_extrema(f!, seed; maxdim=maxdim, tol=tol, eigentol=eigentol, power_iters=power_iters, kwargs...)
+    return lanczos_extrema(f!, seed; maxdim=maxdim, tol=tol, eigentol=eigentol,
+                           power_iters=power_iters, basistype=basistype, kwargs...)
 end
 
 function lanczos_extrema(
     f!::Function,
     x0::AbstractVector;
-    maxdim::Int=100,
+    maxdim::Int=_extrema_maxdim(length(x0)),
     tol::Real=1e-14,
     eigentol::Real=1e-8,
     power_iters::Int=3,
     return_result::Bool=false,
+    basistype::Type{<:OrthonormalBasis}=VectorBasis,
     kwargs...
 )
     seed = _normalize_extrema_seed(x0)
     _power_iterate!(f!, seed, power_iters)
-    res = lanczos(f!, seed, BothEnds(1, 1); maxdim=maxdim, tol=tol, eigentol=eigentol, collect_garbage=false, kwargs...)
+    res = lanczos(f!, seed, BothEnds(1, 1); maxdim=maxdim, tol=tol, eigentol=eigentol,
+                  basistype=basistype, collect_garbage=false, kwargs...)
     return_result && return res
     vals = collect(res.vals)
-    length(vals) < 2 && error("lanczos_extrema failed to return both extremes (operator dimension must be ≥ 2).")
+    if length(vals) < 2
+        # `BothEnds(1, 1)` returns fewer than two only if an end never certified. With the
+        # default budget that means either a genuinely 1-dimensional operator or a spectrum the
+        # probe could not resolve — NOT the "dimension < 2" this used to claim unconditionally,
+        # which sent a 3432-dimensional failure looking in entirely the wrong place.
+        error("lanczos_extrema converged $(length(vals)) of the 2 spectral extremes in " *
+              "$(res.report.itersneeded) iterations (maxdim = $maxdim, dim = $(length(seed))). " *
+              "If dim ≥ 2, raise `maxdim`, loosen `eigentol`, or pass `Emin`/`Emax` directly.")
+    end
     return first(vals), last(vals)
 end

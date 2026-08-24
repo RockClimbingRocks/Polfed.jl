@@ -3,27 +3,32 @@
 # shared fixture (report_fixture.jl).
 
 using LinearAlgebra
-using UniPolfed: PolfedResult, MappingConfig, polfed
+using UniPolfed: PolfedResult, MappingConfig, polfed, eigenvector, eigenpair
 
 @testset "PolfedResult" begin
-    @testset "iteration / indexing protocol" begin
+    @testset "destructures as (vals, vecs, report), like LanczosResult" begin
         @test RES isa PolfedResult
-        @test length(RES) == length(RES.vals)
-        @test length(RES) >= 1
+        @test length(RES.vals) >= 1
 
-        # iterate → (val, vec) pairs; vec is a length-dim vector view.
-        pairs = collect(RES)
-        @test length(pairs) == length(RES)
-        for (λ, v) in pairs
-            @test λ isa Real
+        vals, vecs, report = RES
+        @test vals === RES.vals
+        @test vecs === RES.vecs
+        @test report === RES.report
+
+        # exactly three items, in that order
+        @test length(collect(RES)) == 3
+    end
+
+    @testset "layout-aware eigenvector / eigenpair access" begin
+        for i in eachindex(RES.vals)
+            v = eigenvector(RES, i)
             @test length(v) == REPORT_D
             @test norm(v) ≈ 1 atol = 1e-6            # eigenvectors are normalized
-        end
 
-        # indexing agrees with iteration; firstindex/lastindex.
-        @test RES[1] == pairs[1]
-        @test RES[lastindex(RES)] == pairs[end]
-        @test firstindex(RES) == 1
+            λ, v2 = eigenpair(RES, i)
+            @test λ === RES.vals[i]
+            @test v2 == v
+        end
     end
 
     @testset "sorted ascending by true energy" begin
@@ -46,6 +51,6 @@ using UniPolfed: PolfedResult, MappingConfig, polfed
     end
 
     @testset "converged counts total; length is the in-interval count" begin
-        @test RES.converged >= length(RES)       # total converged ≥ in-interval returned
+        @test RES.converged >= length(RES.vals)  # total converged ≥ in-interval returned
     end
 end

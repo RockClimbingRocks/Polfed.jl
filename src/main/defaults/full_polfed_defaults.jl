@@ -113,10 +113,11 @@ const optimize_mapping = false
 """
 const maxdos_edge_margin = 0.01
 
-# Transform / filter shape defaults are **per-filter** and live next to their filter
-# type (module `<Filter>Defaults`), because they vary from one filter to the next (a delta
-# filter's cutoff is not an edge filter's). They are intentionally *not* here — this module
-# holds only the filter-agnostic, algorithm-wide defaults.
+# Transform / filter shape defaults are **per-filter** and live in the cross-cutting sibling
+# module `Defaults.filters` (one submodule per filter: `Defaults.filters.delta_up.cutoff`, …),
+# because they vary from one filter to the next (a delta filter's cutoff is not an edge
+# filter's) AND because every entrypoint resolves filters — they belong to no single one. This
+# module holds only the filter-agnostic, algorithm-wide defaults.
 
 # ── Factorization (Lanczos) ───────────────────────────────────────────────────
 

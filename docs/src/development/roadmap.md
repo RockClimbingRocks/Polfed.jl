@@ -24,7 +24,6 @@ not accepted by the public window entrypoint.
 
 ## Filter work
 
-- Revisit the Jackson-damped `DeltaUpSmoothFilter` concept only with a complete
   filter-owned defaults module, coefficient normalization, leakage validation,
   resolution-chain registration, and end-to-end tests. The previous prototype
   dispatched construction through `DeltaUpFilter`, mixed up normalization and

@@ -6,6 +6,14 @@ using UniPolfed.Numerics.Lanczos
 
 LZ = UniPolfed.Numerics.Lanczos
 
+# Keep the allocation probe in a function so local Test.@testset bindings do not become
+# captured-box allocations in the measurement itself.
+_coefficient_reorthogonalization!(Q, W, coeff, pu) =
+    UniPolfed.Numerics.Lanczos.reorthogonalization!(
+        UniPolfed.Numerics.Lanczos.ColumnLayout(), Q, W, coeff, pu)
+_coefficient_reorthogonalization_allocations(Q, W, coeff, pu) =
+    @allocated _coefficient_reorthogonalization!(Q, W, coeff, pu)
+
 # Low-level Gram-Schmidt kernel: W -= Q (Q' W), removing the component of W in span(Q).
 @testset "reorthogonalization! kernel" begin
     pu = CPU()
@@ -50,6 +58,99 @@ LZ = UniPolfed.Numerics.Lanczos
         W = randn(ComplexF64, 8)
         LZ.reorthogonalization!(LZ.ColumnLayout(),Q, W, pu)
         @test norm(Q' * W) < 1e-12
+    end
+
+    @testset "reusable coefficient workspace" begin
+        @testset "scalar column layout" begin
+            Random.seed!(31)
+            Q = Matrix(qr(randn(14, 5)).Q)
+            w = randn(14)
+            W = copy(w)
+            coeff = zeros(5)
+
+            LZ.reorthogonalization!(LZ.ColumnLayout(), Q, W, coeff, pu)
+
+            @test W ≈ w - Q * (Q' * w)
+            @test coeff ≈ Q' * w
+            @test norm(Q' * W) < 1e-12
+        end
+
+        @testset "block column layout" begin
+            Random.seed!(32)
+            Q = Matrix(qr(randn(16, 6)).Q)
+            W0 = randn(16, 4)
+            W = copy(W0)
+            coeff = zeros(6, 4)
+
+            LZ.reorthogonalization!(LZ.ColumnLayout(), Q, W, coeff, pu)
+
+            @test W ≈ W0 - Q * (Q' * W0)
+            @test coeff ≈ Q' * W0
+            @test norm(Q' * W) < 1e-12
+        end
+
+        @testset "block row layout" begin
+            Random.seed!(33)
+            Q = copy(Matrix(qr(randn(16, 6)).Q)')  # six orthonormal rows, 6×16
+            W0 = randn(4, 16)
+            W = copy(W0)
+            coeff = zeros(4, 6)
+
+            LZ.reorthogonalization!(LZ.RowLayout(), Q, W, coeff, pu)
+
+            @test W ≈ W0 - (W0 * Q') * Q
+            @test coeff ≈ W0 * Q'
+            @test norm(W * Q') < 1e-12
+        end
+
+        @testset "complex block coefficients" begin
+            Random.seed!(34)
+            Q = Matrix(qr(randn(ComplexF64, 12, 4)).Q)
+            W0 = randn(ComplexF64, 12, 3)
+            W = copy(W0)
+            coeff = zeros(ComplexF64, 4, 3)
+
+            LZ.reorthogonalization!(LZ.ColumnLayout(), Q, W, coeff, pu)
+
+            @test W ≈ W0 - Q * (Q' * W0)
+            @test norm(Q' * W) < 1e-12
+        end
+
+        @testset "zero allocations after warm-up" begin
+            Random.seed!(35)
+            Q = Matrix(qr(randn(200, 40)).Q)
+            W = randn(200, 8)
+            coeff = zeros(40, 8)
+            _coefficient_reorthogonalization!(Q, W, coeff, pu)
+
+            bytes = _coefficient_reorthogonalization_allocations(Q, W, coeff, pu)
+            @test bytes == 0
+        end
+    end
+
+    @testset "factorization-owned coefficient workspace" begin
+        maxdim = 30
+
+        x = randn(20)
+        scalar_basis = LZ.createbasis(maxdim, x, MatrixBasis, pu)
+        scalar_fac = LZ.LanczosFactorization(maxdim, scalar_basis, x, pu)
+        @test size(scalar_fac.reorth_coeff) == (maxdim,)
+
+        Xcol = randn(20, 4)
+        col_basis = LZ.createbasis(maxdim, Xcol, MatrixBasis, pu, LZ.ColumnLayout())
+        col_fac = LZ.BlockLanczosFactorization(maxdim, col_basis, Xcol, pu,
+                                               LZ.ColumnLayout())
+        @test size(col_fac.reorth_coeff) == (maxdim, 4)
+
+        Xrow = randn(4, 20)
+        row_basis = LZ.createbasis(maxdim, Xrow, MatrixBasis, pu, LZ.RowLayout())
+        row_fac = LZ.BlockLanczosFactorization(maxdim, row_basis, Xrow, pu,
+                                               LZ.RowLayout())
+        @test size(row_fac.reorth_coeff) == (4, maxdim)
+
+        vector_basis = LZ.createbasis(maxdim, x, VectorBasis, pu)
+        vector_fac = LZ.LanczosFactorization(maxdim, vector_basis, x, pu)
+        @test vector_fac.reorth_coeff === nothing
     end
 
     @testset "vector-of-arrays kernel (VectorBasis backend)" begin

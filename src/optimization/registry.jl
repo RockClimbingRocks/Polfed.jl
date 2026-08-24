@@ -1,87 +1,96 @@
-# The mapping registry: names → row-kernel builders, plus the human-readable listing.
-# Adding a kernel later is one entry here + its builder branch (like the filter seam). Stage 1
-# ships the three reads kernels; :mul is a benchmark-only reference and :shuf is a placeholder
-# for the model-declared flip mapping (built in a later stage).
+# The kernel registry: machine-readable, not documentation.
+#
+# Each entry names a kernel by (pattern, variant) — the folder under patterns/ and the file inside
+# its kernels/ — and declares which parameters that kernel accepts. Those two facts are what let
+# `MappingKernel` reject a parameter a kernel has no use for, at construction, rather than deep
+# inside a generated loop; and what let `mapping_kernels(H)` list what is available.
+#
+# Adding a kernel = one file under patterns/<pattern>/kernels/ + one `build_kernel` method + one
+# entry here. The seam is deliberately as narrow as the filter chain's.
 
 """
-    RowMappingInfo
+    KernelInfo
 
-One registry row: `id`, `family` (`:reads`/`:flip`/`:ref`), a short `applies` description of the
-structure it needs, and the `params` it accepts (`G`, `W`). Used by [`list_mappings`](@ref).
+One registry entry.
+
+# Fields
+- `pattern::Symbol`: the folder under `patterns/` — the off-diagonal structure the kernel targets.
+- `variant::Symbol`: which kernel within that pattern.
+- `params::NamedTuple`: the parameters this kernel accepts, WITH their defaults — taken from the
+  kernel's own declaration, never written out again here. Empty when a kernel has no knobs, which
+  is the case for both kernels today.
+- `applies::String`: one line for humans, shown by [`mapping_kernels`](@ref).
 """
-struct RowMappingInfo
-    id::Symbol
-    family::Symbol
+struct KernelInfo
+    pattern::Symbol
+    variant::Symbol
+    params::NamedTuple
     applies::String
-    params::String
 end
 
+"""
+    REGISTRY
+
+Every kernel POLFED can build.
+"""
 const REGISTRY = (
-    RowMappingInfo(:mul,        :ref,   "any matrix (mul!(Y,H,X) baseline)",   "—"),
-    RowMappingInfo(:csr_simd,   :reads, "any structured H (single value)",     "—"),
-    RowMappingInfo(:ell32_svec, :reads, "regular row length, L ≤ 30",          "G"),
-    RowMappingInfo(:csr64_svec, :reads, "any structured H (single value)",     "G"),
-    RowMappingInfo(:shuf,       :flip,  "off-diag positions = σˣ 1-bit flips",  "W, G"),
+    KernelInfo(:spin_flip, :packed, PACKED_PARAMS,
+               "H = diag + Σ vₖ·X^maskₖ on the full 2^L space; real eltype, power-of-two bs"),
+    KernelInfo(:spin_flip, :rows, ROWS_PARAMS,
+               "same spin-flip operators, any bs and any eltype — the flip fallback"),
+    KernelInfo(:hopping, :packed, HOP_PACKED_PARAMS,
+               "H = diag + t·Σ periodic nearest-neighbour bonds; real eltype, bs | pack width"),
+    KernelInfo(:hopping, :rows, HOP_ROWS_PARAMS,
+               "same lattice, any bs and any eltype — the hopping fallback"),
+    KernelInfo(:universal, :row_read, NamedTuple(),
+               "any structured H — several off-diagonal values and/or rows of differing length"),
+    KernelInfo(:universal, :row_bucketed, NamedTuple(),
+               "single-value H; rows bucketed by length — auto-selected at block size 1"),
 )
 
-"""
-    READS_KERNELS
-
-The reads kernel ids benchmarked/built in Stage 1 (`:mul` is a reference, `:shuf` is a later
-flip stage).
-"""
-const READS_KERNELS = (:csr_simd, :ell32_svec, :csr64_svec)
-
-"""
-    build_row_mapping(id::Symbol, s::MappingStructure, ::Val{bs}; G=4, W=8) -> Function
-
-Build the row-layout matvec closure `(Yr, Xr) -> nothing` for kernel `id` over the structure `s`,
-specialized to block size `bs` (as `Val`). `Yr`, `Xr` are `bs × D`; the closure computes
-`Yr = (H · Xrᵀ)ᵀ`. `G` (ILP width) and `W` (SIMD lanes, flip kernels only) are captured as
-compile-time `Val`s so the returned closure is type-stable in the hot loop.
-
-# Throws
-- `ArgumentError`: for an unknown or not-yet-implemented kernel id.
-"""
-function build_row_mapping(id::Symbol, s::MappingStructure, ::Val{bs}; G::Int = 4, W::Int = 8) where {bs}
-    if id === :ell32_svec
-        Gv = Val(G)
-        return (Y, X) -> _row_ell!(Y, X, s.diags, s.hx, s.L, s.nb32, Val(bs), Gv)
-    elseif id === :csr64_svec
-        Gv = Val(G)
-        return (Y, X) -> _row_csr!(Y, X, s.diags, s.hx, s.L, s.flat, s.starts, Val(bs), Gv)
-    elseif id === :csr_simd
-        return (Y, X) -> _row_csr_simd!(Y, X, s.diags, s.hx, s.L, s.flat, s.starts, Val(bs))
-    elseif id === :shuf
-        # σˣ flip kernel — assumes the off-diagonals are the L single-bit flips (neighbours
-        # computed via xor, NOT read from `s`); only correct for that structure.
-        Wv = Val(W); Gv = Val(G)
-        return (Y, X) -> _row_shuf!(Y, X, s.diags, s.hx, s.L, Wv, Val(bs), Gv)
-    else
-        throw(ArgumentError(
-            "build_row_mapping: unknown or not-yet-implemented kernel :$id " *
-            "(reads: $(join(READS_KERNELS, ", ")); flip: :shuf)."))
-    end
+"""    _find(pattern, variant) -> KernelInfo or nothing."""
+function _find(pattern::Symbol, variant::Symbol)
+    i = findfirst(k -> k.pattern === pattern && k.variant === variant, REGISTRY)
+    return isnothing(i) ? nothing : REGISTRY[i]
 end
 
-"""
-    list_mappings([io=stdout])
+"""    _default_variant(pattern) -> KernelInfo or nothing — a pattern's first registered kernel."""
+function _default_variant(pattern::Symbol)
+    i = findfirst(k -> k.pattern === pattern, REGISTRY)
+    return isnothing(i) ? nothing : REGISTRY[i]
+end
 
-Print the registered row mappings, their family, the structure they apply to, and their tuning
-parameters. Value-grouped optimization is worthwhile mainly when the off-diagonals take FEW
-distinct values (ideally one).
+"""    _kernel_names() -> String — every registered kernel, for error messages."""
+_kernel_names() = join((string(k.pattern, "_", k.variant) for k in REGISTRY), ", ")
+
 """
-function list_mappings(io::IO = stdout)
-    println(io, "registered row mappings")
-    println(io, "(value-grouped optimization pays off when the off-diagonals take FEW distinct")
-    println(io, " values — ideally ONE; otherwise prefer the generic path, optimize_mapping=false)")
-    println(io)
-    @printf(io, " %-12s %-7s %-36s %s\n", "id", "family", "applies to", "params")
-    println(io, " ", "─"^70)
-    for m in REGISTRY
-        @printf(io, " :%-11s %-7s %-36s %s\n", m.id, m.family, m.applies, m.params)
+    mapping_kernels([io], H) -> nothing
+
+Print the structure of `H` and the kernels that can run on it.
+
+The header is what [`classify`](@ref) found — dimension, off-diagonal values, row-length range —
+followed by one line per registered kernel, marked ✓ when its pattern accepts this structure and
+✗ with the reason when it does not.
+
+```julia
+mapping_kernels(H)
+```
+"""
+mapping_kernels(H::AbstractMatrix) = mapping_kernels(stdout, H)
+
+function mapping_kernels(io::IO, H::AbstractMatrix)
+    s = classify(H)
+    show(io, MIME"text/plain"(), s)
+    println(io, "\n")
+    @printf(io, " %-3s %-22s %-8s %s\n", "", "kernel", "params", "applies")
+    println(io, " ", "─"^76)
+    for info in REGISTRY
+        ok = can_apply(Val(info.pattern), Val(info.variant), s)
+        note = ok ? info.applies : why_not(Val(info.pattern), Val(info.variant), s)
+        params = isempty(info.params) ? "—" :
+                 join(("$k=$v" for (k, v) in pairs(info.params)), ", ")
+        @printf(io, " %-3s %-22s %-8s %s\n", ok ? "✓" : "✗",
+                string(info.pattern, "_", info.variant), params, note)
     end
-    println(io)
-    println(io, " each model declares ONE flip mapping (its champion); σˣ → :shuf.")
     return nothing
 end

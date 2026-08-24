@@ -7,6 +7,11 @@ of outer spins with decaying couplings, and numerically because it produces
 sparse disordered Hamiltonians that are natural inputs for
 [`polfed`](@ref UniPolfed.polfed).
 
+!!! tip "You do not need this model"
+    The shipped Hamiltonians are conveniences for testing and for the tutorials. POLFED
+    works with any Hermitian matrix, and with any operator `f!` — see
+    [Bring your own operator](@ref operator_interface).
+
 The main constructor is [`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian):
 
 ```julia

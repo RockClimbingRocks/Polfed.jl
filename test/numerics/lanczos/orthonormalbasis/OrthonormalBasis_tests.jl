@@ -28,13 +28,14 @@ LZ = UniPolfed.Numerics.Lanczos
         @test LZ.createbasis(4, zeros(3, 3), MatrixBasis, pu).blocksize == 3
     end
 
-    @testset "maxdim is a column budget across backends" begin
-        # MatrixBasis reserves maxdim columns directly.
+    @testset "maxdim means different things per backend" begin
+        # MatrixBasis PREALLOCATES maxdim columns: the budget is paid up front and is a hard
+        # capacity.
         @test size(LZ.createbasis(8, zeros(5, 2), MatrixBasis, pu).basis, 2) == 8
-        # VectorBasis reserves cld(maxdim, blocksize) block entries (= maxdim columns).
-        @test length(LZ.createbasis(8, zeros(5, 2), VectorBasis, pu).basis) == 4
-        @test length(LZ.createbasis(7, zeros(5, 2), VectorBasis, pu).basis) == 4   # cld(7,2)
-        @test length(LZ.createbasis(6, zeros(5), VectorBasis, pu).basis) == 6      # scalar
+        # VectorBasis grows on demand: maxdim is only a capacity hint, so nothing is allocated
+        # and an enormous budget is free.
+        @test isempty(LZ.createbasis(8, zeros(5, 2), VectorBasis, pu).basis)
+        @test isempty(LZ.createbasis(10^7, zeros(5), VectorBasis, pu).basis)
     end
 end
 
@@ -64,11 +65,13 @@ end
         @test as_cols(LZ.allvecs(mb)) == as_cols(LZ.allvecs(vb)) == reduce(hcat, items)
     end
 
-    @testset "scalar — allvecs match after overflow (same oldest dropped)" begin
+    @testset "scalar — past capacity the backends DIVERGE by design" begin
         items = [Float64[i, i] for i in 1:6]
         mb, vb = both(3, zeros(2), items)
-        @test as_cols(LZ.allvecs(mb)) == as_cols(LZ.allvecs(vb))
-        @test as_cols(LZ.allvecs(mb)) == reduce(hcat, items[end-2:end])   # last 3 retained
+        # MatrixBasis is fixed-size: it ring-buffers, keeping only the newest 3.
+        @test as_cols(LZ.allvecs(mb)) == reduce(hcat, items[end-2:end])
+        # VectorBasis grows instead, so it still holds all 6 — the point of the backend.
+        @test as_cols(LZ.allvecs(vb)) == reduce(hcat, items)
     end
 
     @testset "block — allvecs match within capacity" begin
@@ -78,12 +81,12 @@ end
         @test as_cols(LZ.allvecs(mb)) == as_cols(LZ.allvecs(vb)) == reduce(hcat, items)
     end
 
-    @testset "block — allvecs match after overflow" begin
+    @testset "block — past capacity the backends DIVERGE by design" begin
         blk(a) = Float64[a a+1; a a+1]
         items = [blk(10k) for k in 1:3]
-        mb, vb = both(4, zeros(2, 2), items)                 # capacity = 2 blocks
-        @test as_cols(LZ.allvecs(mb)) == as_cols(LZ.allvecs(vb))
-        @test as_cols(LZ.allvecs(mb)) == reduce(hcat, items[2:3])
+        mb, vb = both(4, zeros(2, 2), items)                 # MatrixBasis capacity = 2 blocks
+        @test as_cols(LZ.allvecs(mb)) == reduce(hcat, items[2:3])   # oldest block dropped
+        @test as_cols(LZ.allvecs(vb)) == reduce(hcat, items)        # grown, nothing dropped
     end
 
     @testset "all_withoutlasttwo matches (scalar)" begin

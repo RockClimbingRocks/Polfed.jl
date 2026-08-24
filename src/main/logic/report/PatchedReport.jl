@@ -127,20 +127,15 @@ function render_patched_convergence(io::IO, f::Formatter, r::PatchedReport; deta
 
     if details
         println(io, "- Per-run detail:")
-        data = Matrix{Any}(undef, np, 8)
+        data = Matrix{String}(undef, np, 8)
         for (i, p) in enumerate(r.patches)
-            data[i, :] = [i, string(p.kind), p.filtertype, p.order,
+            data[i, :] = [string(i), string(p.kind), p.filtertype, string(p.order),
                           string(p.factorization.converged_tol, "/", p.howmany),
                           @sprintf("%.1e", p.factorization.eigenresidual),
-                          p.factorization.itersneeded, p.retries]
+                          string(p.factorization.itersneeded), string(p.retries)]
         end
-        kwargs = (; header = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"],
-                  tf = tf_unicode_rounded)
-        if f.color
-            pretty_table(io, data; kwargs..., header_crayon = crayon"white bold")
-        else
-            pretty_table(io, data; kwargs...)
-        end
+        header = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"]
+        render_detail_table(io, header, data; bold_header = f.color)
     end
     return nothing
 end

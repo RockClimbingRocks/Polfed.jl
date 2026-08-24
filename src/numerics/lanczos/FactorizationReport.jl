@@ -71,6 +71,9 @@ mutable struct FactorizationReport
                                                          size(basis.basis, 2)
             needed_cols   = factorization.basis.nvecs
         elseif basistype <: VectorBasis
+            # A VectorBasis grows on demand, so nothing is reserved beyond what is used:
+            # `reserved == needed` here by construction, unlike the preallocated MatrixBasis
+            # where the gap between them is the budget that went unspent.
             bs = factorization.basis.blocksize
             reserved_cols = length(factorization.basis.basis) * bs
             needed_cols   = factorization.basis.nvecs * bs
@@ -115,6 +118,37 @@ mutable struct FactorizationReport
             timer,
         )
     end
+end
+
+"""
+    CONVERGENCE_TABLE_HEADER
+
+Column titles of the per-check convergence-history table, shared by the `FactorizationReport`
+display and the POLFED `Report`'s copy of the same table.
+"""
+const CONVERGENCE_TABLE_HEADER = ["Checking", "Krylov dim.", "Converged", "Residual"]
+
+"""
+    convergence_table_rows(report::FactorizationReport) -> Matrix{String}
+
+The per-check convergence history as a `numofchecks × 4` matrix of formatted strings, matching
+[`CONVERGENCE_TABLE_HEADER`](@ref): check index, Krylov dimension, converged count, and worst
+residual at that check.
+
+# Notes
+Pre-formatted here rather than at the sink so that both table backends (the built-in plain
+renderer and the optional PrettyTables one) receive identical cells.
+"""
+function convergence_table_rows(report::FactorizationReport)
+    n = report.numofchecks
+    rows = Matrix{String}(undef, n, 4)
+    for i in 1:n
+        rows[i, 1] = string(i)
+        rows[i, 2] = string(report.krylovbasisdim_history[i])
+        rows[i, 3] = string(report.converged_history[i])
+        rows[i, 4] = @sprintf("%.2e", report.maxresidual_history[i])
+    end
+    return rows
 end
 
 """
@@ -195,19 +229,9 @@ function display_factorization_report(report::FactorizationReport, use_colors::B
     end
 
     if show_convergence_details
-        header = ["Checking", "Krylov dim.", "Converged", "Residual"]
-        data = hcat(1:report.numofchecks, report.krylovbasisdim_history,
-                    report.converged_history, report.maxresidual_history)
-
         println("- Convergence check was performed $(report.numofchecks) times, here is the table of results:")
-
-        pretty_table(
-            data;
-            formatters    = ft_printf("%d", 1:3),
-            header        = header,
-            header_crayon = crayon"white bold",   # matches the POLFED report's copy of this table
-            tf            = tf_unicode_rounded
-        )
+        render_detail_table(stdout, CONVERGENCE_TABLE_HEADER, convergence_table_rows(report);
+                            bold_header = use_colors)
     end
 end
 
