@@ -1,5 +1,7 @@
 using Test
 using UniPolfed
+using Random
+using LinearAlgebra
 
 K = UniPolfed.Numerics.KPM
 
@@ -11,6 +13,30 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         @test cfg.N == 100
         @test cfg.R == 50
         @test cfg.kernel == :Dirichlet
+    end
+
+    @testset "a seeded rng pins the stochastic probes" begin
+        # The whole point of the field: without it two runs on the SAME operator resolve
+        # slightly different windows, which is invisible until a target lands somewhere else.
+        # `H = c·I` is zero-variance, so a random operator is needed for the probes to matter.
+        dim = 64
+        Random.seed!(20250101)
+        A = Symmetric(randn(dim, dim) ./ (4 * sqrt(dim)))
+        f!(y, x) = mul!(y, A, x)
+        sys = UniPolfed.SysInfo(zeros(Float64, dim), UniPolfed.CPU())
+
+        seeded(seed) = UniPolfed.calculate_dos(
+            UniPolfed.DoSConfig(N = 32, R = 4, rng = MersenneTwister(seed)), f!, sys).moments
+
+        @test seeded(7) == seeded(7)                    # bit-identical, not just ≈
+        @test seeded(7) != seeded(8)                    # a different seed really does differ
+
+        unseeded() = UniPolfed.calculate_dos(UniPolfed.DoSConfig(N = 32, R = 4), f!, sys).moments
+        @test unseeded() != unseeded()                  # the default stays stochastic
+
+        # The generator type is a parameter, so the config stays concretely typed.
+        @test UniPolfed.DoSConfig(rng = MersenneTwister(1)) isa
+              UniPolfed.DoSConfig{MersenneTwister}
     end
 
     @testset "calculate_dos returns moments, coefficients, and density" begin

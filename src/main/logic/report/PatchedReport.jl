@@ -106,7 +106,10 @@ function render_patched_convergence(io::IO, f::Formatter, r::PatchedReport; deta
     np = length(r.patches)
     _section_header(io, f, "Convergence (across $np runs)")
 
-    total_conv = sum(p -> p.factorization.converged_tol, r.patches)
+    # `converged`, not either gate count: it is what each run RETURNED. Both gate counts are
+    # per-gate tallies that overcount whenever a run was truncated — by `eigentol`, or by the
+    # contiguity invariant stranding pairs behind a failure.
+    total_conv = sum(p -> p.factorization.converged, r.patches)
     n_short    = count(p -> !p.covered, r.patches)
     # The EIGEN residual (‖H·v − λ·v‖) of each run's RETURNED pairs — the accuracy that matters.
     # (Not `.residual`, the worst Ritz residual in the pool, which includes unconverged brackets.)
@@ -130,7 +133,7 @@ function render_patched_convergence(io::IO, f::Formatter, r::PatchedReport; deta
         data = Matrix{String}(undef, np, 8)
         for (i, p) in enumerate(r.patches)
             data[i, :] = [string(i), string(p.kind), p.filtertype, string(p.order),
-                          string(p.factorization.converged_tol, "/", p.howmany),
+                          string(p.factorization.converged, "/", p.howmany),
                           @sprintf("%.1e", p.factorization.eigenresidual),
                           string(p.factorization.itersneeded), string(p.retries)]
         end

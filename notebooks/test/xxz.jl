@@ -11,13 +11,13 @@ bs = parse(Int, ARGS[2])
 const SEED = length(ARGS) >= 3 ? parse(Int, ARGS[3]) : 20260824
 rng = MersenneTwister(SEED)
 
-mat = UniPolfed.Models.xxz_hamiltonian(L, L÷2, 1.0, 1.0, 0.0; boundary = :periodic, rng = rng)
+mat = UniPolfed.Models.xxz_hamiltonian(L, L÷2, 1.0, 1.0, 1.0; boundary = :periodic, rng = rng)
 dim = size(mat, 1)
 println("dim = $dim, block size = $bs, #blocks = $(div(dim,bs)), seed = $SEED")
 
 x0 = Matrix(lq(rand(rng, bs, dim)).Q)
 
-vals,vecs,report = UniPolfed.polfed(mat,x0,1000,:maxdos; overestimate_iters=1.5)
+vals,vecs,report = UniPolfed.polfed(mat,x0,1000,:maxdos; overestimate_iters=1.3)
 
 UniPolfed.display_report(report; convergence_details = true)
 

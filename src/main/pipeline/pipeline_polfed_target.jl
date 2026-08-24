@@ -13,7 +13,6 @@ function run_polfed_target_pipeline(
     tol::Real = Defaults.polfed.tol,
     eigentol::Real = Defaults.polfed.eigentol,
     overestimate_iters::Real = Defaults.polfed.overestimate_iters,
-    overestimate_howmany::Int = Defaults.polfed.overestimate_howmany,
     layout::Layout = ColumnLayout(),
 )
     timer = StageTimer()

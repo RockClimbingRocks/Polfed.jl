@@ -39,11 +39,24 @@ Outcome of deciding one spectral end.
 - `satisfied::Bool`: the spec's stopping rule is met on `run`.
 - `worst_residual::Float64`: residual of the first required blocker while incomplete, or
   the worst Ritz residual over the completed internal run.
+- `n_ritz::Int`: how many pool members pass the Ritz gate — a plain COUNT, not a run length.
+- `n_eigen::Int`: how many of the reconstructed pairs pass the eigen gate, or `-1` when the
+  cheap pre-gate skipped reconstruction so nothing was measured. Also a plain count, and only
+  over what was reconstructed (the Ritz prefix) — eigen residuals are never computed past it.
+- `eigen_worst::Float64`: worst eigen residual over those same reconstructed pairs, or `NaN`
+  when none were.
+
+`length(run) <= min(n_ritz, n_eigen)`, and the gap is the contiguity invariant at work: a pair
+that passes both gates is still dropped when a failure sits between it and the extreme. Reading
+the three together is what separates "not converged yet" from "converged but unreachable".
 """
 struct EndVerdict
     run::Vector{Int}
     satisfied::Bool
     worst_residual::Float64
+    n_ritz::Int
+    n_eigen::Int
+    eigen_worst::Float64
 end
 
 """
@@ -71,10 +84,10 @@ and its optional transformed-boundary pre-gate are handled by the overload below
   (`maxiter`, breakdown) there is no next check, so the partial run must be extracted now;
   short-circuiting would return an empty result instead of the pairs that did converge.
 
-`eigen_of(idxs) -> (E, eigen_ok)` is supplied by the caller: it reconstructs the
-eigenpairs for `idxs` and returns their mapped values plus a per-position acceptance
-predicate. Keeping it a callback is what lets this file stay free of any factorization,
-GPU or layout dependency.
+`eigen_of(idxs) -> (E, eigen_ok, eigen_res)` is supplied by the caller: it reconstructs the
+eigenpairs for `idxs` and returns their mapped values, a per-position acceptance predicate,
+and the per-position residuals themselves (reported, never thresholded here). Keeping it a
+callback is what lets this file stay free of any factorization, GPU or layout dependency.
 """
 function decide_end(spec::EndSpec, islow::Bool, p::AbstractVector,
                     ritz_ok, ritz::AbstractVector, eigen_of; force::Bool=false)
@@ -82,6 +95,7 @@ function decide_end(spec::EndSpec, islow::Bool, p::AbstractVector,
     # 1. pool ------------------------------------------------------------------
     pool = pool_indices(spec, p, islow)
     worst = isempty(pool) ? Inf : maximum(ritz[i] for i in pool)
+    n_ritz = count(ritz_ok, pool)
 
     # 2. Ritz prefix -----------------------------------------------------------
     cheap_run = converged_prefix(pool, ritz_ok)
@@ -89,11 +103,11 @@ function decide_end(spec::EndSpec, islow::Bool, p::AbstractVector,
     # pre-gate: only possible when the rule does not read `E`
     if !force && !needs_mapped(spec) &&
        !is_satisfied(spec, [p[i] for i in cheap_run], Float64[], islow)
-        return EndVerdict(Int[], false, worst)
+        return EndVerdict(Int[], false, worst, n_ritz, -1, NaN)
     end
 
     # 3. both-tolerance prefix -------------------------------------------------
-    E, eigen_ok = eigen_of(cheap_run)
+    E, eigen_ok, eigen_res = eigen_of(cheap_run)
     at = Dict(cheap_run[k] => k for k in eachindex(cheap_run))
     run = converged_prefix(cheap_run, i -> ritz_ok(i) && eigen_ok(at[i]))
 
@@ -103,8 +117,18 @@ function decide_end(spec::EndSpec, islow::Bool, p::AbstractVector,
     satisfied = is_satisfied(spec, run_p, run_E, islow)
 
     # 4. select ----------------------------------------------------------------
-    return EndVerdict(select(spec, run, run_p, run_E, islow), satisfied, worst)
+    return EndVerdict(select(spec, run, run_p, run_E, islow), satisfied, worst,
+                      n_ritz, count(eigen_ok, eachindex(cheap_run)), _worst_eigen(eigen_res))
 end
+
+"""
+    _worst_eigen(res) -> Float64
+
+Worst eigen residual over a reconstructed batch, or `NaN` for an empty batch — "not measured"
+rather than "measured zero", so a check that never paid for the reconstruction is
+distinguishable in the report from one where every pair was perfect.
+"""
+_worst_eigen(res) = isempty(res) ? NaN : Float64(maximum(res))
 
 """
     decide_end(spec::Window, islow, p, ritz_ok, ritz, eigen_of; force=false) -> EndVerdict
@@ -113,8 +137,8 @@ end
 spectrum and completion is a mapped straddle. With a transformed `edge_value`, the pool ends
 one pair past that boundary and the cheap p-space guard is checked before reconstruction.
 
-`eigen_of(idxs) -> (E, eigen_ok)` is batched (one reconstruction for a whole index list, with
-`eigen_ok` taking a *position within that list*), so the Ritz prefix is taken first and the
+`eigen_of(idxs) -> (E, eigen_ok, eigen_res)` is batched (one reconstruction for a whole index
+list, with `eigen_ok` taking a *position within that list*), so the Ritz prefix is taken first and the
 eigen check applied within it. That is the same stopping point as testing both predicates in a
 single pass — the run ends at the first index failing either — but costs one reconstruction
 instead of one per pair.
@@ -122,6 +146,7 @@ instead of one per pair.
 function decide_end(spec::Window, islow::Bool, p::AbstractVector,
                     ritz_ok, ritz::AbstractVector, eigen_of; force::Bool=false)
     pool = pool_indices(spec, p, islow)
+    n_ritz = count(ritz_ok, pool)
     ritz_run = converged_prefix(pool, ritz_ok)
     progress = _ritz_progress_residual(pool, ritz_run, ritz)
 
@@ -129,10 +154,10 @@ function decide_end(spec::Window, islow::Bool, p::AbstractVector,
     # reaches its one-pair guard, reconstructing mapped eigenpairs cannot change the answer.
     if !force && spec.edge_value !== nothing &&
        !is_satisfied(spec, view(p, ritz_run), Float64[], islow)
-        return EndVerdict(Int[], false, progress)
+        return EndVerdict(Int[], false, progress, n_ritz, -1, NaN)
     end
 
-    E, eigen_ok = eigen_of(ritz_run)
+    E, eigen_ok, eigen_res = eigen_of(ritz_run)
 
     n = 0
     for k in eachindex(ritz_run)
@@ -146,7 +171,8 @@ function decide_end(spec::Window, islow::Bool, p::AbstractVector,
     satisfied = is_satisfied(spec, run_p, run_E, islow)
     residual = satisfied ? _maximum_residual(run, ritz) : progress
 
-    return EndVerdict(select(spec, run, run_p, run_E, islow), satisfied, residual)
+    return EndVerdict(select(spec, run, run_p, run_E, islow), satisfied, residual,
+                      n_ritz, count(eigen_ok, eachindex(ritz_run)), _worst_eigen(eigen_res))
 end
 
 function _ritz_progress_residual(pool::AbstractVector{Int}, prefix::AbstractVector{Int},
@@ -172,11 +198,19 @@ Outcome of deciding a whole [`EigTarget`](@ref) — the union over its ends.
   hole, it is simply not requested.
 - `done::Bool`: every end satisfied — the iteration may stop successfully.
 - `worst_residual::Float64`: worst Ritz residual across ends, for the scheduler and report.
+- `n_ritz::Int`, `n_eigen::Int`: pairs passing each gate, summed over ends (`n_eigen == -1`
+  when no end reconstructed anything). Compare both with `length(keep)`: `n_ritz > length(keep)`
+  means the **eigen** tolerance stopped the walk, and `n_eigen > length(keep)` means the
+  contiguity invariant then discarded pairs that had individually passed.
+- `eigen_worst::Float64`: worst eigen residual measured this check, `NaN` if none was.
 """
 struct Verdict
     keep::Vector{Int}
     done::Bool
     worst_residual::Float64
+    n_ritz::Int
+    n_eigen::Int
+    eigen_worst::Float64
 end
 
 """
@@ -190,9 +224,14 @@ function decide(target::EigTarget, p::AbstractVector,
                 ritz_ok, ritz::AbstractVector, eigen_of; force::Bool=false)
     verdicts = [decide_end(spec, islow, p, ritz_ok, ritz, eigen_of; force=force)
                 for (spec, islow) in ends(target)]
+    eigen_worsts  = filter(!isnan, [v.eigen_worst for v in verdicts])
+    eigen_counts  = filter(>=(0), [v.n_eigen for v in verdicts])
     return Verdict(
         unique(vcat((v.run for v in verdicts)...)),
         all(v -> v.satisfied, verdicts),
         maximum(v -> v.worst_residual, verdicts),
+        sum(v -> v.n_ritz, verdicts),
+        isempty(eigen_counts) ? -1 : sum(eigen_counts),
+        isempty(eigen_worsts) ? NaN : maximum(eigen_worsts),
     )
 end

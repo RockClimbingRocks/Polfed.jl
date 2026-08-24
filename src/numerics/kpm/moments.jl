@@ -78,7 +78,8 @@ function _check_moment_args(N::Int, R::Int)
     return nothing
 end
 
-function _moments_one_worker(f!, N::Int, R::Int, template, pu::ProcessingUnit, info::ProbeInfo)
+function _moments_one_worker(f!, N::Int, R::Int, template, pu::ProcessingUnit, info::ProbeInfo,
+                             rng::AbstractRNG)
     S = real(eltype(template))
     local_moments = zeros(S, N)
     probe = similar(template)
@@ -86,7 +87,7 @@ function _moments_one_worker(f!, N::Int, R::Int, template, pu::ProcessingUnit, i
 
     for first_probe in 1:info.block_size:R
         active = min(info.block_size, R - first_probe + 1)
-        _random_unit_probe!(probe, pu, info, active)
+        _random_unit_probe!(probe, pu, info, active, rng)
         trace_doubling!(f!, probe, local_moments, work)
     end
 
@@ -107,18 +108,23 @@ Estimate the first `N` Chebyshev moments using `R` random probes.
 For matrix templates, each column or row is one probe. `R` is the total number
 of probes, so a block size of `2` with `R == 100` performs `50` matrix
 applications per recurrence step.
+
+`rng` seeds the probes. The estimate is stochastic, so two calls with the default generator
+give different moments — pass a seeded generator when the result has to be reproducible. On a
+[`GPU`](@ref) the device generator is used and `rng` is ignored (see [`_random_normal!`](@ref)).
 """
 function kpm_moments(
     f!,
     N::Int,
     R::Int,
     template::AbstractVecOrMat{E},
-    pu::ProcessingUnit,
+    pu::ProcessingUnit;
+    rng::AbstractRNG = Random.default_rng(),
 ) where {E<:Number}
     _check_moment_args(N, R)
     info = probe_info(template)
 
-    moments = _moments_one_worker(f!, N, R, template, pu, info)
+    moments = _moments_one_worker(f!, N, R, template, pu, info, rng)
     moments .*= info.dim / R
     return moments
 end

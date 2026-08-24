@@ -68,7 +68,8 @@ const retry_budget_growth = 1.5
     Defaults.full_polfed.N::Int = 1000
 
     Default number of Chebyshev moments used in KPM density-of-states estimation.
-    Higher `N` sharpens spectral resolution at higher cost.
+    Higher `N` sharpens spectral resolution at higher cost. See
+    [`Defaults.polfed.N`](@ref) for the bias/variance tradeoff behind the number.
 """
 const N = 1000
 

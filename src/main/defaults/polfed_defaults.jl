@@ -16,20 +16,33 @@ import ...Numerics.Lanczos: FullRO, MatrixBasis
 # ── Density of states (KPM) ───────────────────────────────────────────────────
 
 """
-    Defaults.polfed.N::Int = 250
+    Defaults.polfed.N::Int = 500
 
 Default number of Chebyshev moments used in KPM density-of-states estimation.
 Higher `N` sharpens spectral resolution at higher cost.
+
+`N` trades bias for variance, and a `:maxdos` target feels both. Sharpening the Jackson kernel
+moves the estimated peak toward its true position (measured: the mean centre shifted by ~75% of
+a window width across `N` = 100 → 1000) but stops smoothing the stochastic ripple, so the argmax
+of an almost-flat density starts locking onto noise. Measured at `R = 100`, the run-to-run
+scatter of the resolved centre was 24% of a window width at `N = 250`, 54% at `500`, and 139% at
+`1000` — past which the window moves further than its own width between runs. Raise `R` when
+raising `N`; the two pull in opposite directions.
 """
-const N = 250
+const N = 500
 
 """
-    Defaults.polfed.R::Int = 300
+    Defaults.polfed.R::Int = 500
 
 Default number of stochastic random probes for KPM density-of-states estimation.
 Statistical error scales as `1/√R`.
+
+This is the knob that buys back the variance `N` costs, and it is the only one that reduces
+window scatter without biasing the peak. Cost is linear in `R`, the benefit only `1/√R`, so
+large increases pay poorly — but the DoS runs ONCE per POLFED call, against a Lanczos phase that
+applies the filter `K` times per matvec, so its share of the total is small.
 """
-const R = 300
+const R = 500
 
 """
     Defaults.polfed.kernel::Symbol = :Jackson
@@ -111,9 +124,6 @@ its iterations without converging everything.
 """
 const overestimate_iters = 1.25
 
-
-const overestimate_howmany = 5
-
 # ── Convergence-check scheduling ──────────────────────────────────────────────
 
 """
@@ -150,7 +160,7 @@ conv_checking(expected_dim::Real) =
         k * criterion.blocksize < start_dim && return ceil(Int, start_dim / criterion.blocksize)
         ε = state.residual
 
-        return ε > 1e-3 ? k + 20 : ε > 1e-3 ? k + 10 : k + 5
+        return ε > 1e-2 ? k + 20 : ε > 1e-3 ? k + 10 : k + 5
     end
 
 

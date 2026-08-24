@@ -51,21 +51,27 @@ function probe_dimension(template::AbstractMatrix)
     return probe_info(template).dim
 end
 
-function _random_normal!(x, ::CPU)
-    randn!(x)
-    return x
-end
+_random_normal!(x, pu::ProcessingUnit) = _random_normal!(x, pu, Random.default_rng())
 
-function _random_normal!(x, pu::GPU)
-    x .= pu.randn(eltype(x), size(x)...)
-    return x
-end
+_random_normal!(x, ::CPU, rng::AbstractRNG) = (randn!(rng, x); x)
 
-function _random_unit_probe!(x, pu::ProcessingUnit, info::ProbeInfo = probe_info(x), active::Int = info.block_size)
+"""
+    _random_normal!(x, pu::GPU, rng) -> x
+
+GPU probes come from the DEVICE generator; `rng` is accepted for a uniform signature and
+ignored, because `pu.randn` allocates on the device and takes no host generator. A GPU DoS is
+therefore not reproducible from a host seed — say so rather than let a caller who seeded
+carefully assume otherwise.
+"""
+_random_normal!(x, pu::GPU, ::AbstractRNG) = (x .= pu.randn(eltype(x), size(x)...); x)
+
+function _random_unit_probe!(x, pu::ProcessingUnit, info::ProbeInfo = probe_info(x),
+                             active::Int = info.block_size,
+                             rng::AbstractRNG = Random.default_rng())
     1 <= active <= info.block_size ||
         throw(ArgumentError("Active KPM probes must be in 1:$(info.block_size), got $active."))
 
-    _random_normal!(x, pu)
+    _random_normal!(x, pu, rng)
     _zero_inactive_probes!(x, info, active)
     _normalize_active_probes!(x, info, active)
     return x

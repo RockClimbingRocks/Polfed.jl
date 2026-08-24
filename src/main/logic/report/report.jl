@@ -123,9 +123,15 @@ end
 """
     render_convergence(io, f::Formatter, fr::FactorizationReport; details::Bool=false) -> Nothing
 
-Print the "Convergence" section: requested/converged counts, how many eigenpairs failed the
-residual (`tol`) and eigen (`eigentol`) tolerances, the worst residual, and Krylov usage. With
-`details=true`, append the per-check convergence-history table (via `PrettyTables`).
+Print the "Convergence" section: requested/converged counts, how many eigenpairs passed the
+residual (`tol`) and eigen (`eigentol`) gates, the worst residual of each, and Krylov usage.
+With `details=true`, append the per-check convergence-history table (via `PrettyTables`).
+
+Three counts, not one, because they answer different questions: the Ritz count is how many
+pairs the Krylov space resolved, the eigen count how many of those are certified eigenpairs of
+the ORIGINAL operator, and `converged` the contiguous run those collapse to — the pairs actually
+returned. A gap earns an extra "Limited by" line naming which of the two losses occurred; see
+[`CONVERGENCE_TABLE_HEADER`](@ref).
 """
 function render_convergence(io::IO, f::Formatter, fr::FactorizationReport; details::Bool=false)
     kind = occursin("Block", fr.factorizationtype) ? "block lanczos" : "lanczos"
@@ -134,20 +140,51 @@ function render_convergence(io::IO, f::Formatter, fr::FactorizationReport; detai
     # Counts are green only when the full request converged — the one number worth spotting at a
     # glance. Residuals are yellow throughout: they are always "how close", never pass/fail.
     _count(n) = n == fr.howmany ? green(f, string(n)) : red(f, string(n))
+    # The Ritz gate can legitimately reach PAST the request (a window target's brackets, an
+    # over-targeted patch), so it is green at "enough", not at "exactly".
+    _count_atleast(n) = n >= fr.howmany ? green(f, string(n)) : red(f, string(n))
 
-    println(io, "- Number of converged eigenpairs: ", _count(fr.converged_tol),
+    println(io, "- Number of converged eigenpairs: ", _count(fr.converged),
             " (", cyan(f, string(fr.howmany)), " requested)")
     println(io, "- Ritz  conv tol=", cyan(f, @sprintf("%.1e", fr.tol)), " passed:  ",
-            _count(fr.converged_tol), " (max res. ", yellow(f, @sprintf("%.2e", fr.residual)), ")")
+            _count_atleast(fr.converged_tol), " (max res. ", yellow(f, @sprintf("%.2e", fr.residual)), ")")
+    # `eigenworst` (over everything examined), not `eigenresidual` (over what was kept): on this
+    # line the count includes pairs the run did not return, so pairing it with the kept-set
+    # residual would understate by orders of magnitude exactly when it matters.
     println(io, "- Eigen conv tol=", cyan(f, @sprintf("%.1e", fr.eigentol)), " passed:  ",
-            _count(fr.converged_eigentol), " (max res. ", yellow(f, @sprintf("%.2e", fr.eigenresidual)), ")")
+            _count_atleast(fr.converged_eigentol), " (worst examined ",
+            yellow(f, isnan(fr.eigenworst) ? "-" : @sprintf("%.2e", fr.eigenworst)), ")")
+    # The one line that separates "needs a bigger budget" from "cannot be reached at this
+    # tolerance". They look identical on the residual columns above: when the eigen gate is
+    # what truncates, the Ritz residual is at its FLOOR precisely because the Krylov space
+    # converged, so a reader with only that number concludes the opposite of the truth.
+    if fr.converged_tol > fr.converged
+        beyond   = fr.converged_tol - fr.converged            # Ritz-converged but not returned
+        rejected = fr.converged_tol - fr.converged_eigentol   # of those, the actual eigen failures
+        stranded = beyond - rejected                          # the rest: behind a failure
+        println(io, "- Limited by: ", yellow(f, "the eigen tolerance, not the Krylov budget"),
+                " — ", cyan(f, string(beyond)),
+                " pair(s) beyond the returned run passed the Ritz gate.")
+        # Splitting the loss matters because the two halves are very differently sized and only
+        # the FIRST is a tolerance problem. A handful of scattered failures can strand hundreds
+        # of pairs that passed both gates, which reads as "nothing converged" unless said aloud.
+        println(io, "  ", cyan(f, string(rejected)), " fail `eigentol`; ",
+                cyan(f, string(stranded)),
+                " passed BOTH gates but sit behind one, and the contiguous-run rule drops them.")
+        println(io, "  More iterations cannot extend the run; relax `eigentol` or narrow the window.")
+    end
     println(io, "- Iterations needed: ", bold(f, string(fr.itersneeded)),
             " (out of ", cyan(f, string(fr.itersreserved)), " reserved, overestimated by ",
             _overestimate_color(f, fr.itersneeded, fr.itersreserved), ")")
     # The criterion's own completeness verdict. Worth a line of its own: an uncertified set is
     # gap-free but may be SHORT at the window edges, which no residual on the line above reveals.
+    # Name the actual cause — "budget exhausted" is a lie whenever the eigen gate is what cut
+    # the run, and it is the lie that sends the reader off to raise `overestimate_iters`.
+    uncertified = fr.converged_tol > fr.converged ?
+        "NOT certified — cut by `eigentol`, set is short" :
+        "NOT certified — budget exhausted, set may be short"
     println(io, "- Returned set: ", fr.complete ? green(f, "certified complete") :
-            yellow(f, "NOT certified — budget exhausted, set may be short"))
+            yellow(f, uncertified))
 
     if details && fr.numofchecks > 0
         println(io, "- Convergence check ran ", cyan(f, string(fr.numofchecks)), " times:")

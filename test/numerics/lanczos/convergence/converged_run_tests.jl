@@ -27,7 +27,8 @@ end
 # Drive `decide` with explicit converged sets (Ritz and eigen can differ, to prove both gate).
 function _decide(target, E, p; ritz_conv, eigen_conv=ritz_conv, force=false)
     ritz = [i in ritz_conv ? 0.0 : 1.0 for i in eachindex(p)]
-    eigen_of = idxs -> (E[idxs], k -> idxs[k] in eigen_conv)
+    eigen_of = idxs -> (E[idxs], k -> idxs[k] in eigen_conv,
+                        [idxs[k] in eigen_conv ? 0.0 : 1.0 for k in eachindex(idxs)])
     return LZ.decide(target, p, i -> ritz[i] < 0.5, ritz, eigen_of; force=force)
 end
 
@@ -137,14 +138,16 @@ end
         E_left = [0.9, 0.8, 0.1, 0.3, 0.5, 0.6]
         left = LZ.decide(
             Highest(Window(0.2, 0.7, 0.5)), p_left,
-            _ -> true, zeros(6), idxs -> (E_left[idxs], _ -> true),
+            _ -> true, zeros(6),
+            idxs -> (E_left[idxs], _ -> true, zeros(length(idxs))),
         )
 
         p_right = [0.1, 0.2, 0.3, 0.6, 0.8, 0.9]
         E_right = [0.1, 0.3, 0.9, 0.5, 0.6, 0.8]
         right = LZ.decide(
             Highest(Window(0.45, 0.85, 0.5)), p_right,
-            _ -> true, zeros(6), idxs -> (E_right[idxs], _ -> true),
+            _ -> true, zeros(6),
+            idxs -> (E_right[idxs], _ -> true, zeros(length(idxs))),
         )
 
         left_vals = sort(E_left[left.keep])
@@ -162,7 +165,7 @@ end
             redirect_stdout(output) do
                 LZ.decide(
                     Highest(Window(0.2, 0.8)), debug_p, _ -> true, zeros(4),
-                    idxs -> (debug_E[idxs], _ -> true),
+                    idxs -> (debug_E[idxs], _ -> true, zeros(length(idxs))),
                 )
             end
             flush(output)

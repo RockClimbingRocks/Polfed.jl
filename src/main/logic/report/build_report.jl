@@ -97,7 +97,12 @@ Post-process the raw [`LanczosResult`](@ref) into the returned [`PolfedResult`](
      so only `bracket_window` limits it.
    - **count target** — gate at the [`passband`](@ref), then keep the `howmany` values nearest
      `target_energy` ([`_nearest_contiguous_range`](@ref)). The DoS-sized `interval` does **not**
-     bound the answer here; see the discussion at the top of this file for why.
+     bound the answer here; see the discussion at the top of this file for why. On the
+     single-filter path the criterion already hands back exactly `howmany`, so that selection is
+     a no-op and the returned set is the `howmany` nearest the filter PEAK (which is `p` order,
+     not energy order — `P` is symmetric about `0`, not about a non-central target). It bites
+     only when the caller pools more than one window's worth into one `LanczosResult`, i.e. the
+     joint double-delta run.
    Either rule yields a contiguous range of the ascending `lr.vals`, so the eigenvector subset is
    taken as a **view** (columns for [`ColumnLayout`](@ref), rows for [`RowLayout`](@ref)), no
    copy. Slicing is safe precisely because the Lanczos criterion guarantees a **contiguous,
@@ -230,10 +235,23 @@ function build_polfed_result(lr::LanczosResult, mp::MappingPlan, interval::Inter
     # Count-based targets have a genuine "requested" count to fall short of. Window targets don't —
     # `howmany` there is only the DoS budget estimate, so the number found IS the answer, not a shortfall.
     if !(spec isa TargetWindowSpec) && n_in < howmany
+        # Two different shortfalls wear the same face here, and the fix for one is useless for
+        # the other. `converged_tol > converged_eigentol` means the Krylov space DID reach the
+        # requested count and the eigen tolerance is what threw pairs away; widening the budget
+        # then buys nothing but runtime.
+        eigen_limited = fr.converged_tol > fr.converged
+        advice = eigen_limited ?
+            "The Krylov space reached the requested count — `eigentol` is what cut the run, so " *
+            "a larger budget will not help. Relax `eigentol`, or narrow the window so the " *
+            "filter separates neighbouring states more strongly." :
+            "Increase `overestimate_iters` to widen the Krylov budget."
         polfed_log(POLFED_WARN_LEVEL,
-                   "POLFED: fewer eigenpairs converged near the target than requested. Returning " *
-                   "the ones found. Increase `overestimate_iters` to widen the Krylov budget.",
-                   requested = howmany, returned = n_in, converged = fr.converged_tol)
+                   "POLFED: fewer eigenpairs converged near the target than requested. " *
+                   "Returning the ones found. " * advice,
+                   requested = howmany, returned = n_in,
+                   converged = fr.converged, passed_ritz = fr.converged_tol,
+                   passed_eigen = fr.converged_eigentol, eigentol = fr.eigentol,
+                   worst_eigen_residual = fr.eigenworst)
     end
 
     mapping_report   = MappingReport(mp, layout)

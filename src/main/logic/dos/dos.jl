@@ -4,7 +4,8 @@
 
 
 """
-    DoSConfig(; N=Defaults.polfed.N, R=Defaults.polfed.R, kernel=Defaults.polfed.kernel)
+    DoSConfig(; N=Defaults.polfed.N, R=Defaults.polfed.R, kernel=Defaults.polfed.kernel,
+                rng=Random.default_rng())
 
 User-facing configuration for POLFED's density-of-states (DoS) estimation step.
 
@@ -16,16 +17,22 @@ filter. This struct is the public surface; the estimation itself is
 
 # Fields
 - `N::Int`: number of Chebyshev moments. Higher ⇒ sharper resolution, more cost.
-  Default [`Defaults.polfed.N`](@ref) (`250`).
+  Default [`Defaults.polfed.N`](@ref) (`500`).
 - `R::Int`: number of random probes. Higher ⇒ less statistical noise (`∝ 1/√R`).
-  Default [`Defaults.polfed.R`](@ref) (`300`).
+  Default [`Defaults.polfed.R`](@ref) (`500`).
 - `kernel::Symbol`: KPM damping kernel (e.g. `:Jackson`, `:Dirichlet`).
   Default [`Defaults.polfed.kernel`](@ref) (`:Jackson`).
+- `rng::AbstractRNG`: generator for the stochastic probes. Default `Random.default_rng()`,
+  which makes every call draw fresh probes — so two POLFED runs on the SAME operator resolve
+  slightly DIFFERENT windows, and a caller who seeded their own generator for the Hamiltonian
+  and starting block still gets an irreproducible target. Pass a seeded generator to pin it.
+  Ignored on a [`GPU`](@ref), where probes come from the device generator.
 
 # Example
 ```julia
-DoSConfig()                    # defaults
-DoSConfig(N = 500, R = 400)    # finer resolution, more probes
+DoSConfig()                        # defaults
+DoSConfig(N = 500, R = 400)        # finer resolution, more probes
+DoSConfig(rng = MersenneTwister(1))# reproducible window
 ```
 
 # Notes
@@ -33,18 +40,23 @@ There is intentionally no `DoSConfig` → plan resolution step: every field is a
 concrete value with a default, so there is nothing to resolve (unlike the mapping
 or transform configs, which estimate spectral bounds). [`density_of_states`](@ref)
 consumes a `DoSConfig` directly.
+
+`rng` is a type parameter rather than an `AbstractRNG` field: it is read once per probe inside
+the moment loop, and an abstract field would box it and force a dynamic dispatch there.
 """
-struct DoSConfig
+struct DoSConfig{RNG<:AbstractRNG}
     N::Int
     R::Int
     kernel::Symbol
+    rng::RNG
 
     function DoSConfig(;
         N::Int       = Defaults.polfed.N,
         R::Int       = Defaults.polfed.R,
         kernel::Symbol = Defaults.polfed.kernel,
+        rng::AbstractRNG = Random.default_rng(),
     )
-        new(N, R, kernel)
+        new{typeof(rng)}(N, R, kernel, rng)
     end
 end
 
@@ -110,9 +122,9 @@ function calculate_dos(
     sys::SysInfo,
 )
     polfed_log(POLFED_INFO_LEVEL, "Computing the density of states (KPM) on the rescaled operator.",
-               N = cfg.N, R = cfg.R, kernel = cfg.kernel)
+               N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = typeof(cfg.rng))
 
-    moments = kpm_moments(f!, cfg.N, cfg.R, sys.x0, sys.pu)
+    moments = kpm_moments(f!, cfg.N, cfg.R, sys.x0, sys.pu; rng = cfg.rng)
     coefficients = kpm_coeffs(moments, cfg.kernel)
     ρ = kpm_density(moments; kernel = cfg.kernel)
     dos = DoSResult(moments, coefficients, ρ)

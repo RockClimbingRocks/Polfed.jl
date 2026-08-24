@@ -82,7 +82,11 @@ using UniPolfed.Common: stage_names, total_wall
         @test !occursin("Convergence check ran", _render(RES; details = false))
         withtbl = _render(RES; details = true)
         @test occursin("Convergence check ran", withtbl)
-        @test occursin("Checking", withtbl) && occursin("Krylov dim.", withtbl)
+        # Assert against the header CONSTANT, not literals: the columns are diagnostic output
+        # that gets reworded, and a hardcoded title turns a rename into a red suite.
+        for col in UniPolfed.CONVERGENCE_TABLE_HEADER
+            @test occursin(col, withtbl)
+        end
     end
 
     @testset "GPU runs omit CPU time" begin
