@@ -51,3 +51,82 @@ end
 
 """Default convergence-check scheduling callback ([`default_next_check`](@ref))."""
 const DEFAULT_NEXT_CHECK = default_next_check
+
+# --- dense BLAS threads ------------------------------------------------------------------
+#
+# Lanczos leans on dense BLAS in three places — reorthogonalization (every iteration), the
+# projected-matrix `eigen`, and the eigenvector reconstruction inside a convergence check —
+# and none of them is threaded by Julia. They inherit whatever thread count the BLAS library
+# started with, which on an HPC login shell is routinely 1: a site profile exports
+# `OMP_NUM_THREADS=1` as a "don't accidentally go parallel" default, and OpenBLAS/MKL read it
+# when no library-specific variable overrides it. The sparse matvec is unaffected (POLFED
+# sets MKL's thread count per call, and the value-grouped kernels use Julia threads), so the
+# symptom is narrow and easy to misread: the convergence checks and reorthogonalization run
+# ~8x slower than the rest of the same process.
+
+"""
+Default `blas_threads` request for [`lanczos`](@ref) — `:auto`, resolved by
+[`resolve_blas_threads`](@ref).
+"""
+const DEFAULT_BLAS_THREADS = :auto
+
+"""One-shot latch so the `:auto` INFO line is emitted once per session, not once per run."""
+const _blas_threads_notified = Ref(false)
+
+"""
+    resolve_blas_threads(request) -> Union{Int,Nothing}
+
+How many threads dense BLAS should use for one Lanczos run. `nothing` means "leave the
+library alone" — no set, no restore.
+
+- `:auto` (the default): raise BLAS to `Threads.nthreads(:default)` **only** when BLAS is
+  pinned to a single thread while Julia has several. That combination is the signature of an
+  inherited `OMP_NUM_THREADS=1`, not of a deliberate choice — a caller who wants one BLAS
+  thread on a one-core allocation also has one Julia thread, and a caller who set
+  `OPENBLAS_NUM_THREADS`/`BLAS.set_num_threads` to anything but 1 has expressed an intent
+  that is left untouched. Setting the environment variable is therefore also the opt-out.
+- an `Int`: use exactly that many.
+- `nothing`: leave the library alone.
+"""
+function resolve_blas_threads(request)
+    request === nothing && return nothing
+    request isa Integer && return Int(request)
+    request === :auto || throw(ArgumentError(
+        "blas_threads must be an Integer, `nothing`, or `:auto` (got $(repr(request)))."))
+
+    n_julia = Threads.nthreads(:default)
+    n_blas  = BLAS.get_num_threads()
+    (n_blas == 1 && n_julia > 1) || return nothing
+
+    # INFO, not WARN: nothing is wrong, and it fires once per session — a run at the default
+    # verbosity should say nothing about it. The count is visible on demand for anyone
+    # comparing timings, which is the only time it matters.
+    if !_blas_threads_notified[] && should_log(POLFED_INFO_LEVEL)
+        _blas_threads_notified[] = true
+        polfed_log(POLFED_INFO_LEVEL, "Raising dense BLAS threads for the Lanczos runs.",
+                   julia_threads=n_julia, blas_threads_before=n_blas, blas_threads=n_julia)
+    end
+    return n_julia
+end
+
+"""
+    with_blas_threads(f, nthreads::Union{Int,Nothing})
+
+Run `f()` with dense BLAS set to `nthreads`, restoring the previous count afterwards (also on
+error). `nothing` runs `f()` untouched — no library call at all.
+
+Scoped rather than global on purpose: the count is a property of a Lanczos run, and a package
+that permanently rewrites a process-wide setting would leak into every other library in the
+session. Nests correctly with the inner `BLAS.set_num_threads(1)` that
+[`clenshaw_apply`](@ref) uses to keep its own threaded region from oversubscribing.
+"""
+function with_blas_threads(f::F, nthreads::Union{Int,Nothing}) where {F}
+    nthreads === nothing && return f()
+    previous = BLAS.get_num_threads()
+    BLAS.set_num_threads(nthreads)
+    try
+        return f()
+    finally
+        BLAS.set_num_threads(previous)
+    end
+end

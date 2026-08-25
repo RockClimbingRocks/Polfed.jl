@@ -168,3 +168,84 @@ end
     @test all(res .< 1e-8)                         # true eigen residuals ≈ 0 at full space
     @test length(res) == 2
 end
+
+@testset "build_values_and_residuals (fused pass)" begin
+    pu = CPU()
+
+    @testset "agrees with the two-pass helpers" begin
+        A = Symmetric(diagm([1.0, 2.5, -3.0, 4.0]))
+        valsmap!(y, x) = mul!(y, A, x)
+        vecs = Matrix(qr(randn(4, 3)).Q)                     # not eigenvectors: residuals ≠ 0
+
+        vals_ref = LZ.build_eigenvalues(LZ.ColumnLayout(), vecs, valsmap!, pu)
+        res_ref  = LZ.build_residuals(LZ.ColumnLayout(), vecs, vals_ref, valsmap!, pu)
+        vals, res = LZ.build_values_and_residuals(LZ.ColumnLayout(), vecs, valsmap!, pu)
+
+        @test vals ≈ vals_ref
+        @test res  ≈ res_ref
+        @test any(res .> 1e-3)                               # the check has teeth
+    end
+
+    @testset "applies the operator once per eigenvector" begin
+        A = Symmetric(diagm([1.0, 2.0, 3.0]))
+        applications = Ref(0)
+        counting!(y, x) = (applications[] += 1; mul!(y, A, x))
+        vecs = Matrix{Float64}(I, 3, 3)
+
+        LZ.build_values_and_residuals(LZ.ColumnLayout(), vecs, counting!, pu)
+        @test applications[] == 3                            # not 6 (two passes)
+    end
+
+    @testset "row layout and empty input" begin
+        A = Symmetric(diagm([2.0, 5.0]))
+        rowmap!(Y, X) = mul!(Y, X, A)
+        vals, res = LZ.build_values_and_residuals(LZ.RowLayout(), Matrix{Float64}(I, 2, 2), rowmap!, pu)
+        @test vals ≈ [2.0, 5.0]
+        @test all(res .< 1e-12)
+
+        vals0, res0 = LZ.build_values_and_residuals(LZ.ColumnLayout(), zeros(3, 0), rowmap!, pu)
+        @test isempty(vals0) && isempty(res0)
+    end
+end
+
+@testset "_reuse_eigen_batches" begin
+    batch(idxs, offset) = LZ._EigenBatch(collect(idxs),
+                                         Float64.(idxs) .+ offset,
+                                         Float64.(reshape(idxs, :, 1)) * [1.0 10.0 100.0],
+                                         Float64.(idxs) ./ 1000)
+
+    @testset "exact hit is handed back untouched" begin
+        b = batch([3, 4, 5], 0.5)
+        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b], [3, 4, 5])
+        @test vals === b.vals && vecs === b.vecs && res === b.res
+    end
+
+    @testset "subset is sliced in the requested order" begin
+        b = batch([3, 4, 5], 0.5)
+        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b], [5, 3])
+        @test vals == b.vals[[3, 1]]
+        @test vecs == b.vecs[[3, 1], :]
+        @test res  == b.res[[3, 1]]
+
+        cvecs = permutedims(b.vecs)
+        cb = LZ._EigenBatch(b.idxs, b.vals, cvecs, b.res)
+        _, cv, _ = LZ._reuse_eigen_batches(LZ.ColumnLayout(), [cb], [5, 3])
+        @test cv == cvecs[:, [3, 1]]
+    end
+
+    @testset "two ends are gathered in end order" begin
+        b1, b2 = batch([1, 2], 0.0), batch([9, 8], 100.0)
+        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b1, b2], [1, 2, 9, 8])
+        @test vals == vcat(b1.vals, b2.vals)
+        @test vecs == vcat(b1.vecs, b2.vecs)
+        @test res  == vcat(b1.res, b2.res)
+    end
+
+    @testset "falls back when it cannot serve the request" begin
+        b1, b2 = batch([1, 2], 0.0), batch([9, 8], 100.0)
+        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1], [1, 7]) === nothing   # index absent
+        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1, b2], [1, 9, 2]) === nothing  # interleaved
+        @test LZ._reuse_eigen_batches(LZ.RowLayout(), LZ._EigenBatch[], [1]) === nothing
+        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1], Int[]) === nothing
+    end
+end

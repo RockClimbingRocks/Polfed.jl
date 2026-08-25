@@ -47,6 +47,11 @@ Hermitian/symmetric matrix or linear operator. CPU vs GPU is detected from `x0`.
   caller deliberately over-targets and keeps only a subset (e.g. patched POLFED converges a
   padded window and discards the brackets), so hitting `maxdim` is expected. The
   numerical-breakdown (non-finite residual) warning is unaffected and always fires.
+- `blas_threads=:auto`: how many threads dense BLAS may use for this run — reorthogonalization,
+  the projected `eigen`, and the convergence check's eigenvector reconstruction are all dense
+  BLAS and none of them is threaded by Julia. `:auto` un-pins BLAS from a single thread when
+  Julia has several (see [`resolve_blas_threads`](@ref)); an `Int` sets it exactly; `nothing`
+  leaves the library alone. Restored after the run either way.
 
 # Returns
 - A [`LanczosResult`](@ref) (`vals`, `vecs`, per-eigenvalue `residuals`, `converged`,
@@ -64,6 +69,7 @@ function lanczos(
     collect_garbage::Bool               = false,
     next_check::Function                = DEFAULT_NEXT_CHECK,
     warn_incomplete::Bool               = true,
+    blas_threads                        = DEFAULT_BLAS_THREADS,
 )
     if layout isa RowLayout && basistype <: VectorBasis
         throw(ArgumentError(
@@ -107,7 +113,12 @@ function lanczos(
     criterion = ConvergenceCriterion(target, Float64(tol), Float64(eigentol), maxiter, maxdim_final, bs, mapvals, next_check, warn_incomplete)
     state = ConvergenceState(criterion)
 
-    return lanczos_method(iterator, criterion, state, basistype, pu; collect_garbage=collect_garbage)
+    # The dense-BLAS scope covers the whole factorization: reorthogonalization runs every
+    # iteration and the convergence check's reconstruction is the single largest GEMM in the
+    # run, so the count is resolved once here rather than per call site.
+    return with_blas_threads(resolve_blas_threads(blas_threads)) do
+        lanczos_method(iterator, criterion, state, basistype, pu; collect_garbage=collect_garbage)
+    end
 end
 
 """Matrix-interface overload of [`lanczos`](@ref) (`mul!`-based action)."""

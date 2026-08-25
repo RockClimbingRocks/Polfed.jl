@@ -19,8 +19,7 @@ function calc_eigen_residuals(factorization::KrylovFactorization, ϕ::AbstractMa
     pu = factorization.pu
     layout = factorization.layout
     vecs = build_eigenvectors(factorization, ϕ, idxs)
-    vals = build_eigenvalues(layout, vecs, mapvals, pu)
-    residuals = build_residuals(layout, vecs, vals, mapvals, pu)
+    vals, residuals = build_values_and_residuals(layout, vecs, mapvals, pu)
     return vals, vecs, residuals
 end
 
@@ -151,4 +150,119 @@ function build_residuals(layout::Layout, vecs::AbstractMatrix, vals::AbstractVec
         res[i] = norm(vec(r))
     end
     return res
+end
+
+"""
+    build_values_and_residuals(layout, vecs::AbstractMatrix, valsmap!, pu::ProcessingUnit)
+        -> (vals, residuals)
+
+Rayleigh quotients and true eigen-residuals in **one pass**: `λᵢ = ⟨vᵢ|A|vᵢ⟩` and
+`‖A·vᵢ − λᵢ·vᵢ‖`, both read off the same `A·vᵢ`.
+
+Equivalent to [`build_eigenvalues`](@ref) followed by [`build_residuals`](@ref) — which are
+kept as standalone helpers — but applies `valsmap!` **once** per eigenvector instead of
+twice. The residual only needs `A·vᵢ` shifted by `λᵢ·vᵢ`, and `λᵢ` is known the moment
+`A·vᵢ` is: recomputing it was half the map-back cost of every convergence check.
+
+`valsmap!` is applied to a single eigenvector at a time, in the layout's orientation, so the
+callback contract is unchanged.
+"""
+function build_values_and_residuals(layout::Layout, vecs::AbstractMatrix, valsmap!,
+                                    pu::ProcessingUnit)
+    S = real(eltype(vecs))
+    nconv = _neigvecs(layout, vecs)
+    vals_cpu = zeros(S, nconv)
+    res = zeros(Float64, nconv)
+    nconv == 0 && return pu.Vector{S}(vals_cpu), res
+
+    w = _eigvec_workspace(layout, vecs, pu)
+    for i in 1:nconv
+        v = _eigvec(layout, vecs, i)
+        valsmap!(w, v)                          # the one operator application
+        λ = real(dot(vec(v), vec(w)))
+        vals_cpu[i] = λ
+        axpy!(-λ, vec(v), vec(w))               # w ← A·v − λ·v, in place
+        res[i] = norm(vec(w))
+    end
+    return pu.Vector{S}(vals_cpu), res
+end
+
+# --- reuse of a reconstruction across one convergence check -----------------------------
+
+"""
+    _EigenBatch
+
+One [`calc_eigen_residuals`](@ref) result, tagged with the Ritz indices it was built for.
+
+[`check_convergence!`](@ref) records every batch a check reconstructs so the terminal
+extraction can be *sliced* out of them rather than reconstructed again — see
+[`_reuse_eigen_batches`](@ref).
+"""
+struct _EigenBatch{V,M,R}
+    idxs::Vector{Int}
+    vals::V
+    vecs::M
+    res::R
+end
+
+@inline _select_eigvecs(::ColumnLayout, vecs::AbstractMatrix, pos::AbstractVector{Int}) = vecs[:, pos]
+@inline _select_eigvecs(::RowLayout,    vecs::AbstractMatrix, pos::AbstractVector{Int}) = vecs[pos, :]
+
+@inline _concat_eigvecs(::ColumnLayout, parts::AbstractVector) = reduce(hcat, parts)
+@inline _concat_eigvecs(::RowLayout,    parts::AbstractVector) = reduce(vcat, parts)
+
+"""
+    _reuse_eigen_batches(layout, batches, keep) -> Union{Nothing, Tuple}
+
+Serve the eigenpairs for the Ritz indices `keep` out of already-reconstructed `batches`,
+or `nothing` when they cannot be (some index was never reconstructed this check, or the
+batches interleave in `keep`) and the caller must rebuild.
+
+Reconstruction is a `nconv × krylovdim × dim` GEMM — the dominant cost of a convergence
+check — and the terminal extraction always asks for a *subset* of what deciding the target
+already built. `keep` is a concatenation of one contiguous stretch per spectral end, so each
+batch contributes one slice; when a single batch covers `keep` in order, its arrays are
+handed back with no copy at all.
+"""
+function _reuse_eigen_batches(layout::Layout, batches::AbstractVector, keep::AbstractVector{Int})
+    (isempty(batches) || isempty(keep)) && return nothing
+
+    # Locate every kept index: (which batch, which position inside it).
+    ids  = Vector{Int}(undef, length(keep))
+    poss = Vector{Int}(undef, length(keep))
+    for (k, idx) in pairs(keep)
+        found = false
+        for (bi, b) in pairs(batches)
+            pos = findfirst(==(idx), b.idxs)
+            pos === nothing && continue
+            ids[k], poss[k] = bi, pos
+            found = true
+            break
+        end
+        found || return nothing
+    end
+
+    # Each batch must occupy one contiguous stretch of `keep`, or a per-batch slice would
+    # not reproduce the requested order.
+    groups = unique(ids)
+    ranges = Vector{UnitRange{Int}}(undef, length(groups))
+    for (g, bi) in pairs(groups)
+        first_k = findfirst(==(bi), ids)
+        last_k  = findlast(==(bi), ids)
+        all(==(bi), view(ids, first_k:last_k)) || return nothing
+        ranges[g] = first_k:last_k
+    end
+
+    if length(groups) == 1
+        b = batches[groups[1]]
+        poss == eachindex(b.idxs) && return (b.vals, b.vecs, b.res)   # exact hit, no copy
+        return (b.vals[poss], _select_eigvecs(layout, b.vecs, poss), b.res[poss])
+    end
+
+    vals = reduce(vcat, [batches[bi].vals[poss[r]] for (bi, r) in zip(groups, ranges)])
+    vecs = _concat_eigvecs(layout,
+                           [_select_eigvecs(layout, batches[bi].vecs, poss[r])
+                            for (bi, r) in zip(groups, ranges)])
+    res  = reduce(vcat, [batches[bi].res[poss[r]] for (bi, r) in zip(groups, ranges)])
+    return (vals, vecs, res)
 end

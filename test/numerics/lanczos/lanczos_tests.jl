@@ -320,3 +320,72 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
 
     # FactorizationReport contents/display are tested in FactorizationReport_tests.jl.
 end
+
+@testset "blas_threads resolution" begin
+    LZD = UniPolfed.Numerics.Lanczos
+
+    @testset "explicit requests pass through" begin
+        @test LZD.resolve_blas_threads(4) == 4
+        @test LZD.resolve_blas_threads(1) == 1
+        @test LZD.resolve_blas_threads(nothing) === nothing
+        @test_throws ArgumentError LZD.resolve_blas_threads(:everything)
+    end
+
+    @testset ":auto leaves a deliberate setting alone" begin
+        previous = BLAS.get_num_threads()
+        try
+            BLAS.set_num_threads(2)                     # not 1 ⇒ someone chose this
+            @test LZD.resolve_blas_threads(:auto) === nothing
+        finally
+            BLAS.set_num_threads(previous)
+        end
+    end
+
+    @testset ":auto only fires when Julia has threads to spare" begin
+        previous = BLAS.get_num_threads()
+        try
+            BLAS.set_num_threads(1)
+            resolved = LZD.resolve_blas_threads(:auto)
+            if Threads.nthreads(:default) > 1
+                @test resolved == Threads.nthreads(:default)
+            else
+                @test resolved === nothing              # 1 BLAS thread on 1 Julia thread is correct
+            end
+        finally
+            BLAS.set_num_threads(previous)
+        end
+    end
+
+    @testset "with_blas_threads scopes the change" begin
+        previous = BLAS.get_num_threads()
+
+        inside = LZD.with_blas_threads(2) do
+            BLAS.get_num_threads()
+        end
+        @test inside == 2
+        @test BLAS.get_num_threads() == previous        # restored
+
+        @test_throws ErrorException LZD.with_blas_threads(2) do
+            error("boom")
+        end
+        @test BLAS.get_num_threads() == previous        # restored on error too
+
+        @test LZD.with_blas_threads(nothing) do
+            BLAS.get_num_threads()
+        end == previous                                 # `nothing` touches nothing
+    end
+
+    @testset "lanczos accepts the keyword and restores the count" begin
+        A = Symmetric(diagm(Float64[1, 2, 3, 4, 5, 6]))
+        x0 = normalize(Float64[1, 0.6, -0.3, 0.8, -0.2, 0.4])
+        previous = BLAS.get_num_threads()
+
+        res = lanczos(A, x0, LowestEigs(2); blas_threads = 2)
+        @test res.vals[1:2] ≈ [1.0, 2.0] atol = 1e-8
+        @test BLAS.get_num_threads() == previous
+
+        res2 = lanczos(A, x0, LowestEigs(2); blas_threads = nothing)
+        @test res2.vals[1:2] ≈ [1.0, 2.0] atol = 1e-8
+        @test BLAS.get_num_threads() == previous
+    end
+end

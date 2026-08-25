@@ -58,9 +58,17 @@ function check_convergence!(criterion::ConvergenceCriterion, state::ConvergenceS
     # Expensive signal, on demand: reconstruct eigenpairs for `idxs` and hand back their
     # mapped values `E` plus a per-position acceptance predicate. `decide_end` calls this
     # only after its cheap gate fires, so on most checks it is never called at all.
+    #
+    # Every batch is kept: `decide` reconstructs the Ritz prefix of each end here, and the
+    # terminal extraction below asks for a SUBSET of exactly those indices. Rebuilding it
+    # made the final check cost twice what every other eigen check cost (a second
+    # `nconv × krylovdim × dim` GEMM over the whole Krylov basis), which is pure waste —
+    # `ϕ` and the factorization are the same within one check.
+    batches = _EigenBatch[]
     eigen_of = function (idxs)
         isempty(idxs) && return (Float64[], _ -> false, Float64[])
-        vals, _, eig = calc_eigen_residuals(factorization, ϕ, idxs, criterion.mapvals)
+        vals, vecs, eig = calc_eigen_residuals(factorization, ϕ, idxs, criterion.mapvals)
+        push!(batches, _EigenBatch(collect(idxs), vals, vecs, eig))
         vals_cpu = is_gpu_array(vals) ? collect(vals) : vals
         return (vals_cpu, k -> eig[k] < criterion.eigentol, eig)
     end
@@ -90,10 +98,13 @@ function check_convergence!(criterion::ConvergenceCriterion, state::ConvergenceS
 
     result = nothing
     if verdict.done || is_final
-        # One reconstruction of the kept set. `decide` already built these while deciding;
-        # redoing it once, at the terminal check only, keeps the walker free of any
-        # eigenvector cache. (`lanczos` sorts the result ascending afterwards.)
-        vals, vecs, eig = calc_eigen_residuals(factorization, ϕ, verdict.keep, criterion.mapvals)
+        # The kept set, sliced out of what `decide` already reconstructed. Only a target
+        # whose pre-gate skipped reconstruction entirely (or whose ends interleave in
+        # `keep`) still pays for a build here. (`lanczos` sorts the result ascending
+        # afterwards.)
+        reused = _reuse_eigen_batches(factorization.layout, batches, verdict.keep)
+        vals, vecs, eig = reused === nothing ?
+            calc_eigen_residuals(factorization, ϕ, verdict.keep, criterion.mapvals) : reused
         result = (vals, vecs, eig)
         state.eigenresidual = isempty(eig) ? 0.0 : maximum(eig)
 
