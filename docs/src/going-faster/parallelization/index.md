@@ -3,6 +3,18 @@
 Lever 2 from [The bottleneck](@ref going_faster): apply the operator to many things at once.
 The strategy is set through [`MappingConfig`](@ref UniPolfed.MappingConfig).
 
+!!! warning "`VectorWise` does not run yet"
+    Above one thread, `VectorWise` is currently downgraded to `BlockWise` with a warning —
+    an explicit request as much as an automatic one — because the Clenshaw combine opens its
+    own `Threads.@threads :static` region inside `VectorWise`'s, and Julia rejects nested
+    `:static` regions. On the **matrix** entrypoints it is coerced unconditionally for a
+    second, independent reason: the transform operator is built whole-block at `Val(bs)` and
+    shared with the DoS stage.
+
+    The strategy itself is implemented and layout-aware; only its *selection* is blocked. Until
+    that clears, every run is `BlockWise`, and the rest of this page describes `VectorWise` as
+    designed rather than as currently reachable.
+
 ## The strategies
 
 Both strategies use every thread. They differ in **where the parallel region opens** relative
@@ -50,15 +62,21 @@ basis-state split — the only parallelism available at block size 1.
 Leaving `parallel_strategy = nothing` resolves the strategy from the processing unit, the block
 size, the thread count and whether the mapping is optimized:
 
+The branches are checked in this order, and the first match wins:
+
 | Condition | Resolved |
 | :--- | :--- |
 | GPU | `BlockWise` — there is no device `VectorWise` kernel; an explicit request is coerced with a warning |
-| `optimize_mapping = false` | `BlockWise` — the generic `mul!` takes its own MKL threads |
-| `optimize_mapping` truthy **and** `block_size == nthreads()` | `VectorWise` — one whole vector per thread |
+| an explicit `parallel_strategy` | that strategy — but still filtered by the downgrade above |
+| `block_size == 1` | `BlockWise` — `VectorWise` has a single vector and nothing to split |
+| `optimize_mapping === false` | `BlockWise` — the generic `mul!` takes its own MKL threads |
+| `optimize_mapping === true` **and** `block_size == nthreads()` | `VectorWise` — one whole vector per thread |
 | anything else | `BlockWise` |
 
-The `optimize_mapping` test is `=== false`, so `true`, `:auto` and an explicit kernel all count
-as optimized.
+Mind the two different tests. The `BlockWise` short-circuit is `=== false`, so `:auto`, a
+`NamedTuple` and an explicit kernel all count as optimized and fall past it. The `VectorWise`
+branch is the stricter `=== true`, so those same values do **not** reach it — they land on
+`anything else`.
 
 ## Vector parallelism needs vectors
 
@@ -74,10 +92,18 @@ x0_mat = Matrix(qr(rand(size(H, 1), 8)).Q)       # → block Lanczos, 8 vectors
 If you are running plain Lanczos and want threads to help, use `BlockWise` — it parallelizes
 inside the kernel instead.
 
-!!! note "Column split only, for now"
-    `VectorWise` currently splits by **columns**. Layout-awareness — splitting by rows under
-    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout), which is what the matrix entrypoint uses — is not
-    implemented yet.
+!!! note "The split follows the layout"
+    `VectorWise` splits along whichever axis holds the Krylov vectors: **columns** under
+    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout) (each thread takes a
+    length-`D` column) and **rows** under
+    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout), which is what the matrix
+    entrypoint uses (each thread takes a `1 × D` row). A row-layout block is therefore split
+    into `bs` vectors of length `D`, never into `D` fragments of length `bs`.
+
+!!! note "`VectorWise` serializes BLAS"
+    Both CPU `VectorWise` paths set `BLAS.set_num_threads(1)` around the call and restore it
+    afterwards, so the optimized kernels own the threads rather than competing with BLAS for
+    them. `BlockWise` does not.
 
 ## Choosing a block size
 
@@ -114,7 +140,8 @@ built for.
   gets in the way. Already the default, but setting it explicitly documents intent.
 - **Single vector** → `BlockWise`. It is the only strategy that can parallelize one vector.
 - **Block Lanczos with `block_size == nthreads()`** → `VectorWise`. One vector per thread, no
-  per-step barrier. This is also what auto-resolution picks.
+  per-step barrier. This is what auto-resolution *selects* — but the downgrade then takes it
+  away again, so today this configuration also runs `BlockWise`.
 - **Block Lanczos with any other block size** → `BlockWise`.
 
 Raising `howmany` is also a lever here — it lowers the polynomial order — but it raises memory
@@ -129,17 +156,14 @@ The **Timings** section is where the answer is. Compare wall time against CPU ti
 threaded run, CPU time well above wall time means threads are actually working. If they track
 each other, your parallelism is not engaging — usually a block with too few vectors.
 
-```julia
-for mc in (MappingConfig(parallel_strategy = BlockWise()),
-           MappingConfig(parallel_strategy = VectorWise()))
-    result = polfed(H, x0_mat, howmany, target; mc = mc)
-    display_report(result)
-end
-```
+Between two configurations of the same problem the matrix-multiplication count must be
+identical — parallelization changes *when* the work happens, never how much of it there is. A
+changed count means something else moved with it, and the runs are not comparable.
 
-The matrix-multiplication count must be identical across those two runs — parallelization
-changes *when* the work happens, never how much of it there is. A changed count means something
-else moved with it.
+!!! note "Comparing the two strategies"
+    A loop over `BlockWise()` and `VectorWise()` does not currently measure anything: both
+    runs resolve to `BlockWise`, so the difference you see is noise. Check the **Mapping**
+    section's `parallel strategy` line to confirm which one actually ran.
 
 !!! note "CPU time on GPU runs"
     CPU time is suppressed in the report for GPU runs, where it would be misleading.
