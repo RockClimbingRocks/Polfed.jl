@@ -137,8 +137,13 @@ function render_patched_convergence(io::IO, f::Formatter, r::PatchedReport; deta
                           @sprintf("%.1e", p.factorization.eigenresidual),
                           string(p.factorization.itersneeded), string(p.retries)]
         end
-        header = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"]
-        render_detail_table(io, header, data; bold_header = f.color)
+        kwargs = (; header = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"],
+                  tf = tf_unicode_rounded)
+        if f.color
+            pretty_table(io, data; kwargs..., header_crayon = crayon"white bold")
+        else
+            pretty_table(io, data; kwargs...)
+        end
     end
     return nothing
 end

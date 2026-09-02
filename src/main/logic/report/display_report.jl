@@ -44,8 +44,7 @@ on the type being printed.
 
 # Keywords
 - `convergence_details::Bool = false`: append the per-check (single run) or per-run (patched)
-  convergence-history table. Requires `PrettyTables`; without it the renderer says so
-  instead of throwing.
+  convergence-history table.
 - `color::Bool`: ANSI colors. Defaults to `io`'s `:color` property when set, else `true`
   only for a color-capable terminal — see [`_auto_color`](@ref).
 

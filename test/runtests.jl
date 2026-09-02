@@ -22,7 +22,6 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
             include("common/Formatter_tests.jl")
             include("common/logging_tests.jl")
             include("common/stage_timer_tests.jl")
-            include("common/table_tests.jl")
             @testset "Utils" begin
                 include("common/utils/bisection_tests.jl")
                 include("common/utils/chebyshev_integration_tests.jl")

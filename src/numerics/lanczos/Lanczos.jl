@@ -1,7 +1,7 @@
 "Lanczos and block-Lanczos eigensolvers for Hermitian/symmetric operators (extremal, both-ends, and shift-targeted)."
 module Lanczos
 
-using LinearAlgebra, Printf, Random
+using LinearAlgebra, Printf, PrettyTables, Random
 
 # Backend GPU-dispatch helpers + processing-unit types live at the UniPolfed top level.
 import ...is_gpu_array, ...is_gpu_sparse_matrix
@@ -14,7 +14,6 @@ import ...Common: StageTimer, @stage, @stages, stage_names, total_wall, total_cp
 import ...Common: POLFED_SILENT_LEVEL, POLFED_WARN_LEVEL, POLFED_INFO_LEVEL, POLFED_DEBUG_LEVEL,
                   POLFED_DEEP_DEBUG_LEVEL
 import ...Common: verbosity, should_log, polfed_log
-import ...Common: render_detail_table
 
 include("Layout.jl")
 include("reorthtechniques/ReOrthTechniques.jl")

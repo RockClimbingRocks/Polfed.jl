@@ -20,6 +20,7 @@ include("optimization/Optimization.jl")  # value-grouped row kernels        (mod
 
 # ── POLFED algorithm ─────────────────────────────────────────────────────────
 using Printf                                                  # Report section formatting
+using PrettyTables                                            # Report detail tables
 using LinearAlgebra: BLAS                                     # BLAS-thread gating in clenshaw_apply
 using MKLSparse                                               # MKL sparse matrix multiplication (CPU) for row-native path
 using MKL_jll: libmkl_rt                                      # MKL sparse matrix multiplication (CPU) for row-native path
@@ -30,8 +31,7 @@ using .Common: should_log, polfed_log, with_verbosity,        # gated POLFED log
                validate_no_leakage_in_interval_numerically,   # Filter leakage validation
                Formatter, fmt, bold, cyan, blue, green, red, yellow,  # Report coloring
                StageTimer, @stage, @stages,                   # named stage timing (pipelines + Lanczos)
-               stage_names, total_wall, total_cpu,
-               render_detail_table                            # report detail tables (PrettyTables optional)
+               stage_names, total_wall, total_cpu
 using .Numerics.Clenshaw: ClenshawExpansion, build_clenshaw_kernels  # Transform filter evaluation
 using .Numerics.KPM: kpm_moments, kpm_density, kpm_coeffs, get_kernel # DoS adapter + Transform state count
 using .Numerics.Lanczos: ReOrthTechnique, OrthonormalBasis,   # Factorization config types
