@@ -50,6 +50,10 @@ single-vector subspace has no coupling, so the Ritz residual estimate is `0`.
 """Store scalar norm-coupling value `β` for the current iteration."""
 @inline addnorm!(fact::LanczosFactorization, β::Real) = (fact.βs[fact.krylovdim-1] = β)
 
+"""Accumulate a DGKS correction into the stored overlap `α_k`."""
+@inline addoverlap!(fact::LanczosFactorization, δα::Real) = (fact.αs[fact.krylovdim] += δα)
+
+
 """
 Construct the projected matrix from stored Lanczos coefficients. On CPU this is a
 `SymTridiagonal` (so `eigen` dispatches to the fast symmetric-tridiagonal solver);

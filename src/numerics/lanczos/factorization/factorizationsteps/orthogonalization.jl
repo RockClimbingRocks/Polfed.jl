@@ -2,7 +2,8 @@
     orthogonalization!(factorization::KrylovFactorization) -> nothing
 
 Orthogonalize the residual workspace against the latest basis vectors/blocks using
-the current overlap and norm coefficients.
+the current overlap and norm coefficients, then repair the rounding error that
+subtraction leaves behind ([`dgks_correction!`](@ref)).
 """
 @inline function orthogonalization!(factorization::KrylovFactorization)
     v1 = factorization.v_last
@@ -10,6 +11,8 @@ the current overlap and norm coefficients.
     α = getoverlap(factorization)
     β = getnorm(factorization)
     orthogonalization!(factorization.layout, factorization.r, v1, v2, α, β)
+    dgks_correction!(factorization)
+    return nothing
 end
 
 """
@@ -43,4 +46,46 @@ end
         axpy!(-conj(β[1, 1]), v2, rv)
     end
     return r
+end
+
+
+"""
+    dgks_correction!(factorization) -> nothing
+
+Second projection against the two most recent basis blocks, with coefficients
+re-measured from the already-subtracted residual:
+
+    δα = V_j' R₁ ,   R₂ = R₁ − V_j δα ,   α_j ← α_j + δα
+    δβ = V_{j-1}' R₂ ,   R₃ = R₂ − V_{j-1} δβ
+
+The recurrence in [`orthogonalization!`](@ref) removes a component of size `O(‖A·V_j‖)`
+and keeps a residual of size `‖β_{j+1}‖`, so its cancellation leaves an orthogonality
+defect of `ε·‖A·V_j‖/‖β_{j+1}‖` — growing as the filter converges and `β` collapses.
+Those two blocks are exactly the ones [`reorthogonalization!`](@ref) skips via
+`all_withoutlasttwo`, so nothing else repairs them. The second pass has no cancellation
+(`‖R₂‖ ≈ ‖R₁‖`), so the defect drops to `O(ε)` unconditionally.
+
+`δα` is accumulated into the stored overlap so `T[j,j]` remains the Rayleigh quotient
+of the basis actually held. `δβ` is not stored: it is `O(ε‖A‖)`, the same order as the
+arithmetic, and `β` already lives in two mirrored views of `fact.mat`.
+"""
+@inline function dgks_correction!(fact::BlockLanczosFactorization)
+    layout, r, δ = fact.layout, fact.r, fact.orth_coeff
+    overlap!(layout, δ, fact.v_last, r)
+    project!(layout, r, fact.v_last, δ)
+    addoverlap!(fact, δ)
+    if fact.krylovdim >= 2 * fact.blocksize          # mirrors the getnorm guard
+        overlap!(layout, δ, fact.v_secondlast, r)
+        project!(layout, r, fact.v_secondlast, δ)
+    end
+    return nothing
+end
+
+@inline function dgks_correction!(fact::LanczosFactorization)
+    r, v1, v2 = fact.r, fact.v_last, fact.v_secondlast
+    δα = dot(v1, r)
+    axpy!(-δα, v1, r)
+    addoverlap!(fact, real(δα))
+    fact.krylovdim >= 2 && axpy!(-dot(v2, r), v2, r)
+    return nothing
 end
