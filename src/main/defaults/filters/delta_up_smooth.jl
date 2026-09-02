@@ -33,10 +33,14 @@ module delta_up_smooth
     npts_within_passband(order::Int)          = 1_000
     npts_on_sides_of_the_passband(order::Int) = 1_000
 
-    # Krylov-dimension estimate `ceil((iters_per_block·bs + iters_per_eig·howmany)·η)`. An
-    # EMPIRICAL FIT from real runs (contrast `Defaults.filters.edge`, whose 25.0/4.0 are untuned
-    # initial guesses). The Krylov dimension is driven by `howmany` and the block size, not by the
-    # filter's shape, so all four delta-family filters carry the same pair.
-    const krylov_iters_per_block = 20.427
-    const krylov_iters_per_eig   = 1.696
+    # Krylov-ITERATION fit `iters(x) = A·x^α·(1 + x/xc)^(1-α)` at `x = howmany/blocksize`; the
+    # Krylov DIMENSION is `iters(x)·blocksize·η` (see `_fitted_krylov_dim`). An EMPIRICAL FIT from
+    # real runs (contrast `Defaults.filters.edge`, whose 25.0/4.0 are untuned initial guesses).
+    # One crossover, not a line: sublinear (`≈ A·x^α`) below `xc ≈ 50` eigenpairs per block,
+    # straightening to `≈ 1.63` dimensions per eigenpair above it. The Krylov dimension is driven
+    # by `howmany` and the block size, not by the filter's shape, so all four delta-family filters
+    # carry the same triple.
+    const krylov_fit_A     = 16.725632
+    const krylov_fit_alpha = 0.40598213
+    const krylov_fit_xc    = 50.265139
 end

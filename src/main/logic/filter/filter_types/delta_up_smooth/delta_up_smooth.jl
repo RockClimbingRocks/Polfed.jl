@@ -68,11 +68,13 @@ function DeltaUpSmoothFilter(interval::Interval;
 end
 
 """    expected_krylov_dim(::DeltaUpSmoothFilter, howmany, blocksize, η) -> Int
-Same empirical fit as the sharp delta filters — the Krylov dimension is driven by `howmany` and
-the block size, not by the filter's shape."""
+Same empirical fit as the sharp delta filters ([`_fitted_krylov_dim`](@ref)) — the Krylov
+dimension is driven by `howmany` and the block size, not by the filter's shape."""
 expected_krylov_dim(::DeltaUpSmoothFilter, howmany::Int, blocksize::Int, η::Real) =
-    ceil(Int, (Defaults.filters.delta_up_smooth.krylov_iters_per_block * blocksize +
-               Defaults.filters.delta_up_smooth.krylov_iters_per_eig   * howmany) * η)
+    _fitted_krylov_dim(howmany, blocksize, η,
+                       Defaults.filters.delta_up_smooth.krylov_fit_A,
+                       Defaults.filters.delta_up_smooth.krylov_fit_alpha,
+                       Defaults.filters.delta_up_smooth.krylov_fit_xc)
 
 """    exposed_end(::DeltaUpSmoothFilter) -> :highest — target maps to the top of the transformed spectrum."""
 exposed_end(::DeltaUpSmoothFilter) = :highest

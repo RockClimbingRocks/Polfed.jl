@@ -296,6 +296,19 @@ expected_krylov_dim(filter, howmany, block_size, eta)
 Estimate the Krylov-space dimension for a concrete filter. `eta` is the budget-inflation
 factor supplied as `overestimate_iters`.
 
+The delta family shares one empirical fit for the **iteration count**, evaluated at the
+eigenpairs-per-block ratio ``x = \texttt{howmany}/b`` and multiplied back by the block size:
+
+```math
+m \;=\; \Bigl\lceil A\,x^{\alpha}\Bigl(1 + \frac{x}{x_c}\Bigr)^{1-\alpha} b\,\eta \Bigr\rceil ,
+\qquad A = 16.725632,\; \alpha = 0.40598213,\; x_c = 50.265139 ,
+```
+
+with the constants in `Defaults.filters.<name>.krylov_fit_A` / `_alpha` / `_xc`.
+[`DoubleDeltaFilter`](@ref double_filter) applies the same fit inflated by
+`Defaults.double_polfed.krylov_overhead`; [`EdgeFilter`](@ref filters) keeps its own
+(untuned) linear estimate.
+
 ### [`order_safety_factor`](@id UniPolfed.order_safety_factor)
 
 ```julia

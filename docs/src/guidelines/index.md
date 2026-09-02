@@ -34,8 +34,10 @@ runs. See [The other bottleneck](@ref going_faster).
 ```
 
 Below that ratio, block factorization typically needs many more Krylov iterations, which
-erases the mapping gain. The estimated Krylov dimension grows **linearly** in the block
-size, so an oversized block enlarges the projected problem for nothing.
+erases the mapping gain. The iteration estimate is **sublinear** in the eigenpairs-per-block
+ratio, so a bigger block saves fewer iterations than the vectors it adds and the estimated
+Krylov dimension still grows with the block size — an oversized block enlarges the projected
+problem for nothing.
 
 Raising `howmany` cuts both ways:
 

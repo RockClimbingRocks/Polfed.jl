@@ -53,14 +53,19 @@ It is not free, and the thing it costs you is the subject of the next section.
 ## The other bottleneck: the projected matrix
 
 Lowering ``K`` by raising `howmany` runs into a second cost that has nothing to do with
-matvecs. The Krylov space grows linearly with `howmany`,
+matvecs. The Krylov space grows with `howmany` — sublinearly at small counts, essentially
+linearly once a block holds more than ~50 eigenpairs,
 
 ```math
-m \;\approx\; (20.427\,b + 1.696\,\texttt{howmany})\,\eta ,
+m \;\approx\; A\,x^{\alpha}\Bigl(1 + \frac{x}{x_c}\Bigr)^{1-\alpha} b\,\eta ,
+\qquad x = \frac{\texttt{howmany}}{b},
 ```
 
+with ``A = 16.726``, ``\alpha = 0.406``, ``x_c = 50.265`` — sublinear while a block holds fewer
+than ``x_c`` eigenpairs, then straightening out to about ``1.63`` extra dimensions per eigenpair,
+
 and the projected Lanczos matrix of size ``m`` is diagonalized **densely**, at
-``\mathcal{O}(m^3)``. At `howmany = 10 000`, ``m`` is around 30 000 and that cubic term —
+``\mathcal{O}(m^3)``. At `howmany = 10 000`, ``m`` is around 20 000 and that cubic term —
 not the filter — becomes the dominant cost of the run. The Krylov basis, ``m`` vectors of
 length ``\mathcal{D}``, becomes the dominant memory cost at the same time.
 

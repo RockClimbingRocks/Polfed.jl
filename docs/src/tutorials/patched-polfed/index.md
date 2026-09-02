@@ -13,14 +13,19 @@ A large `howmany` means a *wide* interval, so ``\delta`` is large and ``K`` is *
 Asking for a lot of eigenpairs makes the filter cheap, not expensive.
 
 The bottleneck moves somewhere else entirely: **the projected Lanczos matrix**. Its size
-grows linearly with `howmany`,
+grows with `howmany` — sublinearly at small counts, essentially linearly once a block holds
+more than ~50 eigenpairs,
 
 ```math
-m \;\approx\; (20.427\,b + 1.696\,\texttt{howmany})\,\eta ,
+m \;\approx\; A\,x^{\alpha}\Bigl(1 + \frac{x}{x_c}\Bigr)^{1-\alpha} b\,\eta ,
+\qquad x = \frac{\texttt{howmany}}{b},
 ```
 
+with ``A = 16.726``, ``\alpha = 0.406``, ``x_c = 50.265`` — sublinear while a block holds fewer
+than ``x_c`` eigenpairs, then straightening out to about ``1.63`` extra dimensions per eigenpair,
+
 and it is diagonalized **densely**, at ``\mathcal{O}(m^3)``. Ask for 10 000 eigenpairs and
-``m`` lands around 30 000 — perfectly possible, but the dense diagonalization of that matrix
+``m`` lands around 20 000 — perfectly possible, but the dense diagonalization of that matrix
 now dominates the entire run, and the Krylov basis holding ``m`` vectors of length
 ``\mathcal{D}`` dominates the memory.
 
@@ -29,8 +34,8 @@ So the trade is the other way around from what you might expect:
 | | one big run | patched into 3 runs |
 | :--- | :--- | :--- |
 | polynomial order ``K`` | low | **higher** per patch |
-| projected matrix ``m`` | ~30 000 | ~10 000 each |
-| dense diagonalization | ``\mathcal{O}(30000^3)`` | ``3\times\mathcal{O}(10000^3)`` — ~9× less work |
+| projected matrix ``m`` | ~20 000 | ~6 900 each |
+| dense diagonalization | ``\mathcal{O}(20000^3)`` | ``3\times\mathcal{O}(6900^3)`` — ~9× less work |
 | Krylov basis in memory | one huge basis | one small basis at a time |
 
 Patched POLFED **pays a higher polynomial order in exchange for a much smaller projected

@@ -107,18 +107,22 @@ inside the kernel instead.
 
 ## Choosing a block size
 
-Bigger is not better. The block widens the mapping, but it also enlarges the projected problem:
-the estimated Krylov dimension grows **linearly** in the block size,
+Bigger is not better. The block widens the mapping, but it also enlarges the projected problem.
+The estimate is a fit for the number of **iterations**, evaluated at the eigenpairs-per-block
+ratio `x = howmany / blocksize` and multiplied back by the block size to give a dimension:
 
 ```julia
 expected_krylov_dim(filter, howmany, blocksize, η) =
-    ceil(Int, (krylov_iters_per_block * blocksize + krylov_iters_per_eig * howmany) * η)
+    ceil(Int, A * x^α * (1 + x / xc)^(1 - α) * blocksize * η)   # x = howmany / blocksize
 ```
 
-where `η` is `overestimate_iters` and the two coefficients come from the filter's own defaults
-(`Defaults.filters.delta_up.krylov_iters_per_block`, …). An oversized block therefore costs you
-more iterations *and* more memory for the Krylov basis, which is usually the dominant memory
-consumer.
+where `η` is `overestimate_iters` and the three constants come from the filter's own defaults
+(`Defaults.filters.delta_up.krylov_fit_A`, `…_alpha`, `…_xc` — `16.726`, `0.406`, `50.265` for
+the whole delta family). Because the fit is sublinear in `x`, halving `x` by doubling the block
+does **not** halve the iteration count, so the dimension still climbs with the block size — at
+`howmany = 1000`, `η = 1`, it is `1681` at `blocksize = 1`, `2080` at `10` and `2318` at `16`.
+An oversized block therefore costs you more matvecs *and* more memory for the Krylov basis,
+which is usually the dominant memory consumer.
 
 The working rules:
 

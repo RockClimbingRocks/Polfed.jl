@@ -502,7 +502,11 @@ html.theme--catppuccin-mocha .pf-explorer {
       { "text-anchor": "middle", "font-size": 11, fill: muted }));
 
     /* ---- readouts ---- */
-    const krylov = Math.ceil((20.427 * 1 + 1.696 * howmany) * 1.25);
+    /* expected_krylov_dim: iteration fit A·x^α·(1+x/xc)^(1-α) at x = howmany/blocksize,
+       times blocksize (1 here) and η = overestimate_iters = 1.25 */
+    const K_A = 16.725632, K_ALPHA = 0.40598213, K_XC = 50.265139;
+    const krylov = Math.ceil(
+      K_A * Math.pow(howmany, K_ALPHA) * Math.pow(1 + howmany / K_XC, 1 - K_ALPHA) * 1.25);
     stats.innerHTML =
       stat("target λ", lam.toFixed(3) + "   ·   E = " + (lam * A + B).toFixed(3)) +
       stat("interval (resc.)", "[" + lo.toFixed(3) + ", " + hi.toFixed(3) + "]") +

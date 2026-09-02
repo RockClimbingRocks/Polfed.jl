@@ -61,7 +61,8 @@ end
     expected_krylov_dim(::DoubleDeltaFilter, howmany, blocksize, η) -> Int
 
 Predicted Krylov dimension for the JOINT run: the empirical delta-filter fit
-[`Defaults.filters.double_delta`](@ref), inflated by
+`A·x^α·(1 + x/xc)^(1-α)` iterations at `x = howmany/blocksize` ([`_fitted_krylov_dim`](@ref),
+constants in [`Defaults.filters.double_delta`](@ref)), inflated by
 [`Defaults.double_polfed.krylov_overhead`](@ref) (`1.4`) and the caller's overestimation factor
 `η`.
 
@@ -73,9 +74,11 @@ decision inconsistent with [`Defaults.double_polfed.double_ratio`](@ref), which 
 the same constant.
 """
 expected_krylov_dim(::DoubleDeltaFilter, howmany::Int, blocksize::Int, η::Real) =
-    ceil(Int, (Defaults.filters.double_delta.krylov_iters_per_block * blocksize +
-               Defaults.filters.double_delta.krylov_iters_per_eig   * howmany) *
-              Defaults.double_polfed.krylov_overhead * η)
+    _fitted_krylov_dim(howmany, blocksize,
+                       Defaults.double_polfed.krylov_overhead * η,
+                       Defaults.filters.double_delta.krylov_fit_A,
+                       Defaults.filters.double_delta.krylov_fit_alpha,
+                       Defaults.filters.double_delta.krylov_fit_xc)
 
 """    cutoff(filter::DoubleDeltaFilter) -> Float64 — the peak cutoff magnitude (the ladder rung `c`
 that set `cutoff_upper = +c` / `cutoff_lower = −c`). Read by the report."""
