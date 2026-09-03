@@ -29,8 +29,7 @@ runs. See [The other bottleneck](@ref going_faster).
 ## Block size and `howmany`
 
 ```math
-\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100,
-\qquad \texttt{block\_size} \le 16 .
+\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100 .
 ```
 
 Below that ratio, block factorization typically needs many more Krylov iterations, which

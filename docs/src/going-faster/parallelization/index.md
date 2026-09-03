@@ -3,18 +3,6 @@
 Lever 2 from [The bottleneck](@ref going_faster): apply the operator to many things at once.
 The strategy is set through [`MappingConfig`](@ref UniPolfed.MappingConfig).
 
-!!! warning "`VectorWise` does not run yet"
-    Above one thread, `VectorWise` is currently downgraded to `BlockWise` with a warning —
-    an explicit request as much as an automatic one — because the Clenshaw combine opens its
-    own `Threads.@threads :static` region inside `VectorWise`'s, and Julia rejects nested
-    `:static` regions. On the **matrix** entrypoints it is coerced unconditionally for a
-    second, independent reason: the transform operator is built whole-block at `Val(bs)` and
-    shared with the DoS stage.
-
-    The strategy itself is implemented and layout-aware; only its *selection* is blocked. Until
-    that clears, every run is `BlockWise`, and the rest of this page describes `VectorWise` as
-    designed rather than as currently reachable.
-
 ## The strategies
 
 Both strategies use every thread. They differ in **where the parallel region opens** relative
@@ -40,22 +28,16 @@ it needs no per-step barrier and opens exactly one parallel region for the whole
 loop. `BlockWise` opens one per step and pays a barrier each time, but it is the only option
 that parallelizes a **single** Krylov vector, because there is nothing else to split.
 
-!!! note "Neither strategy is serial"
-    `BlockWise` means POLFED hands the operator the whole block — not that the work runs on one
-    thread. The optimized row kernels chunk their own output rows across `Threads.nthreads()`,
-    and on the GPU the device owns the decomposition. With `BlockWise` and `julia -t 4` the
-    matvec still uses four threads.
-
 ### `BlockWise(; groups)`
-
-`groups` cuts the block into that many Krylov-vector groups, each served by
-`nthreads() ÷ groups` threads splitting its basis-state range. `groups = 1` is the pure
-basis-state split — the only parallelism available at block size 1.
 
 !!! warning "`groups` is not read yet"
     The field is validated at construction, but the block decomposition that consumes it is not
     implemented. Until it lands, every `BlockWise` behaves as a plain whole-block call
     regardless of `groups`.
+
+`groups` cuts the block into that many Krylov-vector groups, each served by
+`nthreads() ÷ groups` threads splitting its basis-state range. `groups = 1` is the pure
+basis-state split — the only parallelism available at block size 1.
 
 ## Automatic selection
 
@@ -100,14 +82,9 @@ inside the kernel instead.
     entrypoint uses (each thread takes a `1 × D` row). A row-layout block is therefore split
     into `bs` vectors of length `D`, never into `D` fragments of length `bs`.
 
-!!! note "`VectorWise` serializes BLAS"
-    Both CPU `VectorWise` paths set `BLAS.set_num_threads(1)` around the call and restore it
-    afterwards, so the optimized kernels own the threads rather than competing with BLAS for
-    them. `BlockWise` does not.
-
 ## Choosing a block size
 
-Bigger is not better. The block widens the mapping, but it also enlarges the projected problem.
+Bigger is not better 😉. The block widens the mapping, but it also enlarges the projected problem.
 The estimate is a fit for the number of **iterations**, evaluated at the eigenpairs-per-block
 ratio `x = howmany / blocksize` and multiplied back by the block size to give a dimension:
 
@@ -127,8 +104,7 @@ which is usually the dominant memory consumer.
 The working rules:
 
 ```math
-\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100,
-\qquad \texttt{block\_size} \le 16 .
+\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100 .
 ```
 
 Push the ratio much below 100 and block factorization typically needs many more iterations to
@@ -163,14 +139,6 @@ each other, your parallelism is not engaging — usually a block with too few ve
 Between two configurations of the same problem the matrix-multiplication count must be
 identical — parallelization changes *when* the work happens, never how much of it there is. A
 changed count means something else moved with it, and the runs are not comparable.
-
-!!! note "Comparing the two strategies"
-    A loop over `BlockWise()` and `VectorWise()` does not currently measure anything: both
-    runs resolve to `BlockWise`, so the difference you see is noise. Check the **Mapping**
-    section's `parallel strategy` line to confirm which one actually ran.
-
-!!! note "CPU time on GPU runs"
-    CPU time is suppressed in the report for GPU runs, where it would be misleading.
 
 ## Next
 

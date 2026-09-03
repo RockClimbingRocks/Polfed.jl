@@ -139,10 +139,10 @@ vectors: the dimension grows with `blocksize` (at `howmany = 1000`, `η = 1`: `1
 convergence rather than helping. The practical rule of thumb is
 
 ```math
-\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100,
+\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100 .
 ```
 
-with `block_size ≤ 16` in most runs. Tuning advice lives in
+It is the ratio that matters, not the block size on its own. Tuning advice lives in
 [Parallelization](@ref parallelization) and [Guidelines](@ref guidelines).
 
 ## Going further
