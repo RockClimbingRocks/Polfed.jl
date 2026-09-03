@@ -57,7 +57,7 @@ function run_double_polfed_window_pipeline(
                target1 = format_target_strategy(spec_a), target2 = format_target_strategy(spec_b),
                strategy = strategy, tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     interval_a = @stage timer :interval resolve_window(spec_a, mp.a, mp.b)
     interval_b = @stage timer :interval resolve_window(spec_b, mp.a, mp.b)
 

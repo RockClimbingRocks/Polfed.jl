@@ -30,9 +30,23 @@ The standard solver result. Fields:
 | `layout` | the Krylov block layout used |
 | `report` | the structured [`Report`](@ref UniPolfed.Report) |
 
-`vals`, `vecs` and `residuals` are filtered to the requested interval and sorted with
-respect to ``H``. Because the in-interval pairs form a contiguous run, the eigenvector
-subset is a **view**, not a copy.
+`vals`, `vecs` and `residuals` are sorted with respect to ``H``, and the returned subset is
+always a contiguous run — so the eigenvector subset is a **view**, not a copy. *Which* boundary
+selects that run depends on the mode, and the two must not be conflated:
+
+| Mode | Selected by | Why |
+| :--- | :--- | :--- |
+| window | the requested **interval** | the interval *is* the request; the wider passband would return pairs nobody asked for |
+| count | the filter's **passband**, then the `howmany` nearest the target | the interval is an internal DoS-sized artifact — trimming there would make the returned count depend on the stochastic KPM error |
+
+The passband is the *trust* boundary: where the filter polynomial sits above cutoff, so Ritz
+ordering faithfully tracks energy ordering. Outside it a Chebyshev tail can lift a distant
+eigenvalue above a nearer one, which is why count mode gates there first — inside the passband,
+"nearest the target" and "contiguous run inward" coincide.
+
+In window mode the returned run is widened by one pair on each side, giving **brackets** that
+certify the window edges were passed. A bracket lies just outside the passband by construction,
+so it need not be the immediate spectral neighbour.
 
 `PolfedResult` destructures as `(vals, vecs, report)`. There is deliberately **no** `length`
 method — the count is `length(result.vals)` — and no `getindex`; use
@@ -143,6 +157,133 @@ display_report(result)         # header followed by the complete report
 display_report(result.report)  # report only
 ```
 
+### What each entrypoint prints
+
+All four outputs below come from the same disordered XXZ chain
+(`xxz_hamiltonian(12, 6, 1.0, 0.7, 0.5)`, ``\mathcal{D} = 924``; the full-spectrum one uses
+``L = 10``, ``\mathcal{D} = 252``). The **header** tells you which result type you have; the
+**sections** below it come from the report.
+
+`polfed` → a [`PolfedResult`](@ref UniPolfed.PolfedResult), four sections:
+
+```text
+POLFED result
+════════════════════════════════════════════════════════════
+
+Spectral Transformation ────────────────────────────────────────────────
+- target: :maxdos
+- interval: resc. [+2.75e-01,+2.94e-01], unresc. [+3.56e-01,+4.36e-01]
+- filter: DeltaUpFilter · order K = 268 · cutoff 0.14
+- mat-vec muls: 18_512
+Mapping ────────────────────────────────────────────────────────────────
+- operator: generic operator (mul! / user f!)
+- layout: RowLayout    block size 1    opdim 924
+- parallel strategy: BlockWise
+- Energy: Emin = -5.006   Emax = 3.409
+Convergence (block lanczos) ────────────────────────────────────────────
+- Number of converged eigenpairs: 20 (20 requested)
+- Ritz  conv tol=1.0e-14 passed:  20 (max res. 1.45e-41)
+- Eigen conv tol=1.0e-09 passed:  20 (worst examined 2.78e-15)
+- Iterations needed: 69 (out of 87 reserved, overestimated by 20.69%)
+- Returned set: certified complete
+Timings ────────────────────────────────────────────────────────────────
+- Total polfed run took: 6.89 seconds (walltime), 6.85 seconds (CPU time)
+- Walltime distribution: Lanczos 75.24% · preparation 24.76%
+- Lan walltime: matvec 3.80% · reorthog. 34.87% · tridiag. 26.79% · conv.check 34.55%
+- Lan CPU time: matvec 3.80% · reorthog. 34.87% · tridiag. 26.78% · conv.check 34.55%
+```
+
+`patched_polfed` → a [`PatchedResult`](@ref UniPolfed.PatchedResult). **Spectral
+Transformation** is replaced by **Spectral Decomposition** (there are N filters, not one), and
+Convergence aggregates across runs:
+
+```text
+Patched POLFED result
+════════════════════════════════════════════════════════════
+eigenpairs returned: 60
+
+Spectral Decomposition ─────────────────────────────────────────────────
+- Window: resc. [0.2527, 0.3152]  (true [0.2646, 0.5274])
+- Runs: 3 — 3 interior patches (Window target) + 0 edge peel(s) (count target)
+- Sizing: howmany_per_patch=20, howmany_edge=0, howmany_pad=3
+- Filters: 3× DeltaUpFilter
+- Polynomial order: min 175, max 198, mean 188.7 (max drives the cost)
+- Cost: H·v = Σ Kₚ·bsₚ·itersₚ = 67690 mat-vec muls
+Mapping ────────────────────────────────────────────────────────────────
+- operator: generic operator (mul! / user f!)
+- layout: RowLayout    block size 1    opdim 924
+- parallel strategy: BlockWise
+Convergence (across 3 runs) ────────────────────────────────────────────
+- Eigenpairs kept (glued): 60 (78 converged across runs)
+- Runs short of coverage: 0 / 3
+- Worst eigen residual (‖H·v−λ·v‖) across runs: 1.86e-14
+- Krylov iterations: 360 total (of 618 reserved)
+```
+
+`full_polfed` → the same `PatchedResult`, so the same shape. What differs is the window
+(all of ``[-1,1]``), the edge peel, and the mixed filter histogram:
+
+```text
+Patched POLFED result
+════════════════════════════════════════════════════════════
+eigenpairs returned: 252
+
+Spectral Decomposition ─────────────────────────────────────────────────
+- Window: resc. [-1.0000, 1.0000]  (true [-4.155, 2.827])
+- Runs: 9 — 8 interior patches (Window target) + 1 edge peel(s) (count target)
+- Sizing: howmany_per_patch=30, howmany_edge=10, howmany_pad=3
+- Filters: 8× DeltaUpFilter, 1× EdgeFilter
+- Polynomial order: min 3, max 35, mean 21.2 (max drives the cost)
+- Cost: H·v = Σ Kₚ·bsₚ·itersₚ = 28067 mat-vec muls
+Convergence (across 9 runs) ────────────────────────────────────────────
+- Eigenpairs kept (glued): 252 (297 converged across runs)
+- Runs short of coverage: 0 / 9
+- Worst eigen residual (‖H·v−λ·v‖) across runs: 3.32e-13
+- Krylov iterations: 1366 total (of 2229 reserved)
+```
+
+Here coverage *is* completeness: `Runs short of coverage: 0 / 9` and 252 of
+``\mathcal{D} = 252`` pairs mean the spectrum was fully resolved.
+
+`double_polfed` → a `DoublePolfedResult`: a decision header, then **both** `PolfedResult`s
+printed in the order you passed the targets:
+
+```text
+double POLFED result
+════════════════════════════════════════════════════════════
+  strategy : double  — one joint DoubleDeltaFilter run  (K_d = 310, from K₁ = 344, K₂ = 334)
+  decision : ratio = 0.971  (threshold 0.400, reason :ratio)
+  windows  : 15 + 15 eigenpairs
+  note     : both windows come from ONE Lanczos run; the two reports below describe that same run.
+
+── window 1 ─────────────────────────────────────────────────
+POLFED result
+════════════════════════════════════════════════════════════
+
+Spectral Transformation ────────────────────────────────────────────────
+- target: (:unrescaled, -0.3)
+- interval: resc. [+1.11e-01,+1.26e-01], unresc. [-3.32e-01,-2.68e-01]
+- filter: DoubleDeltaFilter · order K = 310 · cutoff 0.24
+- mat-vec muls: 25_745
+…
+
+── window 2 ─────────────────────────────────────────────────
+POLFED result
+════════════════════════════════════════════════════════════
+
+Spectral Transformation ────────────────────────────────────────────────
+- target: (:unrescaled, 0.35)
+- interval: resc. [+2.65e-01,+2.81e-01], unresc. [+3.18e-01,+3.82e-01]
+- filter: DoubleDeltaFilter · order K = 310 · cutoff 0.24
+- mat-vec muls: 25_745
+…
+```
+
+On the **joint** path both windows come out of one Lanczos run, so the two reports carry
+identical Convergence and Timings figures — they describe that shared run, not each window's
+share of it. The `decision` line shows what the strategy was chosen on: `ratio = 0.971` is well
+above the `0.400` threshold, so one joint run won.
+
 Two keywords tune the rendering:
 
 | Keyword | Default | Effect |
@@ -249,7 +390,7 @@ the constants.
 
 ### Standard `polfed` defaults
 
-- DoS: `N = 250`, `R = 300`, `kernel = :Jackson`.
+- DoS: `N = 500`, `R = 500`, `kernel = :Jackson`.
 - Mapping: `optimize_mapping = false`, `maxdos_edge_margin = 0.01`.
 - Lanczos: `rot = FullRO()`, `basistype = MatrixBasis`, `tol = 1e-14`, `eigentol = 1e-9`,
   `overestimate_iters = 1.25`.

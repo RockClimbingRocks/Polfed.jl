@@ -89,8 +89,8 @@ Honors the report's IO properties (`:color`, `:convergence_details`).
 """
 function Base.show(io::IO, ::MIME"text/plain", r::PatchedResult)
     f = Formatter(get(io, :color, false))
-    println(io, f.bold("Patched POLFED result"))
-    println(io, f.dim("─"^60))
+    println(io, blue(f, "Patched POLFED result"))
+    println(io, blue(f, "═"^60))
     println(io, "eigenpairs returned: ", length(r.vals))
     println(io)
     show(io, MIME"text/plain"(), r.report)

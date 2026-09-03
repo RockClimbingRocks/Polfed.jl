@@ -31,7 +31,7 @@ function run_patched_polfed_window_pipeline(
     log_run_start("patched_polfed", :window, spec;
                   howmany_per_patch = Int(howmany_per_patch), tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     request = @stage timer :interval resolve_window(spec, mp.a, mp.b)
 
     records = PatchReport[]

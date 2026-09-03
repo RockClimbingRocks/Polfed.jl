@@ -25,12 +25,6 @@ The idea:
 Because the transform applies the operator ``K`` times per Lanczos iteration, even a modest
 per-call saving compounds into a large end-to-end speedup.
 
-`optimize_mapping` accepts more than `true`: a kernel name, or a `(kernel = …, …)` named
-tuple carrying that kernel's own tuning parameters, when you want to pin the choice rather
-than let POLFED pick. Which kernels exist and what they take is an implementation detail that
-changes with the hardware POLFED is tuned for — `true` is the supported entry point. See
-[`MappingConfig`](@ref UniPolfed.MappingConfig).
-
 ### When it helps
 
 This path pays off exactly when the Hamiltonian has **few distinct offdiagonal values**. A
@@ -39,7 +33,7 @@ up, load and multiply a value that is the same everywhere — POLFED can hoist i
 touch only indices.
 
 The Quantum Sun model benefits from the structural split. The XXZ model, with a single
-constant offdiagonal value, benefits far more.
+constant offdiagonal value, benefits even more.
 
 ## [A worked example: XXZ](@id optimized_kernels_xxz)
 
@@ -216,18 +210,6 @@ above.
 
 Even without a structured kernel, the cheap version of this trick helps: build a rescaled
 copy of the matrix once and use `mul!(Y, mat_rescaled, X)` as `f!_rescaled`.
-
-## Automatic or custom?
-
-| | `optimize_mapping=true` | your own kernel |
-| :--- | :--- | :--- |
-| Effort | one keyword | write and validate a kernel |
-| Needs | matrix input, few distinct offdiagonal values | anything you can express |
-| Speed on structured models | close to hand-written | the ceiling |
-| Works with operator input | no | yes |
-
-Start automatic. Write your own when the automatic path cannot apply — an operator with no
-assembled matrix — or when profiling shows the kernel is still the wall.
 
 ## Next
 

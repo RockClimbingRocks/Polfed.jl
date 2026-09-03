@@ -94,7 +94,8 @@ two single-window orders are comparable, two independent runs otherwise. Force i
 decision that produced them:
 
 ```julia
-low, high = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+result    = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+low, high = result                # the two windows, in the order you passed them
 vals, vecs, report = low          # each window unpacks like any other run
 
 result.strategy      # :double | :separate
@@ -134,6 +135,31 @@ f!(Y, X)   # must overwrite Y with H * X, and return nothing useful
 
 That is the whole interface. `X` and `Y` are a vector (standard Lanczos) or a block of
 columns (block Lanczos), matching the shape of the `x0` you pass.
+
+!!! important "`f!` must also accept a single Krylov vector"
+    Even when `x0` is a block, `f!` has to work on **one** vector — a length-`dim` vector under
+    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), a `1 × dim` matrix under
+    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Two stages need it: the
+    spectral-bounds probe, and the DoS, which deliberately probes one vector at a time so the
+    estimated density does not depend on your block size.
+
+    A `mul!` wrapper satisfies this for free. An operator hard-wired to a fixed block width does
+    not, and must be written shape-generically.
+
+### Reproducibility
+
+The DoS is estimated with **stochastic** KPM probes, so two otherwise identical calls can resolve
+slightly different target windows and return slightly different eigenpair sets. Seed it when the
+result has to be reproducible:
+
+```julia
+result = polfed(H, x0, 100, :maxdos; dosc = DoSConfig(rng = MersenneTwister(2024)))
+```
+
+With a seeded `rng` the answer is reproducible and **independent of the Krylov block size** — the
+same seed gives the same eigenpairs at `block_size = 1` and `block_size = 8`. On a
+[`GPU`](@ref UniPolfed.GPU) the device generator is used and `rng` is ignored, so a GPU DoS is not
+reproducible from a host seed.
 
 ```julia
 using UniPolfed
@@ -296,6 +322,19 @@ expected_krylov_dim(filter, howmany, block_size, eta)
 Estimate the Krylov-space dimension for a concrete filter. `eta` is the budget-inflation
 factor supplied as `overestimate_iters`.
 
+The delta family shares one empirical fit for the **iteration count**, evaluated at the
+eigenpairs-per-block ratio ``x = \texttt{howmany}/b`` and multiplied back by the block size:
+
+```math
+m \;=\; \Bigl\lceil A\,x^{\alpha}\Bigl(1 + \frac{x}{x_c}\Bigr)^{1-\alpha} b\,\eta \Bigr\rceil ,
+\qquad A = 16.725632,\; \alpha = 0.40598213,\; x_c = 50.265139 ,
+```
+
+with the constants in `Defaults.filters.<name>.krylov_fit_A` / `_alpha` / `_xc`.
+[`DoubleDeltaFilter`](@ref double_filter) applies the same fit inflated by
+`Defaults.double_polfed.krylov_overhead`; [`EdgeFilter`](@ref filters) keeps its own
+(untuned) linear estimate.
+
 ### [`order_safety_factor`](@id UniPolfed.order_safety_factor)
 
 ```julia
@@ -310,13 +349,14 @@ return `1.0`.
 Used by the matrix path; exposed for callers building their own kernels. They live in
 `UniPolfed.Optimization`.
 
-### [`value_grouping`](@id UniPolfed.Optimization.value_grouping)
+### [`classify`](@id UniPolfed.Optimization.classify)
 
 ```julia
-value_grouping(H; tol=1e-12, rtol=1e-9)
+classify(H; tol=1e-12, round_digits=12)
 ```
 
-Analyze a structured matrix and return its value-grouped representation.
+Analyze a structured matrix and return its value-grouped representation, a
+`MappingStructure`.
 
 ### [`resolve_mapping_kernel`](@id UniPolfed.Optimization.resolve_mapping_kernel)
 

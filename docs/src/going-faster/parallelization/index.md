@@ -28,37 +28,37 @@ it needs no per-step barrier and opens exactly one parallel region for the whole
 loop. `BlockWise` opens one per step and pays a barrier each time, but it is the only option
 that parallelizes a **single** Krylov vector, because there is nothing else to split.
 
-!!! note "Neither strategy is serial"
-    `BlockWise` means POLFED hands the operator the whole block — not that the work runs on one
-    thread. The optimized row kernels chunk their own output rows across `Threads.nthreads()`,
-    and on the GPU the device owns the decomposition. With `BlockWise` and `julia -t 4` the
-    matvec still uses four threads.
-
 ### `BlockWise(; groups)`
-
-`groups` cuts the block into that many Krylov-vector groups, each served by
-`nthreads() ÷ groups` threads splitting its basis-state range. `groups = 1` is the pure
-basis-state split — the only parallelism available at block size 1.
 
 !!! warning "`groups` is not read yet"
     The field is validated at construction, but the block decomposition that consumes it is not
     implemented. Until it lands, every `BlockWise` behaves as a plain whole-block call
     regardless of `groups`.
 
+`groups` cuts the block into that many Krylov-vector groups, each served by
+`nthreads() ÷ groups` threads splitting its basis-state range. `groups = 1` is the pure
+basis-state split — the only parallelism available at block size 1.
+
 ## Automatic selection
 
 Leaving `parallel_strategy = nothing` resolves the strategy from the processing unit, the block
 size, the thread count and whether the mapping is optimized:
 
+The branches are checked in this order, and the first match wins:
+
 | Condition | Resolved |
 | :--- | :--- |
 | GPU | `BlockWise` — there is no device `VectorWise` kernel; an explicit request is coerced with a warning |
-| `optimize_mapping = false` | `BlockWise` — the generic `mul!` takes its own MKL threads |
-| `optimize_mapping` truthy **and** `block_size == nthreads()` | `VectorWise` — one whole vector per thread |
+| an explicit `parallel_strategy` | that strategy — but still filtered by the downgrade above |
+| `block_size == 1` | `BlockWise` — `VectorWise` has a single vector and nothing to split |
+| `optimize_mapping === false` | `BlockWise` — the generic `mul!` takes its own MKL threads |
+| `optimize_mapping === true` **and** `block_size == nthreads()` | `VectorWise` — one whole vector per thread |
 | anything else | `BlockWise` |
 
-The `optimize_mapping` test is `=== false`, so `true`, `:auto` and an explicit kernel all count
-as optimized.
+Mind the two different tests. The `BlockWise` short-circuit is `=== false`, so `:auto`, a
+`NamedTuple` and an explicit kernel all count as optimized and fall past it. The `VectorWise`
+branch is the stricter `=== true`, so those same values do **not** reach it — they land on
+`anything else`.
 
 ## Vector parallelism needs vectors
 
@@ -74,31 +74,37 @@ x0_mat = Matrix(qr(rand(size(H, 1), 8)).Q)       # → block Lanczos, 8 vectors
 If you are running plain Lanczos and want threads to help, use `BlockWise` — it parallelizes
 inside the kernel instead.
 
-!!! note "Column split only, for now"
-    `VectorWise` currently splits by **columns**. Layout-awareness — splitting by rows under
-    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout), which is what the matrix entrypoint uses — is not
-    implemented yet.
+!!! note "The split follows the layout"
+    `VectorWise` splits along whichever axis holds the Krylov vectors: **columns** under
+    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout) (each thread takes a
+    length-`D` column) and **rows** under
+    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout), which is what the matrix
+    entrypoint uses (each thread takes a `1 × D` row). A row-layout block is therefore split
+    into `bs` vectors of length `D`, never into `D` fragments of length `bs`.
 
 ## Choosing a block size
 
-Bigger is not better. The block widens the mapping, but it also enlarges the projected problem:
-the estimated Krylov dimension grows **linearly** in the block size,
+Bigger is not better 😉. The block widens the mapping, but it also enlarges the projected problem.
+The estimate is a fit for the number of **iterations**, evaluated at the eigenpairs-per-block
+ratio `x = howmany / blocksize` and multiplied back by the block size to give a dimension:
 
 ```julia
 expected_krylov_dim(filter, howmany, blocksize, η) =
-    ceil(Int, (krylov_iters_per_block * blocksize + krylov_iters_per_eig * howmany) * η)
+    ceil(Int, A * x^α * (1 + x / xc)^(1 - α) * blocksize * η)   # x = howmany / blocksize
 ```
 
-where `η` is `overestimate_iters` and the two coefficients come from the filter's own defaults
-(`Defaults.filters.delta_up.krylov_iters_per_block`, …). An oversized block therefore costs you
-more iterations *and* more memory for the Krylov basis, which is usually the dominant memory
-consumer.
+where `η` is `overestimate_iters` and the three constants come from the filter's own defaults
+(`Defaults.filters.delta_up.krylov_fit_A`, `…_alpha`, `…_xc` — `16.726`, `0.406`, `50.265` for
+the whole delta family). Because the fit is sublinear in `x`, halving `x` by doubling the block
+does **not** halve the iteration count, so the dimension still climbs with the block size — at
+`howmany = 1000`, `η = 1`, it is `1681` at `blocksize = 1`, `2080` at `10` and `2318` at `16`.
+An oversized block therefore costs you more matvecs *and* more memory for the Krylov basis,
+which is usually the dominant memory consumer.
 
 The working rules:
 
 ```math
-\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100,
-\qquad \texttt{block\_size} \le 16 .
+\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100 .
 ```
 
 Push the ratio much below 100 and block factorization typically needs many more iterations to
@@ -114,7 +120,8 @@ built for.
   gets in the way. Already the default, but setting it explicitly documents intent.
 - **Single vector** → `BlockWise`. It is the only strategy that can parallelize one vector.
 - **Block Lanczos with `block_size == nthreads()`** → `VectorWise`. One vector per thread, no
-  per-step barrier. This is also what auto-resolution picks.
+  per-step barrier. This is what auto-resolution *selects* — but the downgrade then takes it
+  away again, so today this configuration also runs `BlockWise`.
 - **Block Lanczos with any other block size** → `BlockWise`.
 
 Raising `howmany` is also a lever here — it lowers the polynomial order — but it raises memory
@@ -129,20 +136,9 @@ The **Timings** section is where the answer is. Compare wall time against CPU ti
 threaded run, CPU time well above wall time means threads are actually working. If they track
 each other, your parallelism is not engaging — usually a block with too few vectors.
 
-```julia
-for mc in (MappingConfig(parallel_strategy = BlockWise()),
-           MappingConfig(parallel_strategy = VectorWise()))
-    result = polfed(H, x0_mat, howmany, target; mc = mc)
-    display_report(result)
-end
-```
-
-The matrix-multiplication count must be identical across those two runs — parallelization
-changes *when* the work happens, never how much of it there is. A changed count means something
-else moved with it.
-
-!!! note "CPU time on GPU runs"
-    CPU time is suppressed in the report for GPU runs, where it would be misleading.
+Between two configurations of the same problem the matrix-multiplication count must be
+identical — parallelization changes *when* the work happens, never how much of it there is. A
+changed count means something else moved with it, and the runs are not comparable.
 
 ## Next
 

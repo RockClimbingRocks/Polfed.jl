@@ -7,6 +7,11 @@ target to resolve, and the result is dense by construction.
 
 ```julia
 using UniPolfed
+using UniPolfed.Models: qsun_hamiltonian
+using LinearAlgebra
+
+H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
+x0 = normalize!(rand(size(H, 1)))
 
 vals, vecs, report = full_polfed(H, x0, 2000)
 ```

@@ -41,8 +41,10 @@ function DeltaDownFilter(interval::Interval;
 end
 
 expected_krylov_dim(::DeltaDownFilter, howmany::Int, blocksize::Int, η::Real) =
-    ceil(Int, (Defaults.filters.delta_down.krylov_iters_per_block * blocksize +
-               Defaults.filters.delta_down.krylov_iters_per_eig   * howmany) * η)
+    _fitted_krylov_dim(howmany, blocksize, η,
+                       Defaults.filters.delta_down.krylov_fit_A,
+                       Defaults.filters.delta_down.krylov_fit_alpha,
+                       Defaults.filters.delta_down.krylov_fit_xc)
 
 """    exposed_end(::DeltaDownFilter) -> :lowest — target maps to the bottom of the transformed spectrum."""
 exposed_end(::DeltaDownFilter) = :lowest

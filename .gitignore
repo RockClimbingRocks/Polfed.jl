@@ -24,6 +24,7 @@
 /notebooks/**/*.png
 /notebooks/**/*.log
 /notebooks/**/*.xlsx
+/notebooks/rok/test/private
 
 # Raw machine-specific benchmark output. notebooks/README.md keeps the notebook set
 # "curated, source-backed" and deliberately excludes archived timings — they are tied to
@@ -50,6 +51,9 @@
 # Temporary docs validation folders
 /docs/build_tmp_validate*.pending_delete*/
 /docs/build_locked_*/
+
+
+
 
 
 # CLAUDE

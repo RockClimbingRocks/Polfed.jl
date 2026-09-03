@@ -35,7 +35,7 @@ function run_patched_polfed_target_pipeline(
     log_run_start("patched_polfed", :count, spec; howmany = requested,
                   howmany_per_patch = Int(howmany_per_patch), tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     center = @stage timer :interval resolve_target(spec, requested, dos, mp.a, mp.b)
     request = @stage timer :interval resolve_interval(center, dos)
 

@@ -123,6 +123,32 @@ function _make_rescaled(f!::F, a, b) where {F}
 end
 
 """
+    dos_operator(mp::MappingPlan) -> Function
+
+The rescaled operator the **DoS stage** runs on: `_make_rescaled(mp.f!, mp.a, mp.b)`, built here
+rather than reusing `mp.f!_rescaled`. Two reasons, both because the density of states is a
+property of `H` alone and must not inherit anything from the Krylov block:
+
+- **Shape.** The DoS probes with a single Krylov vector (block size 1, see `_dos_probe_template`).
+  On the matrix path `mp.f!_rescaled` is the fast value-grouped kernel built at `Val(bs)`, and
+  handed a one-vector block it writes the first row and leaves the rest zero. `mp.f!` is always
+  the generic `mul!` operator, which takes any block size — the same reason `mapvals` is built
+  this way rather than from `f!_rescaled`.
+- **Reproducibility.** Probing at a fixed block size makes the KPM probe stream — and therefore
+  the density, the target interval and the returned eigenpairs — independent of the user's block
+  size, and reproducible from `DoSConfig(rng = …)` alone.
+
+Allocates nothing extra: `mp.f!` already exists for the map-back, so this only wraps it in the
+affine rescaling instead of materializing a second operator.
+
+!!! note "Operator entrypoints"
+    On `polfed(f!, x0, …)` this is the user's own `f!`. It must therefore accept a **single**
+    Krylov vector — a length-`dim` vector under [`ColumnLayout`](@ref), a `1 × dim` matrix under
+    [`RowLayout`](@ref) — not only the full block.
+"""
+dos_operator(mp::MappingPlan) = _make_rescaled(mp.f!, mp.a, mp.b)
+
+"""
     _resolve_bounds(cfg::MappingConfig, f!, v0) -> (Emin, Emax)
 
 Return the spectral bounds: each of `cfg.Emin`/`cfg.Emax` that is `nothing` is estimated

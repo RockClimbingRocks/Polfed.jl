@@ -85,10 +85,11 @@ it does.
 `VectorWise` applies the transform once per Krylov vector, over a `1 x D` slice. Two things stop
 that working here, and they are independent — neither is a thread-count question alone:
 
-1. **The operator is whole-block.** `f!_rescaled` is built once at `Val(bs)` and shared with the
-   DoS stage, which runs KPM over the full `bs x D` block. A `Val(1)` kernel handed that block
-   writes row 1 and leaves the rest zero (93% error, measured), so it cannot simply be rebuilt
-   per-vector; it would need to be a SECOND operator.
+1. **The operator is whole-block.** `f!_rescaled` is the transform, built once at `Val(bs)` and
+   applied to the full `bs x D` Krylov block. A `Val(1)` kernel handed that block writes row 1
+   and leaves the rest zero (93% error, measured), so it cannot simply be rebuilt per-vector; it
+   would need to be a SECOND operator. (The DoS no longer shares it — it builds its own generic
+   operator and probes one vector at a time, see `dos_operator`.)
 2. **The recurrence threads.** `_threaded_combine!` opens a `Threads.@threads :static` region
    whenever `nthreads() > 1`, and Julia rejects `:static` regions running concurrently — so above
    one thread a `VectorWise` run raises "`@threads :static` cannot be used concurrently or
@@ -106,8 +107,8 @@ function _row_path_strategy(strategy::Parallelization)
     strategy isa VectorWise || return strategy
     polfed_log(POLFED_WARN_LEVEL,
                "VectorWise is not supported on the matrix entrypoints: the transform operator " *
-               "is built whole-block and shared with the DoS, and the Clenshaw combine opens " *
-               "its own `@threads :static` region. Using BlockWise instead.",
+               "is built whole-block at Val(bs), and the Clenshaw combine opens its own " *
+               "`@threads :static` region. Using BlockWise instead.",
                threads = Threads.nthreads())
     return BlockWise()
 end

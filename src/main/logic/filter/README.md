@@ -47,6 +47,11 @@ The numerical leakage scan itself lives in `common/utils/validate_leakage.jl`
   methods without an `import`.
 - `_scalar_filter(filter)` — the "evaluate `P(x)`" primitive (from
   `polynomial_type`/`coefficients`/`polynomial_order`).
+- `_fitted_krylov_dim(howmany, blocksize, η, A, α, xc)` — the delta family's Krylov-budget fit
+  `A·x^α·(1+x/xc)^(1-α)` **iterations** at `x = howmany/blocksize`, times `blocksize·η`. Shared
+  because the budget depends on the count and the block, not on the filter's shape; each delta
+  filter passes its own constants from `Defaults.filters.<name>.krylov_fit_*`. `EdgeFilter` does
+  not use it (its estimate is a separate, untuned linear guess).
 - `bisect_order(analytical_K, suppressed)` — the order mechanic. It takes the filter's own
   **`suppressed(order)::Bool` predicate**, so it's agnostic to how many endpoints a filter tests
   (one for a delta, several for a double/edge filter).

@@ -64,12 +64,14 @@ function DeltaUpFilter(interval::Interval;
 end
 
 """    expected_krylov_dim(::DeltaUpFilter, howmany, blocksize, η) -> Int
-Predicted Krylov dimension from the empirical delta-filter fit
-`ceil((krylov_iters_per_block·blocksize + krylov_iters_per_eig·howmany)·η)`, see
-[`Defaults.filters.delta_up`](@ref); `η` is the overestimation safety factor."""
+Predicted Krylov dimension from the empirical delta-filter fit: `A·x^α·(1 + x/xc)^(1-α)`
+iterations at `x = howmany/blocksize`, times `blocksize` and `η` (the overestimation safety
+factor). See [`_fitted_krylov_dim`](@ref); constants in [`Defaults.filters.delta_up`](@ref)."""
 expected_krylov_dim(::DeltaUpFilter, howmany::Int, blocksize::Int, η::Real) =
-    ceil(Int, (Defaults.filters.delta_up.krylov_iters_per_block * blocksize +
-               Defaults.filters.delta_up.krylov_iters_per_eig   * howmany) * η)
+    _fitted_krylov_dim(howmany, blocksize, η,
+                       Defaults.filters.delta_up.krylov_fit_A,
+                       Defaults.filters.delta_up.krylov_fit_alpha,
+                       Defaults.filters.delta_up.krylov_fit_xc)
 
 """    exposed_end(::DeltaUpFilter) -> :highest — target maps to the top of the transformed spectrum."""
 exposed_end(::DeltaUpFilter) = :highest

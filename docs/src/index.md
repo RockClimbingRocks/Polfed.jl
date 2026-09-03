@@ -357,8 +357,8 @@ buys two things at once:
       </svg>
     </figure>
     <h3>Parallelization</h3>
-    <p>Several parallelization modes: one thread per column, one thread per row, or all
-    threads mapping the whole block at once — plus two-level worker + thread distribution.</p>
+    <p>Two strategies: one thread per Krylov vector, or every thread on the whole block
+    at once. Threads split the matvec either way.</p>
   </a>
 
   <a class="polfed-card polfed-fig" href="api/results-reports-logging/">

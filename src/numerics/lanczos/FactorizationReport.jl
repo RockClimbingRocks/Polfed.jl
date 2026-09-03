@@ -178,8 +178,9 @@ before any eigenvector was reconstructed, so nothing was measured — different 
 zero, and worth telling apart when reading where the cost went.
 
 # Notes
-Pre-formatted here rather than at the sink so that both table backends (the built-in plain
-renderer and the optional PrettyTables one) receive identical cells.
+Pre-formatted here rather than at the sink so that both sinks — the `FactorizationReport`
+display and the POLFED `Report`'s copy — draw identical cells, and so that the `-` sentinels
+survive (no `ft_printf` formatter can render "unmeasured").
 """
 function convergence_table_rows(report::FactorizationReport)
     n = report.numofchecks
@@ -280,8 +281,14 @@ function display_factorization_report(report::FactorizationReport, use_colors::B
 
     if show_convergence_details
         println("- Convergence check was performed $(report.numofchecks) times, here is the table of results:")
-        render_detail_table(stdout, CONVERGENCE_TABLE_HEADER, convergence_table_rows(report);
-                            bold_header = use_colors)
+        kwargs = (; header = CONVERGENCE_TABLE_HEADER, tf = tf_unicode_rounded)
+        if use_colors
+            # Matches the POLFED report's copy of this same table.
+            pretty_table(stdout, convergence_table_rows(report); kwargs...,
+                         header_crayon = crayon"white bold")
+        else
+            pretty_table(stdout, convergence_table_rows(report); kwargs...)
+        end
     end
 end
 

@@ -113,8 +113,17 @@ buffer triplet. Nothing is shared between threads, so there is no per-step barri
 parallel region covers the whole `K`-step loop. Gives no parallelism at block size 1 — use
 [`BlockWise`](@ref UniPolfed.BlockWise) there.
 
-Currently splits by columns only; row splitting under `RowLayout` is not implemented yet. Not
-supported on the GPU, where an explicit request is coerced to `BlockWise` with a warning.
+Splits along whichever axis holds the Krylov vectors: columns under
+[`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), rows under
+[`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Serializes BLAS for the duration so
+the optimized kernels own the threads. Not supported on the GPU, where an explicit request is
+coerced to `BlockWise` with a warning.
+
+!!! warning "Not reachable yet"
+    Above one thread `VectorWise` is downgraded to `BlockWise`, explicit request included — the
+    Clenshaw combine opens its own `Threads.@threads :static` region inside `VectorWise`'s. The
+    matrix entrypoints coerce it unconditionally, for the separate reason that their transform
+    operator is built whole-block and shared with the DoS stage.
 
 Choosing between them: [Parallelization](@ref parallelization).
 

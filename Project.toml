@@ -8,6 +8,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
 MKLSparse = "0c723cd3-b8cd-5d40-b370-ba682dde9aae"
 MKL_jll = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
@@ -16,11 +17,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [extensions]
 UniPolfedCUDAExt = "CUDA"
-UniPolfedPrettyTablesExt = "PrettyTables"
 
 [compat]
 CUDA = "5.8"
@@ -38,8 +37,7 @@ julia = "1.10"
 
 [extras]
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
-PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Logging", "PrettyTables", "Test"]
+test = ["Logging", "Test"]

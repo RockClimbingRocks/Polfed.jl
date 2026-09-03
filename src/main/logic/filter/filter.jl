@@ -153,6 +153,30 @@ _scalar_filter(filter::AbstractFilter) =
         polynomial_order(filter)::Int,
     )
 
+"""
+    _fitted_krylov_dim(howmany, blocksize, η, A, α, xc) -> Int
+
+Krylov dimension from the delta-family **iteration-count** fit
+
+    iters(x) = A · x^α · (1 + x/xc)^(1-α),   x = howmany / blocksize
+
+multiplied back by `blocksize` (a block iteration adds `blocksize` basis vectors) and by the
+overestimation factor `η`.
+
+The fit is one crossover, not a line: below `xc` eigenpairs per block it is sublinear
+(`≈ A·x^α`), above it straightens out to `≈ (A/xc^(1-α))·x` iterations. Floored at one block, so
+a degenerate `howmany = 0` request still gets a runnable budget rather than `maxdim = 0`.
+
+Shared by all four delta-family filters — the Krylov dimension is driven by `howmany` and the
+block size, not by the filter's shape — each passing its own constants from
+[`Defaults.filters`](@ref). See [`expected_krylov_dim`](@ref).
+"""
+function _fitted_krylov_dim(howmany::Int, blocksize::Int, η::Real, A::Real, α::Real, xc::Real)
+    x = howmany / blocksize
+    iters = A * x^α * (1 + x / xc)^(1 - α)
+    return max(blocksize, ceil(Int, iters * blocksize * η))
+end
+
 # ── ladder diagnostics (DEBUG tracing of the filter resolution) ───────────────
 # One line per candidate, emitted where the verdict is actually known: `_reject` from inside the
 # filter's own `validate_filter` (which is the only place that knows WHY a rung failed), the

@@ -11,6 +11,7 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
     v_last::AbstractMatrix{T}
     v_secondlast::AbstractMatrix{T}
     mat::AbstractMatrix{T}
+    orth_coeff::AbstractMatrix{T}
     reorth_coeff::Union{Nothing,AbstractMatrix{T}}
     pu::P
     layout::L                      # block storage orientation (Column/Row)
@@ -24,17 +25,15 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
         v_secondlast = pu.zeros(T, size(v0))
         mat = pu.zeros(T, maxdim, maxdim)
         bs = blocksize(layout, v0)
-        # One persistent coefficient matrix removes both temporary products from
-        # MatrixBasis reorthogonalization.  Its orientation matches the BLAS operation:
-        # column layout: Q'W is maxdim×bs; row layout: WQ' is bs×maxdim.
+        orth_coeff = pu.zeros(T, bs, bs)
         reorth_coeff = if basis isa MatrixBasis
             layout isa RowLayout ? pu.zeros(T, bs, maxdim) : pu.zeros(T, maxdim, bs)
         else
             nothing
         end
 
-        return new{S,T,P,L}(0, bs, basis, r, v_last, v_secondlast, mat,
-                            reorth_coeff, pu, layout)
+        return new{S,T,P,L}(0, bs, basis, r, v_last, v_secondlast, mat, orth_coeff, reorth_coeff, pu, layout)
+
     end
 end
 
@@ -67,6 +66,15 @@ function addnorm!(fact::BlockLanczosFactorization, β::AbstractMatrix)
     copyto!(β_, β)
     copyto!(β′_, β')
 end
+
+"""Accumulate a DGKS correction into the stored overlap block `α_k`."""
+@inline function addoverlap!(fact::BlockLanczosFactorization, δα::AbstractMatrix)
+    α = getoverlap(fact)
+    α .+= δα
+    α .= Hermitian(α)          # same symmetrization calcoverlap! applies
+    return nothing
+end
+
 
 """Projected factorized matrix view (`Hermitian` on CPU, device matrix on GPU)."""
 function constructfactorizedmat(fact::BlockLanczosFactorization)

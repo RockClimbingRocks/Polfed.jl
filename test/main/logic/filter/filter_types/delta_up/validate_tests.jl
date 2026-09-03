@@ -38,7 +38,8 @@ using UniPolfed
         cutoff = 0.17
         δ = 1e-3
         
-        for target in logrange(1e-3, 0.98, length=25)
+        # `logrange` is Julia >= 1.11; CI also runs 1.10, so spell it out.
+        for target in exp10.(range(log10(1e-3), log10(0.98), length=25))
             iv = UniPolfed.Interval(target-δ, target+δ)    
             f = UniPolfed.build_filter(
                 UniPolfed.DeltaUpFilter, iv;

@@ -35,6 +35,17 @@ candidate, the run falls back to two separate runs.
 
 ## Calling it
 
+Everything below runs against this setup:
+
+```julia
+using UniPolfed
+using UniPolfed.Models: qsun_hamiltonian
+using LinearAlgebra
+
+H  = qsun_hamiltonian(8, 2, 1.0, 0.5; use_sparse = true)
+x0 = normalize!(rand(size(H, 1)))
+```
+
 The two modes mirror [`polfed`](@ref UniPolfed.polfed) and are distinguished by **arity** — the
 two targets are separate arguments, because a bare `(lo, hi)` is already a window spec:
 
@@ -56,6 +67,8 @@ in either order; results come back in the order you passed them.
 Force a path with `strategy` when you want to measure rather than trust:
 
 ```julia
+w1, w2 = (-0.8, -0.5), (0.3, 0.6)
+
 double_polfed(H, x0, w1, w2; strategy = :double)     # one joint run
 double_polfed(H, x0, w1, w2; strategy = :separate)   # two runs
 ```
@@ -67,17 +80,24 @@ double_polfed(H, x0, w1, w2; strategy = :separate)   # two runs
 destructures, so the two windows are separated at the call site:
 
 ```julia
-lower, upper = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+result = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+lower, upper = result
 
-for (λ, v) in lower
+for i in eachindex(lower.vals)
+    λ, v = eigenpair(lower, i)
     # …
 end
 
 upper.vals           # eigenvalues in the second window
 result.strategy      # :double | :separate
+result.reason        # :ratio | :forced | :edge | :double_failed
 result.ratio         # min(K₁,K₂)/max(K₁,K₂) — what the decision was made on
 result.order_double  # K_d, or 0 on the separate path
 ```
+
+Walk the pairs with [`eigenpair`](@ref UniPolfed.eigenpair), not by iterating the result:
+a `PolfedResult` iterates as the three-element `(vals, vecs, report)` destructuring, so
+`for (λ, v) in lower` does **not** loop over eigenpairs.
 
 Each sub-result carries its own full `Report`. On the joint path both carry the **same** report —
 one Lanczos run produced both windows, so its convergence counts, `H·v` cost and timings describe

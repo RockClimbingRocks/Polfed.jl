@@ -124,22 +124,25 @@ spectrum, where near-degenerate clusters are the norm rather than the exception.
 memory-bound matrix-vector product into a matrix-matrix product with far better arithmetic
 intensity, and exposing independent columns that threads and GPUs can work on in parallel.
 
-It is not free. The projected problem grows with the block size, and the estimate for the
-required Krylov dimension,
+It is not free. The projected problem grows with the block size. The estimate for the required
+Krylov dimension is an empirical fit for the **iteration count**, taken at the
+eigenpairs-per-block ratio `x = howmany / blocksize` and multiplied back by the block size,
 
 ```julia
 expected_krylov_dim(filter, howmany, blocksize, η) =
-    ceil(Int64, (20.427 * blocksize + 1.696 * howmany) * η)
+    ceil(Int64, 16.725632 * x^0.40598213 * (1 + x / 50.265139)^(1 - 0.40598213) * blocksize * η)
 ```
 
-grows linearly in `blocksize`. An oversized block enlarges the projected problem and slows
+and since that fit is sublinear in `x`, a larger block buys fewer iterations than it adds
+vectors: the dimension grows with `blocksize` (at `howmany = 1000`, `η = 1`: `1681`, `2080`,
+`2318` for `blocksize = 1, 10, 16`). An oversized block enlarges the projected problem and slows
 convergence rather than helping. The practical rule of thumb is
 
 ```math
-\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100,
+\frac{\texttt{howmany}}{\texttt{block\_size}} \gtrsim 100 .
 ```
 
-with `block_size ≤ 16` in most runs. Tuning advice lives in
+It is the ratio that matters, not the block size on its own. Tuning advice lives in
 [Parallelization](@ref parallelization) and [Guidelines](@ref guidelines).
 
 ## Going further

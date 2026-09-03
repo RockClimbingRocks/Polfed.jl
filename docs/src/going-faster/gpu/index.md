@@ -136,8 +136,8 @@ stays [`MappingConfig`](@ref UniPolfed.MappingConfig).
 
 A block turns the transform's matrix-**vector** products into matrix-**matrix** products,
 which raises arithmetic intensity and gives the device far more concurrent work. The same
-block-size limits still apply (``\texttt{howmany}/\texttt{block\_size} \gtrsim 100``,
-`block_size ≤ 16`) — see [Parallelization](@ref parallelization).
+block-size rule still applies (``\texttt{howmany}/\texttt{block\_size} \gtrsim 100``) — see
+[Parallelization](@ref parallelization).
 
 ```julia
 x0_gpu_block = CuArray(Matrix(qr(rand(size(H_cpu, 1), 8)).Q))
