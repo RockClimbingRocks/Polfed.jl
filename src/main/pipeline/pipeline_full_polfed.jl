@@ -33,7 +33,7 @@ function run_full_polfed_pipeline(
                howmany_per_patch = Int(howmany_per_patch), tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
     mp.sys.dim > 1 || throw(ArgumentError("full POLFED requires an operator dimension above one."))
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     request = Interval(-1.0, 1.0)
     records = PatchReport[]
     mapvals = _make_rescaled(mp.f!, mp.a, mp.b)

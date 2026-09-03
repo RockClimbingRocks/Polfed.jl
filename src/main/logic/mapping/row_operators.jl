@@ -100,16 +100,15 @@ transform kernel closure stays type-stable in the hot loop.
 function _build_matrix_rowops(H::AbstractMatrix, choice, bs::Int, a::Real, b::Real,
                               strategy::Parallelization)
     f! = _row_mapback(H)
-    # `f!_rescaled` is WHOLE-BLOCK, always. It has two consumers with different needs and the
-    # block shape is the one they share: the transform applies it to the `bs x D` Krylov block,
-    # and the DoS stage runs KPM on the same operator over the same block
-    # (`calculate_dos(dosc, mp.f!_rescaled, mp.sys)`).
+    # `f!_rescaled` is WHOLE-BLOCK, always: it is the TRANSFORM operator, applied to the
+    # `bs x D` Krylov block on every Clenshaw step. It has exactly one consumer — the DoS stage
+    # builds its own generic operator (`dos_operator`) and probes one vector at a time, so the
+    # density no longer depends on the Krylov block size.
     #
-    # Building it per-vector for a VectorWise run — `Val(1)` — is therefore NOT a local choice:
+    # Building this one per-vector for a VectorWise run — `Val(1)` — is still not a local choice:
     # measured, a `Val(1)` kernel handed a `bs x D` block writes row 1 and leaves the rest zero,
-    # 93% relative error. KPM then produces a plausible but wrong density and the run dies three
-    # stages later in the filter's order bisection, nowhere near the cause. A per-vector operator
-    # has to be a SECOND operator, not a replacement for this one.
+    # 93% relative error. A per-vector transform has to be a SECOND operator, not a replacement
+    # for this one.
     f!_rescaled = choice === false ?
         _generic_row_rescaled(H, a, b; mkl_threads = Threads.nthreads(:default)) :
         build_optimized_mapping(H, choice, Val(bs), a, b).f!_rescaled

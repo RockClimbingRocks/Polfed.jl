@@ -58,20 +58,25 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         @test res.ρ(-0.4) ≈ ρ_ref(-0.4)
     end
 
-    @testset "calculate_dos uses SysInfo probe shape" begin
+    @testset "calculate_dos probes ONE vector, whatever the block size" begin
+        # The operator must see a single Krylov vector, never the `dim × block` Krylov block:
+        # that is what makes the estimated density independent of the block size, and it is why
+        # the DoS is handed the generic `dos_operator` rather than the whole-block transform.
         c = 0.4
         dim = 10
-        block = 2
         cfg = UniPolfed.DoSConfig(N = 8, R = 5)
-        sys = UniPolfed.SysInfo(zeros(Float64, dim, block), UniPolfed.CPU())
-        shapes = Set{Tuple{Int,Int}}()
-        f!(Y, X) = (push!(shapes, size(X)); Y .= c .* X)
-
-        res = UniPolfed.calculate_dos(cfg, f!, sys)
-
         exact = [dim * _dos_test_cheb(c, k) for k in 0:cfg.N-1]
-        @test res.moments ≈ exact
-        @test shapes == Set([(dim, block)])
+
+        for block in (1, 2, 4)
+            sys = UniPolfed.SysInfo(zeros(Float64, dim, block), UniPolfed.CPU())
+            shapes = Set{Tuple}()
+            f!(Y, X) = (push!(shapes, size(X)); Y .= c .* X)
+
+            res = UniPolfed.calculate_dos(cfg, f!, sys)
+
+            @test res.moments ≈ exact
+            @test shapes == Set([(dim,)])   # a length-dim vector, never (dim, block)
+        end
     end
 
     @testset "kernel changes coefficients and density but not moments" begin
@@ -86,5 +91,56 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         @test res_j.moments ≈ res_d.moments
         @test !isapprox(res_j.coefficients, res_d.coefficients)
         @test !isapprox(res_j.ρ(c), res_d.ρ(c))
+    end
+
+    @testset "the DoS does not depend on the Krylov block size" begin
+        # The density is a property of H alone, so a seeded run must give the SAME answer at
+        # every block size. It did not: the probe template was `sys.x0`, so `randn!` filled a
+        # `dim × bs` block in one draw — a different random stream from `bs` single-vector
+        # draws — and one seed produced a different density, interval and eigenpair set per
+        # block size. The DoS now probes one vector at a time (`_dos_probe_template`).
+        H = UniPolfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.7, 0.5; rng = MersenneTwister(7))
+        D = size(H, 1)
+        seeded() = UniPolfed.DoSConfig(rng = MersenneTwister(2024))
+
+        reference = nothing
+        for bs in (1, 2, 4, 8)
+            x0 = bs == 1 ? normalize!(rand(MersenneTwister(5), D)) :
+                           Matrix(qr(rand(MersenneTwister(5), D, bs)).Q)
+            vals = collect(polfed(H, x0, 12, :maxdos; verbosity = 0, dosc = seeded()).vals)
+            if isnothing(reference)
+                reference = vals
+                @test !isempty(reference)
+            else
+                @test length(vals) == length(reference)
+                @test vals ≈ reference atol = 1e-10
+            end
+        end
+
+        # …and the same call twice with the same seed is bit-for-bit reproducible.
+        x0 = Matrix(qr(rand(MersenneTwister(5), D, 4)).Q)
+        v1 = polfed(H, x0, 12, :maxdos; verbosity = 0, dosc = seeded()).vals
+        v2 = polfed(H, x0, 12, :maxdos; verbosity = 0, dosc = seeded()).vals
+        @test length(v1) == length(v2)
+        @test v1 == v2
+
+        # The optimized kernel path shares the same generic DoS operator, so it agrees too.
+        v3 = polfed(H, x0, 12, :maxdos; verbosity = 0, dosc = seeded(),
+                    mc = UniPolfed.MappingConfig(optimize_mapping = true)).vals
+        @test length(v3) == length(reference)
+        @test v3 ≈ reference atol = 1e-10
+    end
+
+    @testset "the probe template is one Krylov vector, shaped by the layout" begin
+        L = UniPolfed.Numerics.Lanczos
+        # column layout: a length-dim vector, the shape `mul!(y, H, x)` takes
+        sysc = UniPolfed.SysInfo(rand(16, 4), UniPolfed.CPU(), L.ColumnLayout())
+        @test size(UniPolfed._dos_probe_template(sysc)) == (16,)
+        # row layout: a 1 × dim matrix, the shape `mul!(Y, X, H)` takes
+        sysr = UniPolfed.SysInfo(rand(4, 16), UniPolfed.CPU(), L.RowLayout())
+        @test size(UniPolfed._dos_probe_template(sysr)) == (1, 16)
+        # a vector x0 is already one Krylov vector
+        sysv = UniPolfed.SysInfo(rand(16), UniPolfed.CPU(), L.ColumnLayout())
+        @test size(UniPolfed._dos_probe_template(sysv)) == (16,)
     end
 end

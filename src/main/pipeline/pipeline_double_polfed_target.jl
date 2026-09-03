@@ -64,7 +64,7 @@ function run_double_polfed_target_pipeline(
                howmany = (howmany_a, howmany_b), strategy = strategy,
                tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
 
     center_a = @stage timer :interval resolve_target(spec_a, howmany_a, dos, mp.a, mp.b)
     center_b = @stage timer :interval resolve_target(spec_b, howmany_b, dos, mp.a, mp.b)

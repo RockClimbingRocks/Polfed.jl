@@ -87,6 +87,28 @@ end
 
 
 """
+    _dos_probe_template(sys::SysInfo) -> AbstractVecOrMat
+
+The KPM probe buffer for the DoS: **one** Krylov vector, shaped the way this layout's operator
+takes it — a length-`dim` vector under [`ColumnLayout`](@ref), a `1 × dim` matrix under
+[`RowLayout`](@ref), mirroring `_vector_slice`.
+
+Deliberately **not** `sys.x0`. Probing with the user's block made the DoS depend on the Krylov
+block size: `randn!` fills a `dim × bs` block in one draw, and that is not the same random stream
+as `bs` single-vector draws, so one seed produced different probes — and so a different density,
+a different target interval and a different eigenpair set — for every block size. The density is
+a property of `H` alone, so it is estimated one vector at a time and is reproducible from
+`DoSConfig(rng = …)` on its own.
+
+`similar` carries the element type and the device across, so a GPU block yields a GPU probe.
+"""
+_dos_probe_template(sys::SysInfo) =
+    sys.x0 isa AbstractVector    ? similar(sys.x0) :
+    sys.layout isa RowLayout     ? similar(sys.x0, 1, sys.dim) :
+                                   similar(sys.x0, sys.dim)
+
+
+"""
     density_of_states(cfg::DoSConfig, f!, dim, E, pu) -> DoSResult
 
 Estimate the spectral density of a Hermitian operator with the kernel polynomial
@@ -122,9 +144,10 @@ function calculate_dos(
     sys::SysInfo,
 )
     polfed_log(POLFED_INFO_LEVEL, "Computing the density of states (KPM) on the rescaled operator.",
-               N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = typeof(cfg.rng))
+               N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = typeof(cfg.rng),
+               probe_block_size = 1)
 
-    moments = kpm_moments(f!, cfg.N, cfg.R, sys.x0, sys.pu; rng = cfg.rng)
+    moments = kpm_moments(f!, cfg.N, cfg.R, _dos_probe_template(sys), sys.pu; rng = cfg.rng)
     coefficients = kpm_coeffs(moments, cfg.kernel)
     ρ = kpm_density(moments; kernel = cfg.kernel)
     dos = DoSResult(moments, coefficients, ρ)

@@ -135,6 +135,31 @@ f!(Y, X)   # must overwrite Y with H * X, and return nothing useful
 That is the whole interface. `X` and `Y` are a vector (standard Lanczos) or a block of
 columns (block Lanczos), matching the shape of the `x0` you pass.
 
+!!! important "`f!` must also accept a single Krylov vector"
+    Even when `x0` is a block, `f!` has to work on **one** vector — a length-`dim` vector under
+    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), a `1 × dim` matrix under
+    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Two stages need it: the
+    spectral-bounds probe, and the DoS, which deliberately probes one vector at a time so the
+    estimated density does not depend on your block size.
+
+    A `mul!` wrapper satisfies this for free. An operator hard-wired to a fixed block width does
+    not, and must be written shape-generically.
+
+### Reproducibility
+
+The DoS is estimated with **stochastic** KPM probes, so two otherwise identical calls can resolve
+slightly different target windows and return slightly different eigenpair sets. Seed it when the
+result has to be reproducible:
+
+```julia
+result = polfed(H, x0, 100, :maxdos; dosc = DoSConfig(rng = MersenneTwister(2024)))
+```
+
+With a seeded `rng` the answer is reproducible and **independent of the Krylov block size** — the
+same seed gives the same eigenpairs at `block_size = 1` and `block_size = 8`. On a
+[`GPU`](@ref UniPolfed.GPU) the device generator is used and `rng` is ignored, so a GPU DoS is not
+reproducible from a host seed.
+
 ```julia
 using UniPolfed
 using LinearAlgebra

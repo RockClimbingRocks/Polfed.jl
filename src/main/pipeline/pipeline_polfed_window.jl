@@ -22,7 +22,7 @@ function run_polfed_window_pipeline(
     ))
     log_run_start("polfed", :window, spec; tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     interval = @stage timer :interval resolve_window(spec, mp.a, mp.b)
     howmany = howmany_in_interval(dos, interval)
     filter = @stage timer :filter resolve_filter(interval)

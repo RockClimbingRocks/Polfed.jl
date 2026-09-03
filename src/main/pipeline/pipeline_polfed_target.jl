@@ -22,7 +22,7 @@ function run_polfed_target_pipeline(
     ))
     log_run_start("polfed", :count, spec; howmany = Int(howmany), tol = tol, eigentol = eigentol)
     mp = @stage timer :bounds build_mapping_plan(mc, f!, x0; layout = layout)
-    dos = @stage timer :dos calculate_dos(dosc, mp.f!_rescaled, mp.sys)
+    dos = @stage timer :dos calculate_dos(dosc, dos_operator(mp), mp.sys)
     center = @stage timer :interval resolve_target(spec, howmany, dos, mp.a, mp.b)
     interval = @stage timer :interval resolve_interval(center, dos)
     filter = @stage timer :filter resolve_filter(interval)
