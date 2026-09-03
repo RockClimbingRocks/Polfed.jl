@@ -323,13 +323,14 @@ return `1.0`.
 Used by the matrix path; exposed for callers building their own kernels. They live in
 `UniPolfed.Optimization`.
 
-### [`value_grouping`](@id UniPolfed.Optimization.value_grouping)
+### [`classify`](@id UniPolfed.Optimization.classify)
 
 ```julia
-value_grouping(H; tol=1e-12, rtol=1e-9)
+classify(H; tol=1e-12, round_digits=12)
 ```
 
-Analyze a structured matrix and return its value-grouped representation.
+Analyze a structured matrix and return its value-grouped representation, a
+`MappingStructure`.
 
 ### [`resolve_mapping_kernel`](@id UniPolfed.Optimization.resolve_mapping_kernel)
 
