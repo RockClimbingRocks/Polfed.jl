@@ -180,10 +180,16 @@ end
     target = exact[cld(D, 2)]
     x0 = rand(MersenneTwister(11), D, 4)
 
+    # The DoS MUST be seeded, and identically for both runs. Its KPM probes are stochastic and
+    # `DoSConfig` defaults to `Random.default_rng()`, so two unseeded calls estimate slightly
+    # different densities, size slightly different target intervals, and can legitimately return
+    # windows shifted by one eigenpair — which is not a difference between the STRATEGIES and
+    # made this comparison intermittently fail. With the probe fixed, the two agree exactly.
     f!(Y, X) = mul!(Y, H, X)
-    rb = polfed(f!, x0, 4, target; verbosity = 0,
+    dosc = () -> DoSConfig(rng = MersenneTwister(2024))
+    rb = polfed(f!, x0, 4, target; verbosity = 0, dosc = dosc(),
                 mc = MappingConfig(parallel_strategy = BlockWise()))
-    rv = polfed(f!, x0, 4, target; verbosity = 0,
+    rv = polfed(f!, x0, 4, target; verbosity = 0, dosc = dosc(),
                 mc = MappingConfig(parallel_strategy = VectorWise()))
     @test rb.report.mapping.parallel == "BlockWise"
     # Above one thread `resolve_parallelization` downgrades VectorWise (the Clenshaw combine
@@ -195,6 +201,7 @@ end
     # for something else. What the strategies must agree on is the answer, not the budget.
     @test length(rb.vals) == length(rv.vals)
     @test !isempty(rb.vals)
+    # Ground truth is `eigvals`, so a shared error cannot hide behind the two agreeing.
     for r in (rb, rv), v in r.vals
         @test minimum(abs.(exact .- v)) < 1e-10
     end
