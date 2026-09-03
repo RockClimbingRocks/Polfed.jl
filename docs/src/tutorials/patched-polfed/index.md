@@ -69,6 +69,11 @@ Two modes, distinguished by arity — exactly like [`polfed`](@ref UniPolfed.pol
 
 ```julia
 using UniPolfed
+using UniPolfed.Models: qsun_hamiltonian
+using LinearAlgebra
+
+H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
+x0 = normalize!(rand(size(H, 1)))
 
 # count mode: 10_000 eigenpairs near a point, in patches of ~3333
 vals, vecs, report = patched_polfed(H, x0, 10_000, 3333, :maxdos)
@@ -99,9 +104,11 @@ vals, vecs, report = patched_polfed(H, x0, 3333, (-0.5, 0.5);
     howmany_pad   = 3,       # overlap between neighbouring patches
     max_retries   = 3,       # coverage retries per patch
     retry_growth  = 2.0,     # budget multiplier on each retry
-    mc, dosc, tol, eigentol, overestimate_iters,   # as in polfed
 )
 ```
+
+`mc`, `dosc`, `tol`, `eigentol` and `overestimate_iters` are accepted too, and mean exactly what
+they mean in [`polfed`](@ref UniPolfed.polfed).
 
 ## How it avoids returning garbage
 

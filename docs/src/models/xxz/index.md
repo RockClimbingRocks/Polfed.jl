@@ -1,17 +1,13 @@
 # [XXZ](@id xxz_model)
 
-!!! tip "You do not need this model"
-    The shipped Hamiltonians are conveniences for testing and for the tutorials. POLFED
-    works with any Hermitian matrix, and with any operator `f!` — see
-    [Bring your own operator](@ref operator_interface).
-
 The spin-1/2 XXZ chain is available from the common `UniPolfed.Models`
 namespace through [`xxz_hamiltonian`](@ref UniPolfed.Models.xxz_hamiltonian).
 
 ```julia
 using UniPolfed.Models: xxz_hamiltonian
 
-H = xxz_hamiltonian(L, Lup, J, Delta, W; kwargs...)
+# xxz_hamiltonian(L, Lup, J, Δ, W; kwargs...)
+H = xxz_hamiltonian(14, 7, 1.0, 1.0, 0.5; use_sparse = true)
 ```
 
 For the full Julia constructor signature, argument types, keyword meanings,

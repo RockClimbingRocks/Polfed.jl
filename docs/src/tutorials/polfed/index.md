@@ -179,7 +179,7 @@ orthonormal, not merely normalized.
 Standard Lanczos usually wins on raw FLOPs and is the better default for smaller runs.
 Block Lanczos applies the filter to several vectors at once, which uses hardware far better
 — this is what pays off on many cores and on GPUs. Keep
-``\texttt{howmany}/\texttt{block\_size} \gtrsim 100`` and `block_size ≤ 16`; the reasoning
+``\texttt{howmany}/\texttt{block\_size} \gtrsim 100``; the reasoning
 is in [Krylov background](@ref krylov_background) and [Guidelines](@ref guidelines).
 
 ## Complex Hermitian operators
@@ -222,6 +222,7 @@ the *original* ``H`` is below it.
 protocol every other entrypoint and `lanczos` use:
 
 ```julia
+howmany, target = 100, :maxdos
 vals, vecs, report = polfed(H, x0, howmany, target)
 ```
 
@@ -261,7 +262,7 @@ has** — it does not throw. Seeing that warning means the run is telling you so
 ### [Reading the report](@id polfed_reading_report)
 
 ```julia
-vals, vecs, report = polfed(H, x0, howmany, target)
+vals, vecs, report = polfed(H, x0, 100, :maxdos)
 display_report(report)
 ```
 

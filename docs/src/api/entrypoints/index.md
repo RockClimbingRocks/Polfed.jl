@@ -94,7 +94,8 @@ two single-window orders are comparable, two independent runs otherwise. Force i
 decision that produced them:
 
 ```julia
-low, high = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+result    = double_polfed(H, x0, (-0.8, -0.5), (0.3, 0.6))
+low, high = result                # the two windows, in the order you passed them
 vals, vecs, report = low          # each window unpacks like any other run
 
 result.strategy      # :double | :separate
