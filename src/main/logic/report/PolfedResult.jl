@@ -102,4 +102,4 @@ function Base.show(io::IO, ::MIME"text/plain", r::PolfedResult)
     return nothing
 end
 
-Base.show(io::IO, r::PolfedResult) = print(io, "PolfedResult(", length(r), " eigenpairs)")
+Base.show(io::IO, r::PolfedResult) = print(io, "PolfedResult(", length(r.vals), " eigenpairs)")

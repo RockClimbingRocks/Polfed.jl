@@ -102,7 +102,7 @@ function Base.show(io::IO, ::MIME"text/plain", r::DoublePolfedResult)
     println(io, "  strategy : ", bold(f, string(r.strategy)), "  — ", _double_strategy_line(r))
     println(io, @sprintf("  decision : ratio = %.3f  (threshold %.3f, reason :%s)",
                          r.ratio, Defaults.double_polfed.double_ratio, r.reason))
-    println(io, "  windows  : ", length(r.first), " + ", length(r.second), " eigenpairs")
+    println(io, "  windows  : ", length(r.first.vals), " + ", length(r.second.vals), " eigenpairs")
     r.strategy === :double && println(io, "  note     : both windows come from ONE Lanczos run; " *
                                           "the two reports below describe that same run.")
     println(io)
@@ -115,5 +115,5 @@ function Base.show(io::IO, ::MIME"text/plain", r::DoublePolfedResult)
 end
 
 Base.show(io::IO, r::DoublePolfedResult) =
-    print(io, "DoublePolfedResult(", length(r.first), " + ", length(r.second),
+    print(io, "DoublePolfedResult(", length(r.first.vals), " + ", length(r.second.vals),
               " eigenpairs, :", r.strategy, ")")
