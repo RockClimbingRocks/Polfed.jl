@@ -247,8 +247,8 @@ end
 
 !!! note "Eigenvectors are always columns"
     `vecs` is `D × n` and `vecs[:, i]` is the `i`-th eigenvector — for the operator path and the
-    matrix path alike. The matrix entrypoints work in row layout internally and transpose once at
-    the boundary, so the returned array does not depend on it.
+    matrix path alike. The matrix entrypoints work in row layout internally and return a lazy
+    `transpose` of those rows (no copy), so the indexing does not depend on it.
     [`eigenvector`](@ref UniPolfed.eigenvector) gives the same thing as a view.
 
 `vals`/`vecs`/`residuals` are already filtered to the requested interval and sorted with

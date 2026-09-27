@@ -66,7 +66,7 @@ let the solver capture every state up to it.
 ```julia
 res = lanczos(A, x0, BothEnds(200, 200))
 res.vals        # converged eigenvalues, ascending
-res.vecs        # eigenvectors (columns)
+res.vecs        # eigenvectors (columns; rows for RowLayout) — a view into the MatrixBasis storage
 res.residuals   # per-eigenvalue true residual ‖A·v − λ·v‖
 res.converged   # count meeting the eigen tolerance
 res.report      # FactorizationReport (timings, convergence history)
@@ -119,6 +119,12 @@ or orthonormalized (block) automatically.
 - **Breakdown handling:** if the Krylov residual norm vanishes (an invariant subspace
   / eigenvector seed), the iteration stops gracefully and force-extracts the exact
   Ritz pairs instead of dividing by zero.
+- **Memory — the basis is the peak:** intermediate eigen checks rebuild eigenvectors 64
+  at a time and drop them (`calc_eigen_residuals_chunked`); the final extraction writes
+  them into the leading slots of the `MatrixBasis` storage block by block
+  (`extract_eigenpairs!`) and the ascending sort permutes them in place
+  (`permute_eigenvectors!`). No full eigenvector matrix is ever allocated next to the
+  basis, so `res.vecs` is a view that keeps the basis storage alive.
 - **Thread configuration is the caller's responsibility** — the primitive does not
   mutate global BLAS/MKL/Julia thread settings (that would fight `f!`'s own
   parallelization, e.g. POLFED's per-mapping `ParallelizationStrategy`).

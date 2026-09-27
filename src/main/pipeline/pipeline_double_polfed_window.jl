@@ -79,11 +79,13 @@ function run_double_polfed_window_pipeline(
         )
     else
         # Two runs, two timers seeded with the shared prefix — one shared timer would accumulate
-        # both runs' `:lanczos` into a single entry.
-        lower_result = _double_separate_window_run(
+        # both runs' `:lanczos` into a single entry. The first result is detached from its
+        # Krylov basis, which is freed before the second run fills its own.
+        lower_result = _detached(_double_separate_window_run(
             mp, lower, spec_lower, strat.filter1, n_lower, mapvals, tol, eigentol_rescaled,
             overestimate_iters, layout, _double_run_timer(timer); label = "lower window run",
-        )
+        ))
+        GC.gc(true)
         upper_result = _double_separate_window_run(
             mp, upper, spec_upper, strat.filter2, n_upper, mapvals, tol, eigentol_rescaled,
             overestimate_iters, layout, _double_run_timer(timer); label = "upper window run",

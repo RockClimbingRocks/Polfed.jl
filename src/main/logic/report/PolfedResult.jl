@@ -3,7 +3,7 @@
 # `Report`. It destructures as `(vals, vecs, report)`, matching `LanczosResult` — every
 # entrypoint in the package therefore unpacks the same way. `vecs` is ALWAYS column-oriented:
 # `vecs[:, i]` is the i-th eigenvector, whatever Krylov layout the run used internally (the
-# matrix entrypoints run in RowLayout and transpose once at the boundary).
+# matrix entrypoints run in RowLayout and return a lazy `transpose` of the rows).
 
 """
     _result_eigvec(layout::Layout, vecs::AbstractMatrix, i::Int) -> AbstractVector
@@ -36,6 +36,8 @@ Displaying it (`display(result)`, or typing it at the REPL) prints the report. S
 # Fields
 - `vals::V`: eigenvalues (true energies of `H`), sorted ascending, within the target interval.
 - `vecs::M`: eigenvectors as **columns** (`dim × n`), independent of the run's Krylov layout.
+  A view into the Krylov basis storage (a lazy `transpose` for a row-layout run), so it keeps
+  that storage alive; `copy(vecs)` gives an independent `Matrix`.
 - `residuals::Vector{Float64}`: per-eigenvalue true residual `‖H·vᵢ − λᵢ·vᵢ‖`, aligned with `vals`.
 - `converged::Int`: total converged eigenpairs from Lanczos (before interval filtering; the
   in-interval count is `length(vals)`).

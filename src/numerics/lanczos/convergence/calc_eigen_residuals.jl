@@ -10,10 +10,10 @@ The eigenvectors are stored per the factorization's layout: columns (`dim × nco
 [`ColumnLayout`](@ref), rows (`nconv × dim`) for [`RowLayout`](@ref). `mapvals` is applied
 to each eigenvector in that same orientation.
 
-This is the *expensive* convergence signal — it reconstructs full-space eigenvectors from
-the Krylov basis — so [`check_convergence!`](@ref) only calls it once the cheap Ritz
-residuals ([`calc_ritz_residuals`](@ref)) already indicate the target is converged (or on
-the final iteration).
+Allocates a full eigenvector matrix next to the Krylov basis. [`check_convergence!`](@ref)
+therefore uses [`calc_eigen_residuals_chunked`](@ref) to decide and
+[`extract_eigenpairs!`](@ref) to extract; this form is their reference and the extraction's
+fallback for a non-matrix basis.
 """
 function calc_eigen_residuals(factorization::KrylovFactorization, ϕ::AbstractMatrix, idxs, mapvals)
     pu = factorization.pu
@@ -175,94 +175,180 @@ function build_values_and_residuals(layout::Layout, vecs::AbstractMatrix, valsma
     res = zeros(Float64, nconv)
     nconv == 0 && return pu.Vector{S}(vals_cpu), res
 
-    w = _eigvec_workspace(layout, vecs, pu)
-    for i in 1:nconv
-        v = _eigvec(layout, vecs, i)
-        valsmap!(w, v)                          # the one operator application
-        λ = real(dot(vec(v), vec(w)))
-        vals_cpu[i] = λ
-        axpy!(-λ, vec(v), vec(w))               # w ← A·v − λ·v, in place
-        res[i] = norm(vec(w))
-    end
+    _values_and_residuals!(vals_cpu, res, layout, vecs, valsmap!, _eigvec_workspace(layout, vecs, pu))
     return pu.Vector{S}(vals_cpu), res
 end
 
-# --- reuse of a reconstruction across one convergence check -----------------------------
-
 """
-    _EigenBatch
+    _values_and_residuals!(vals, res, layout, vecs, valsmap!, w) -> nothing
 
-One [`calc_eigen_residuals`](@ref) result, tagged with the Ritz indices it was built for.
-
-[`check_convergence!`](@ref) records every batch a check reconstructs so the terminal
-extraction can be *sliced* out of them rather than reconstructed again — see
-[`_reuse_eigen_batches`](@ref).
+The loop of [`build_values_and_residuals`](@ref), writing into CPU `vals`/`res` and using the
+caller's single-eigenvector workspace `w`.
 """
-struct _EigenBatch{V,M,R}
-    idxs::Vector{Int}
-    vals::V
-    vecs::M
-    res::R
+function _values_and_residuals!(vals::AbstractVector, res::AbstractVector, layout::Layout,
+                                vecs::AbstractMatrix, valsmap!, w::AbstractArray)
+    for i in 1:_neigvecs(layout, vecs)
+        v = _eigvec(layout, vecs, i)
+        valsmap!(w, v)                          # the one operator application
+        λ = real(dot(vec(v), vec(w)))
+        vals[i] = λ
+        axpy!(-λ, vec(v), vec(w))               # w ← A·v − λ·v, in place
+        res[i] = norm(vec(w))
+    end
+    return nothing
 end
 
-@inline _select_eigvecs(::ColumnLayout, vecs::AbstractMatrix, pos::AbstractVector{Int}) = vecs[:, pos]
-@inline _select_eigvecs(::RowLayout,    vecs::AbstractMatrix, pos::AbstractVector{Int}) = vecs[pos, :]
+# --- memory-bounded variants: the Krylov basis is the only full-size array --------------
 
-@inline _concat_eigvecs(::ColumnLayout, parts::AbstractVector) = reduce(hcat, parts)
-@inline _concat_eigvecs(::RowLayout,    parts::AbstractVector) = reduce(vcat, parts)
+"""Eigenvectors rebuilt per pass by [`calc_eigen_residuals_chunked`](@ref)."""
+const _EIGEN_CHUNK = 64
+
+"""Byte budget of the scratch block used by the in-place extraction and permutation."""
+const _SCRATCH_BYTES = 64 * 2^20
+
+# Scratch-block width for `n` eigenvectors along a length-`dim` axis: within `_SCRATCH_BYTES`,
+# but at least 256 so the block GEMM stays efficient.
+_scratch_width(n::Int, dim::Int, ::Type{T}) where {T} =
+    clamp(fld(_SCRATCH_BYTES, max(n, 1) * sizeof(T)), min(256, dim), dim)
+
+# The leading `n` eigenvector slots of a layout-oriented matrix.
+@inline _leading(::RowLayout,    M::AbstractMatrix, n::Int) = view(M, 1:n, :)
+@inline _leading(::ColumnLayout, M::AbstractMatrix, n::Int) = view(M, :, 1:n)
 
 """
-    _reuse_eigen_batches(layout, batches, keep) -> Union{Nothing, Tuple}
+    calc_eigen_residuals_chunked(factorization, ϕ, idxs, mapvals; chunk=64) -> (vals, residuals)
 
-Serve the eigenpairs for the Ritz indices `keep` out of already-reconstructed `batches`,
-or `nothing` when they cannot be (some index was never reconstructed this check, or the
-batches interleave in `keep`) and the caller must rebuild.
-
-Reconstruction is a `nconv × krylovdim × dim` GEMM — the dominant cost of a convergence
-check — and the terminal extraction always asks for a *subset* of what deciding the target
-already built. `keep` is a concatenation of one contiguous stretch per spectral end, so each
-batch contributes one slice; when a single batch covers `keep` in order, its arrays are
-handed back with no copy at all.
+[`calc_eigen_residuals`](@ref) without keeping the eigenvectors: they are rebuilt `chunk` at a
+time in one reusable buffer, so the workspace is `chunk` vectors however many pairs are
+checked. Leaves the Krylov basis intact. `vals` is a CPU vector.
 """
-function _reuse_eigen_batches(layout::Layout, batches::AbstractVector, keep::AbstractVector{Int})
-    (isempty(batches) || isempty(keep)) && return nothing
+function calc_eigen_residuals_chunked(factorization::KrylovFactorization, ϕ::AbstractMatrix,
+                                      idxs::AbstractVector, mapvals; chunk::Int=_EIGEN_CHUNK)
+    pu, layout = factorization.pu, factorization.layout
+    T = eltype(factorization.r)
+    n = length(idxs)
+    vals, res = Vector{real(T)}(undef, n), Vector{Float64}(undef, n)
+    n == 0 && return vals, res
 
-    # Locate every kept index: (which batch, which position inside it).
-    ids  = Vector{Int}(undef, length(keep))
-    poss = Vector{Int}(undef, length(keep))
-    for (k, idx) in pairs(keep)
-        found = false
-        for (bi, b) in pairs(batches)
-            pos = findfirst(==(idx), b.idxs)
-            pos === nothing && continue
-            ids[k], poss[k] = bi, pos
-            found = true
-            break
-        end
-        found || return nothing
+    dim = opdim(layout, factorization.r)
+    c = min(chunk, n)
+    buf = layout isa RowLayout ? pu.Matrix{T}(undef, c, dim) : pu.Matrix{T}(undef, dim, c)
+    w = _eigvec_workspace(layout, buf, pu)
+    krylovbasis = allvecs(factorization.basis)
+    for lo in 1:c:n
+        hi = min(lo + c - 1, n)
+        vecs = _leading(layout, buf, hi - lo + 1)
+        _reconstruct_eigenvectors!(layout, vecs, krylovbasis, ϕ[:, idxs[lo:hi]])
+        _values_and_residuals!(view(vals, lo:hi), view(res, lo:hi), layout, vecs, mapvals, w)
     end
+    return vals, res
+end
 
-    # Each batch must occupy one contiguous stretch of `keep`, or a per-batch slice would
-    # not reproduce the requested order.
-    groups = unique(ids)
-    ranges = Vector{UnitRange{Int}}(undef, length(groups))
-    for (g, bi) in pairs(groups)
-        first_k = findfirst(==(bi), ids)
-        last_k  = findlast(==(bi), ids)
-        all(==(bi), view(ids, first_k:last_k)) || return nothing
-        ranges[g] = first_k:last_k
+"""
+    extract_eigenpairs!(factorization, ϕ, idxs, mapvals; block=0) -> (vals, vecs, residuals)
+
+The final extraction. Same result as [`calc_eigen_residuals`](@ref), but for a
+[`MatrixBasis`](@ref) the eigenvectors are built inside the basis storage — its leading
+`length(idxs)` rows (row layout) or columns (column layout) — and `vecs` is a view of them, so
+no eigenvector matrix is allocated. Other bases fall back to [`calc_eigen_residuals`](@ref).
+`block > 0` fixes the scratch-block width (default: a 64 MiB budget).
+
+!!! warning
+    This overwrites the Krylov basis: call it only once the factorization is finished.
+"""
+function extract_eigenpairs!(factorization::KrylovFactorization, ϕ::AbstractMatrix,
+                             idxs::AbstractVector, mapvals; block::Int=0)
+    basis = factorization.basis
+    # An empty result gets its own 0-size matrix rather than a view that would pin the basis.
+    (basis isa MatrixBasis && !isempty(idxs)) ||
+        return calc_eigen_residuals(factorization, ϕ, idxs, mapvals)
+    layout = factorization.layout
+    vecs = _reconstruct_in_place!(layout, basis.basis, basis.nvecs, ϕ[:, idxs], block)
+    vals, residuals = build_values_and_residuals(layout, vecs, mapvals, factorization.pu)
+    return vals, vecs, residuals
+end
+
+# Eigenvector block J needs only basis block J (columns for row layout, rows for column
+# layout), so each block is computed into scratch and written back over the basis slots it has
+# just consumed. The leading `n ≤ k` slots end up holding the eigenvectors.
+function _reconstruct_in_place!(::RowLayout, B::AbstractMatrix, k::Int, ϕs::AbstractMatrix,
+                                block::Int)
+    n, dim = size(ϕs, 2), size(B, 2)
+    width = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(B))
+    scratch = similar(B, n, width)
+    for j in 1:width:dim
+        J = j:min(j + width - 1, dim)
+        s = view(scratch, :, 1:length(J))
+        mul!(s, ϕs', view(B, 1:k, J))              # n×|J| = (n×k)(k×|J|)
+        view(B, 1:n, J) .= s
     end
+    return view(B, 1:n, :)
+end
 
-    if length(groups) == 1
-        b = batches[groups[1]]
-        poss == eachindex(b.idxs) && return (b.vals, b.vecs, b.res)   # exact hit, no copy
-        return (b.vals[poss], _select_eigvecs(layout, b.vecs, poss), b.res[poss])
+function _reconstruct_in_place!(::ColumnLayout, B::AbstractMatrix, k::Int, ϕs::AbstractMatrix,
+                                block::Int)
+    n, dim = size(ϕs, 2), size(B, 1)
+    height = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(B))
+    scratch = similar(B, height, n)
+    for i in 1:height:dim
+        I = i:min(i + height - 1, dim)
+        s = view(scratch, 1:length(I), :)
+        mul!(s, view(B, I, 1:k), ϕs)                # |I|×n = (|I|×k)(k×n)
+        view(B, I, 1:n) .= s
     end
+    return view(B, :, 1:n)
+end
 
-    vals = reduce(vcat, [batches[bi].vals[poss[r]] for (bi, r) in zip(groups, ranges)])
-    vecs = _concat_eigvecs(layout,
-                           [_select_eigvecs(layout, batches[bi].vecs, poss[r])
-                            for (bi, r) in zip(groups, ranges)])
-    res  = reduce(vcat, [batches[bi].res[poss[r]] for (bi, r) in zip(groups, ranges)])
-    return (vals, vecs, res)
+"""
+    permute_eigenvectors!(layout, vecs, perm; block=0) -> vecs
+
+Reorder the eigenvectors in place — eigenvector `i` becomes old eigenvector `perm[i]` — through
+one scratch block instead of a permuted copy. `vecs` must be a matrix or a view of its leading
+rows (row layout) / columns (column layout), as [`extract_eigenpairs!`](@ref) returns.
+"""
+function permute_eigenvectors!(layout::Layout, vecs::AbstractMatrix, perm::AbstractVector{<:Integer};
+                               block::Int=0)
+    n = length(perm)
+    n == _neigvecs(layout, vecs) || throw(DimensionMismatch(
+        "perm has $n entries for $(_neigvecs(layout, vecs)) eigenvectors"))
+    (n <= 1 || issorted(perm)) && return vecs          # a sorted permutation is the identity
+    M = parent(vecs)
+    _is_leading(layout, vecs, M, n) ||
+        throw(ArgumentError("vecs must be a matrix or a view of its leading eigenvector slots"))
+    # Gather through the parent with absolute indices (no view-of-view on a device array).
+    _permute_leading!(layout, M, n, is_gpu_array(M) ? gpu_vector(perm) : perm, block)
+    return vecs
+end
+
+_is_leading(::RowLayout, vecs, M, n) =
+    size(vecs, 2) == size(M, 2) && parentindices(vecs)[1] == 1:n
+_is_leading(::ColumnLayout, vecs, M, n) =
+    size(vecs, 1) == size(M, 1) && parentindices(vecs)[2] == 1:n
+
+# Row layout is column-major `n × dim`, so each column block holds a contiguous slice of every
+# eigenvector: gathering block by block streams memory instead of striding along whole rows.
+function _permute_leading!(::RowLayout, M::AbstractMatrix, n::Int, idx::AbstractVector, block::Int)
+    dim = size(M, 2)
+    width = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(M))
+    scratch = similar(M, n, width)
+    for j in 1:width:dim
+        J = j:min(j + width - 1, dim)
+        s = view(scratch, :, 1:length(J))
+        s .= view(M, idx, J)
+        view(M, 1:n, J) .= s
+    end
+    return nothing
+end
+
+function _permute_leading!(::ColumnLayout, M::AbstractMatrix, n::Int, idx::AbstractVector, block::Int)
+    dim = size(M, 1)
+    height = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(M))
+    scratch = similar(M, height, n)
+    for i in 1:height:dim
+        I = i:min(i + height - 1, dim)
+        s = view(scratch, 1:length(I), :)
+        s .= view(M, I, idx)
+        view(M, I, 1:n) .= s
+    end
+    return nothing
 end

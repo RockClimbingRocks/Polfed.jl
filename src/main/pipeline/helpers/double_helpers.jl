@@ -181,6 +181,19 @@ function _double_separate_count_run(
                                target_energy = target_energy)
 end
 
+"""
+    _detached(r::PolfedResult) -> PolfedResult
+
+`r` with its eigenvectors copied out of the Krylov basis storage, same `vecs[:, i]` semantics.
+The `:separate` path holds the first window's result through the second run, and as a view it
+would keep the whole first basis resident next to the second. Follow it with `GC.gc(true)`.
+"""
+_detached(r::PolfedResult) =
+    PolfedResult(r.vals, _own_copy(r.vecs), r.residuals, r.converged, r.layout, r.report)
+
+_own_copy(vecs::Transpose) = transpose(copy(parent(vecs)))   # compact rows, still columns to the caller
+_own_copy(vecs::AbstractMatrix) = copy(vecs)
+
 # ── the joint path: one run, two results ──────────────────────────────────────
 
 """

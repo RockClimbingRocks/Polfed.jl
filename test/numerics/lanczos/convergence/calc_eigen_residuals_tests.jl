@@ -1,5 +1,6 @@
 using Test
 using LinearAlgebra
+using Random
 using UniPolfed
 using UniPolfed.Numerics.Lanczos
 
@@ -208,44 +209,147 @@ end
     end
 end
 
-@testset "_reuse_eigen_batches" begin
-    batch(idxs, offset) = LZ._EigenBatch(collect(idxs),
-                                         Float64.(idxs) .+ offset,
-                                         Float64.(reshape(idxs, :, 1)) * [1.0 10.0 100.0],
-                                         Float64.(idxs) ./ 1000)
+# ── memory-bounded extraction: the Krylov basis is the only full-size array ─────────────────
 
-    @testset "exact hit is handed back untouched" begin
-        b = batch([3, 4, 5], 0.5)
-        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b], [3, 4, 5])
-        @test vals === b.vals && vecs === b.vecs && res === b.res
+# A few Lanczos steps on `A` in `layout`; `f!` acts per layout (rows: Y = X·A).
+function _eig_test_factorization(A, x0, layout; basistype = MatrixBasis, nsteps = 4)
+    seed = LZ._prepare_seed(layout, x0)
+    f! = layout isa RowLayout ? ((Y, X) -> mul!(Y, X, A)) : ((Y, X) -> mul!(Y, A, X))
+    iterator = LZ.LanczosIterator(f!, seed, FullRO(), layout)
+    fac = LZ.lanczositer(iterator, LZ.createbasis(40, seed, basistype, CPU(), layout), 40, CPU())
+    for it in 2:(nsteps + 1)
+        LZ.lanczositer!(iterator, fac, it) || break
+    end
+    return fac, f!
+end
+
+_eig_seed(layout, T, n, bs) = layout isa RowLayout ? randn(T, bs, n) : randn(T, n, bs)
+
+const _EIG_CASES = ((ColumnLayout(), Float64), (RowLayout(), Float64),
+                    (ColumnLayout(), ComplexF64), (RowLayout(), ComplexF64),
+                    (RowLayout(), Float32))
+
+@testset "calc_eigen_residuals_chunked matches the full reconstruction" begin
+    Random.seed!(11)
+    n = 40
+    idxs = [2, 7, 1, 9, 4]
+    @testset "$(nameof(typeof(layout))) $T" for (layout, T) in _EIG_CASES
+        A = Matrix(Hermitian(randn(T, n, n)))
+        fac, f! = _eig_test_factorization(A, _eig_seed(layout, T, n, 3), layout)
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        vals_ref, _, res_ref = LZ.calc_eigen_residuals(fac, ϕ, idxs, f!)
+        basis_before = copy(LZ.allvecs(fac.basis))
+        for chunk in (1, 2, 5, 64)
+            vals, res = LZ.calc_eigen_residuals_chunked(fac, ϕ, idxs, f!; chunk = chunk)
+            @test vals isa Vector{real(T)}
+            @test vals ≈ vals_ref
+            @test res ≈ res_ref rtol = sqrt(eps(real(T)))
+        end
+        @test LZ.allvecs(fac.basis) == basis_before          # the basis survives a check
+        @test all(isempty, LZ.calc_eigen_residuals_chunked(fac, ϕ, Int[], f!))
     end
 
-    @testset "subset is sliced in the requested order" begin
-        b = batch([3, 4, 5], 0.5)
-        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b], [5, 3])
-        @test vals == b.vals[[3, 1]]
-        @test vecs == b.vecs[[3, 1], :]
-        @test res  == b.res[[3, 1]]
+    @testset "vector basis" begin
+        A = Matrix(Symmetric(randn(n, n)))
+        fac, f! = _eig_test_factorization(A, randn(n), ColumnLayout(); basistype = VectorBasis)
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        vals_ref, _, res_ref = LZ.calc_eigen_residuals(fac, ϕ, [3, 1], f!)
+        vals, res = LZ.calc_eigen_residuals_chunked(fac, ϕ, [3, 1], f!; chunk = 1)
+        @test vals ≈ vals_ref && res ≈ res_ref
+    end
+end
 
-        cvecs = permutedims(b.vecs)
-        cb = LZ._EigenBatch(b.idxs, b.vals, cvecs, b.res)
-        _, cv, _ = LZ._reuse_eigen_batches(LZ.ColumnLayout(), [cb], [5, 3])
-        @test cv == cvecs[:, [3, 1]]
+@testset "extract_eigenpairs! builds the eigenvectors inside the basis" begin
+    Random.seed!(12)
+    n = 50
+    idxs = [3, 1, 8, 5]
+    @testset "$(nameof(typeof(layout))) $T, block = $block" for (layout, T) in _EIG_CASES,
+                                                               block in (0, 1, 3, 7)
+        A = Matrix(Hermitian(randn(T, n, n)))
+        fac, f! = _eig_test_factorization(A, _eig_seed(layout, T, n, 3), layout)
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        vals_ref, vecs_ref, res_ref = LZ.calc_eigen_residuals(fac, ϕ, idxs, f!)
+
+        vals, vecs, res = LZ.extract_eigenpairs!(fac, ϕ, idxs, f!; block = block)
+        @test parent(vecs) === fac.basis.basis                 # no eigenvector matrix allocated
+        @test size(vecs) == size(vecs_ref)
+        @test vecs ≈ vecs_ref
+        @test vals ≈ vals_ref
+        @test res ≈ res_ref rtol = sqrt(eps(real(T)))
     end
 
-    @testset "two ends are gathered in end order" begin
-        b1, b2 = batch([1, 2], 0.0), batch([9, 8], 100.0)
-        vals, vecs, res = LZ._reuse_eigen_batches(LZ.RowLayout(), [b1, b2], [1, 2, 9, 8])
-        @test vals == vcat(b1.vals, b2.vals)
-        @test vecs == vcat(b1.vecs, b2.vecs)
-        @test res  == vcat(b1.res, b2.res)
+    @testset "empty selection does not pin the basis" begin
+        fac, f! = _eig_test_factorization(Matrix(Symmetric(randn(n, n))), randn(3, n), RowLayout())
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        vals, vecs, res = LZ.extract_eigenpairs!(fac, ϕ, Int[], f!)
+        @test size(vecs) == (0, n) && isempty(vals) && isempty(res)
+        @test parent(vecs) !== fac.basis.basis
     end
 
-    @testset "falls back when it cannot serve the request" begin
-        b1, b2 = batch([1, 2], 0.0), batch([9, 8], 100.0)
-        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1], [1, 7]) === nothing   # index absent
-        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1, b2], [1, 9, 2]) === nothing  # interleaved
-        @test LZ._reuse_eigen_batches(LZ.RowLayout(), LZ._EigenBatch[], [1]) === nothing
-        @test LZ._reuse_eigen_batches(LZ.RowLayout(), [b1], Int[]) === nothing
+    @testset "vector basis falls back to a fresh matrix" begin
+        A = Matrix(Symmetric(randn(n, n)))
+        fac, f! = _eig_test_factorization(A, randn(n, 2), ColumnLayout(); basistype = VectorBasis)
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        vals_ref, vecs_ref, _ = LZ.calc_eigen_residuals(fac, ϕ, idxs, f!)
+        vals, vecs, _ = LZ.extract_eigenpairs!(fac, ϕ, idxs, f!)
+        @test vecs isa Matrix && vecs ≈ vecs_ref && vals ≈ vals_ref
     end
+end
+
+@testset "permute_eigenvectors!" begin
+    Random.seed!(13)
+    n, D = 6, 11
+    @testset "$(nameof(typeof(layout))), block = $block" for layout in (ColumnLayout(), RowLayout()),
+                                                             block in (0, 1, 2, 5)
+        # A leading view with spare slots behind it — the shape extract_eigenpairs! returns.
+        M = layout isa RowLayout ? randn(n + 3, D) : randn(D, n + 3)
+        spare = copy(layout isa RowLayout ? M[n+1:end, :] : M[:, n+1:end])
+        vecs = LZ._leading(layout, M, n)
+        ref = copy(vecs)
+        perm = randperm(n)
+        @test LZ.permute_eigenvectors!(layout, vecs, perm; block = block) === vecs
+        @test vecs == (layout isa RowLayout ? ref[perm, :] : ref[:, perm])
+        @test (layout isa RowLayout ? M[n+1:end, :] : M[:, n+1:end]) == spare
+
+        plain = copy(ref)                                    # a plain matrix works too
+        LZ.permute_eigenvectors!(layout, plain, perm; block = block)
+        @test plain == vecs
+    end
+
+    @testset "identity is a no-op; misuse throws" begin
+        M = randn(4, 9)
+        ref = copy(M)
+        LZ.permute_eigenvectors!(RowLayout(), M, 1:4)
+        @test M == ref
+        @test_throws DimensionMismatch LZ.permute_eigenvectors!(RowLayout(), M, [2, 1])
+        @test_throws ArgumentError LZ.permute_eigenvectors!(RowLayout(), view(M, 2:3, :), [2, 1])
+        @test_throws ArgumentError LZ.permute_eigenvectors!(ColumnLayout(), view(M, 1:2, 1:2), [2, 1])
+    end
+end
+
+@testset "final extraction and sort allocate only scratch" begin
+    # Row layout at a size where one eigenvector matrix is several MB: the extraction and the
+    # sort must stay far below it (the old path allocated two such matrices).
+    Random.seed!(14)
+    D, n = 20_000, 30
+    d = randn(D)
+    rowdiag!(Y, X) = (Y .= X .* transpose(d))                # X·A for A = Diagonal(d)
+    function consumed_factorization()
+        seed = LZ._prepare_seed(RowLayout(), randn(4, D))
+        it = LZ.LanczosIterator(rowdiag!, seed, FullRO(), RowLayout())
+        fac = LZ.lanczositer(it, LZ.createbasis(48, seed, MatrixBasis, CPU(), RowLayout()), 48, CPU())
+        for i in 2:11
+            LZ.lanczositer!(it, fac, i)
+        end
+        _, ϕ, _ = LZ.calc_ritz_residuals(fac)
+        return fac, ϕ
+    end
+    extract_and_sort(fac, ϕ) = begin
+        vals, vecs, _ = LZ.extract_eigenpairs!(fac, ϕ, 1:n, rowdiag!; block = 256)
+        LZ.permute_eigenvectors!(RowLayout(), vecs, sortperm(vals); block = 256)
+    end
+    extract_and_sort(consumed_factorization()...)            # compile
+    fac, ϕ = consumed_factorization()
+    one_matrix = n * D * sizeof(Float64)
+    @test @allocated(extract_and_sort(fac, ϕ)) < one_matrix ÷ 4
 end

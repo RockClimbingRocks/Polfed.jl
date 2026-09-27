@@ -55,22 +55,15 @@ function check_convergence!(criterion::ConvergenceCriterion, state::ConvergenceS
     p, ϕ, ritz = calc_ritz_residuals(factorization)
     ritz_ok = i -> ritz[i] < criterion.tol
 
-    # Expensive signal, on demand: reconstruct eigenpairs for `idxs` and hand back their
-    # mapped values `E` plus a per-position acceptance predicate. `decide_end` calls this
-    # only after its cheap gate fires, so on most checks it is never called at all.
-    #
-    # Every batch is kept: `decide` reconstructs the Ritz prefix of each end here, and the
-    # terminal extraction below asks for a SUBSET of exactly those indices. Rebuilding it
-    # made the final check cost twice what every other eigen check cost (a second
-    # `nconv × krylovdim × dim` GEMM over the whole Krylov basis), which is pure waste —
-    # `ϕ` and the factorization are the same within one check.
-    batches = _EigenBatch[]
+    # Expensive signal, on demand: the mapped values `E` of `idxs` plus a per-position
+    # acceptance predicate. `decide_end` calls this only after its cheap gate fires, so on
+    # most checks it is never called at all. The eigenvectors are rebuilt a chunk at a time
+    # and dropped: the iteration may continue, so the basis must survive, and keeping them
+    # would put a full eigenvector matrix on top of it.
     eigen_of = function (idxs)
         isempty(idxs) && return (Float64[], _ -> false, Float64[])
-        vals, vecs, eig = calc_eigen_residuals(factorization, ϕ, idxs, criterion.mapvals)
-        push!(batches, _EigenBatch(collect(idxs), vals, vecs, eig))
-        vals_cpu = is_gpu_array(vals) ? collect(vals) : vals
-        return (vals_cpu, k -> eig[k] < criterion.eigentol, eig)
+        vals, eig = calc_eigen_residuals_chunked(factorization, ϕ, idxs, criterion.mapvals)
+        return (vals, k -> eig[k] < criterion.eigentol, eig)
     end
 
     # `force=is_final`: on the last check there is no next one, so the pre-gate must not
@@ -98,13 +91,10 @@ function check_convergence!(criterion::ConvergenceCriterion, state::ConvergenceS
 
     result = nothing
     if verdict.done || is_final
-        # The kept set, sliced out of what `decide` already reconstructed. Only a target
-        # whose pre-gate skipped reconstruction entirely (or whose ends interleave in
-        # `keep`) still pays for a build here. (`lanczos` sorts the result ascending
-        # afterwards.)
-        reused = _reuse_eigen_batches(factorization.layout, batches, verdict.keep)
-        vals, vecs, eig = reused === nothing ?
-            calc_eigen_residuals(factorization, ϕ, verdict.keep, criterion.mapvals) : reused
+        # The iteration stops here, so the kept eigenvectors are built inside the Krylov basis
+        # instead of next to it: the peak stays at the basis. (`lanczos` sorts the result
+        # ascending afterwards, also in place.)
+        vals, vecs, eig = extract_eigenpairs!(factorization, ϕ, verdict.keep, criterion.mapvals)
         result = (vals, vecs, eig)
         state.eigenresidual = isempty(eig) ? 0.0 : maximum(eig)
 

@@ -279,9 +279,9 @@ function _finalize_result!(buffer::_DenseResultBuffer)
 
     # Internally the buffer may be row-major (the matrix entrypoints run in RowLayout), but the
     # RETURNED eigenvectors are always columns — `vecs[:, i]` is the i-th eigenvector whatever the
-    # run used. Row layout pays one transpose here, a real copy rather than a lazy adjoint.
+    # run used. Row layout returns a lazy `transpose`: a copy would double the result's memory.
     vecs = buffer.layout isa RowLayout ?
-        permutedims(full ? buffer.vecs : view(buffer.vecs, 1:n, :)) :
+        transpose(full ? buffer.vecs : view(buffer.vecs, 1:n, :)) :
         (full ? buffer.vecs : view(buffer.vecs, :, 1:n))
     return vals, vecs
 end

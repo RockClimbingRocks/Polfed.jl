@@ -69,9 +69,10 @@ v1 = vecs[:, 1]                   # the 1st eigenvector
 ```
 
 This holds for every entrypoint and both call paths — the matrix entrypoints run in row layout
-internally and transpose once on the way out, so you never have to think about it. If you want a
-view instead of a copy, [`eigenvector`](@ref UniPolfed.eigenvector) does the same thing without
-allocating:
+internally and hand back a lazy `transpose` of those rows (no copy), so you never have to think
+about it. `vecs` is a view into the solver's storage; `copy(vecs)` gives an independent `Matrix`.
+If you want a view of a single eigenvector, [`eigenvector`](@ref UniPolfed.eigenvector) does the
+same thing without allocating:
 
 ```julia
 v1   = eigenvector(result, 1)     # a view of column 1
