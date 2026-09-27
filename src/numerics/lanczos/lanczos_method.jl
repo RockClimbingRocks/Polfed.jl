@@ -20,7 +20,8 @@ end
 Build the Krylov basis, run the Lanczos iterations, and return the converged
 eigenpairs (sorted ascending) as a [`LanczosResult`](@ref). The eigenpair count is
 dynamic (value-based targets), so the outputs come straight from the extraction and
-are only reordered here.
+are only reordered here. With a [`MatrixBasis`](@ref) the returned `vecs` is a view into
+the basis storage, which the extraction reuses (see [`extract_eigenpairs!`](@ref)).
 """
 function lanczos_method(
     iterator::LanczosIterator,
@@ -41,12 +42,13 @@ function lanczos_method(
     end
 
     # sort the converged eigenpairs ascending and align vecs + per-eigenpair residuals.
-    # eigenvectors are stored as columns (ColumnLayout) or rows (RowLayout).
+    # eigenvectors are stored as columns (ColumnLayout) or rows (RowLayout). They are
+    # permuted in place: a sorted copy would be a second full eigenvector matrix.
     vals_cpu = is_gpu_array(vals) ? collect(vals) : vals
     perm = sortperm(vals_cpu)
 
     vals_sorted = pu.Vector(vals[perm])
-    vecs_sorted = iterator.layout isa RowLayout ? vecs[perm, :] : vecs[:, perm]
+    vecs_sorted = permute_eigenvectors!(iterator.layout, vecs, perm)
     residuals_sorted = residuals[perm]
     converged = count(<(criterion.eigentol), residuals_sorted)
 

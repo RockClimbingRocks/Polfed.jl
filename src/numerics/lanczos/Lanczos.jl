@@ -5,7 +5,7 @@ using LinearAlgebra, Printf, PrettyTables, Random
 
 # Backend GPU-dispatch helpers + processing-unit types live at the UniPolfed top level.
 import ...is_gpu_array, ...is_gpu_sparse_matrix
-import ...gpu_matrix, ...gpu_randn
+import ...gpu_matrix, ...gpu_vector, ...gpu_randn
 import ...gpu_synchronize, ...gpu_reclaim, ...gpu_allowscalar
 import ...CPU, ...GPU, ...ProcessingUnit
 

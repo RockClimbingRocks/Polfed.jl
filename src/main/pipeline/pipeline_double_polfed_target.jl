@@ -89,11 +89,14 @@ function run_double_polfed_target_pipeline(
             target_lower = target_lower, target_upper = target_upper,
         )
     else
-        lower_result = _double_separate_count_run(
+        # Detach the first result from its Krylov basis and free that basis before the second
+        # run fills its own — otherwise both bases are resident at once.
+        lower_result = _detached(_double_separate_count_run(
             mp, lower, spec_lower, strat.filter1, n_lower, tol, eigentol,
             overestimate_iters, layout, _double_run_timer(timer); label = "lower window run",
             target_energy = target_lower,
-        )
+        ))
+        GC.gc(true)
         upper_result = _double_separate_count_run(
             mp, upper, spec_upper, strat.filter2, n_upper, tol, eigentol,
             overestimate_iters, layout, _double_run_timer(timer); label = "upper window run",

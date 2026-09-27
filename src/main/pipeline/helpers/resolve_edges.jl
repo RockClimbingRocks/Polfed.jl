@@ -145,6 +145,7 @@ function _resolve_edges(
             algorithm_defaults,
         )
         (result.report.complete || retries == max_retries) && break
+        result = nothing          # its vecs view its Krylov basis: drop it before the retry builds one
         retries += 1
         inflation *= retry_growth
         polfed_log(POLFED_DEBUG_LEVEL,

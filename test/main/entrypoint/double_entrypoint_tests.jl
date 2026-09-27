@@ -66,6 +66,18 @@ end
         @test (res.order_double > 0) == (strategy === :double)  # …K_d only on the joint path
     end
 
+    @testset ":separate detaches the first result from its Krylov basis" begin
+        # The lower window's result is held through the second run, so it must own compact
+        # eigenvectors instead of viewing (and pinning) its whole basis.
+        lower = double_polfed(H, randn(D), w1, w2; strategy = :separate)[1]
+        @test parent(lower.vecs) isa Matrix
+        @test size(parent(lower.vecs)) == (length(lower.vals), D)
+        for (i, λ) in enumerate(lower.vals)
+            v = lower.vecs[:, i]
+            @test norm(H * v - λ * v) < 1e-6
+        end
+    end
+
     @testset "window mode, :auto decides and is correct either way" begin
         res = double_polfed(H, randn(D), w1, w2)
         check_pair(res)

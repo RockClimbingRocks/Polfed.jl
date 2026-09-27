@@ -104,9 +104,10 @@ Post-process the raw [`LanczosResult`](@ref) into the returned [`PolfedResult`](
      only when the caller pools more than one window's worth into one `LanczosResult`, i.e. the
      joint double-delta run.
    Either rule yields a contiguous range of the ascending `lr.vals`, so the eigenvector subset is
-   taken as a **view** (columns for [`ColumnLayout`](@ref), rows for [`RowLayout`](@ref)), no
-   copy. Slicing is safe precisely because the Lanczos criterion guarantees a **contiguous,
-   gap-free** converged run: it can only drop pairs from the ends, never punch a hole.
+   taken as a **view** (columns for [`ColumnLayout`](@ref); for [`RowLayout`](@ref) a lazy
+   `transpose` of the rows), no copy. Slicing is safe precisely because the Lanczos criterion
+   guarantees a **contiguous, gap-free** converged run: it can only drop pairs from the ends,
+   never punch a hole.
 3. `@warn` (not error) if fewer than `howmany` eigenpairs were selected, or if the criterion could
    not certify the window complete.
 
@@ -215,9 +216,10 @@ function build_polfed_result(lr::LanczosResult, mp::MappingPlan, interval::Inter
     kept_res  = residuals[lo:hi]
     # The Krylov basis may be stored row-major (the matrix entrypoints work in RowLayout), but the
     # RETURNED eigenvectors are always columns: `vecs[:, i]` is the i-th eigenvector regardless of
-    # how the run was laid out internally. Row layout therefore costs one transpose here — a real
-    # copy, not a lazy adjoint, so the result is a plain contiguous matrix.
-    kept_vecs = layout isa RowLayout ? permutedims(view(lr.vecs, lo:hi, :)) : view(lr.vecs, :, lo:hi)
+    # how the run was laid out internally. Row layout returns a lazy `transpose`, not a copy: the
+    # rows live in the Krylov basis storage, which stays alive either way, so a copy would add a
+    # full eigenvector matrix to the peak.
+    kept_vecs = layout isa RowLayout ? transpose(view(lr.vecs, lo:hi, :)) : view(lr.vecs, :, lo:hi)
 
     # Window mode: the criterion itself reports whether it certified the window complete (its
     # stopping rule was met) or merely handed back its contiguous run at the budget ceiling.

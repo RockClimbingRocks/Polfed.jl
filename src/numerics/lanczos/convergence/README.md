@@ -45,6 +45,15 @@ buffer can then reconcile repeated pairs and trim the assembled spectrum to the
 requested ownership interval. Merge tolerances should be consistent with mapped
 eigenvalue accuracy (`eigentol`), rather than the transformed Ritz tolerance alone.
 
+## Eigenvector memory
+
+A check that needs eigen residuals rebuilds the eigenvectors in chunks of 64 and
+keeps only their values and residuals (`calc_eigen_residuals_chunked`): the
+iteration may continue, so the Krylov basis must survive. Only the terminal
+extraction (`extract_eigenpairs!`, reached on `done`, `maxiter` or breakdown)
+materializes eigenvectors, and it writes them over the basis it has just consumed.
+The price is one extra reconstruction GEMM at the final check.
+
 ## Residual handling
 
 Ritz residuals use the current scalar residual norm or current block residual Gram

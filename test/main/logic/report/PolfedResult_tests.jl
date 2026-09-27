@@ -31,6 +31,18 @@ using UniPolfed: PolfedResult, MappingConfig, polfed, eigenvector, eigenpair
         end
     end
 
+    @testset "row-layout eigenvectors are columns without a copy" begin
+        # The matrix entrypoint runs in RowLayout: the eigenvectors stay in the Krylov basis rows
+        # and come back as a lazy transpose — still `vecs[:, i]`, still eigenvectors of H.
+        @test RES.vecs isa Transpose
+        @test size(RES.vecs) == (REPORT_D, length(RES.vals))
+        for (i, λ) in enumerate(RES.vals)
+            v = RES.vecs[:, i]
+            @test norm(REPORT_H * v - λ * v) < 1e-6
+        end
+        @test copy(RES.vecs) isa Matrix{Float64} && copy(RES.vecs) == RES.vecs
+    end
+
     @testset "sorted ascending by true energy" begin
         @test issorted(RES.vals)
         @test length(RES.residuals) == length(RES.vals)
