@@ -5,3 +5,4 @@
 
 include("gpu_dispatch.jl")
 include("ProcessingUnit.jl")
+include("openmp.jl")            # with_openmp_blocktime (MKL idle-thread spinning)

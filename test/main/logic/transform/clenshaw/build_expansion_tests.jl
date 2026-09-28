@@ -62,4 +62,28 @@ using UniPolfed
             UniPolfed.BlockWise(),
         )
     end
+    @testset "_operator_expansion picks the evaluator from the operator" begin
+        C = UniPolfed.Numerics.Clenshaw
+        H = UniPolfed.Models.xxz_hamiltonian(8, 4, 1.0, 0.55, 0.0; boundary = :periodic,
+                                             field = 0.0, use_sparse = true)
+        D, bs, a, b = size(H, 1), 2, 4.0, 0.25
+        coef = k -> 1 / (1 + k)
+        X = rand(bs, D)
+        ws() = [rand(bs, D) for _ in 1:3]
+        ref(op, K) = C.ClenshawExpansion(:Chebyshev, coef, K, op)(zeros(bs, D), X, ws())
+
+        gen = UniPolfed._generic_row_rescaled(H, a, b)
+        e = UniPolfed._operator_expansion(:Chebyshev, coef, 30, gen)
+        @test e isa C.AxpbyClenshaw
+        @test e(zeros(bs, D), X, ws()) ≈ ref(gen, 30) rtol = 1e-12
+
+        opt = UniPolfed.build_optimized_mapping(H, :universal_row_read, Val(bs), a, b).f!_rescaled
+        @test opt isa UniPolfed.RangeKernelOperator
+        e = UniPolfed._operator_expansion(:Chebyshev, coef, 30, opt)
+        @test e isa C.RangeClenshaw
+        @test e(zeros(bs, D), X, ws()) == ref(opt.whole, 30)   # same arithmetic, bit for bit
+
+        plain = (Y, Z) -> (Y .= 0.5 .* Z; nothing)
+        @test UniPolfed._operator_expansion(:Chebyshev, coef, 30, plain) isa C.ClenshawExpansion
+    end
 end

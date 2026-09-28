@@ -56,15 +56,15 @@ function build_transform(filter::AbstractFilter, mp::MappingPlan)
     family = polynomial_type(filter)
     E      = eltype(x0)
 
+    coeffs_func = coefficients(filter)                       # normalized: peak at ±1 at the target
+    expansion = _build_expansion(family, order, coeffs_func, mp, x0)
+
     # The order IS the per-matvec cost multiplier (one H·v per Chebyshev term), so it is the
     # single most useful number to see when a run is unexpectedly slow.
     polfed_log(POLFED_INFO_LEVEL, "Building the spectral transformation (Clenshaw filter of H̃).",
                filter = nameof(typeof(filter)), order = order, family = family,
                dim = mp.sys.dim, eltype = E, parallel = typeof(mp.parallel_strategy),
-               layout = typeof(layout))
-
-    coeffs_func = coefficients(filter)                       # normalized: peak at ±1 at the target
-    expansion = _build_expansion(family, order, coeffs_func, mp, x0)
+               layout = typeof(layout), evaluator = nameof(typeof(expansion)))
     b_storage = get_b_storage(mp.parallel_strategy, pu, x0, layout)
 
     if should_log(POLFED_DEBUG_LEVEL)

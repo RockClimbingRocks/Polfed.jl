@@ -47,6 +47,21 @@ using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
         @test maximum(abs.(Y .- want)) < 1e-12
     end
 
+    @testset "a kernel with a range form carries it, verified" begin
+        a, b = 4.0, 0.25
+        D = size(H, 1)
+        op = build_optimized_mapping(H, true, Val(2), a, b).f!_rescaled
+        @test op isa UniPolfed.Optimization.RangeKernelOperator
+        @test (op.units, op.alignment) == (D, 1)
+        X = rand(2, D); Y1 = similar(X); Y2 = similar(X)
+        op(Y1, X)                                             # the whole-block form
+        op.range!(Y2, X, 1, 17); op.range!(Y2, X, 18, D)      # the range form, in two chunks
+        @test Y1 == Y2
+        # row_bucketed (auto at bs = 1) has no range form: a plain closure, as before
+        @test !(build_optimized_mapping(H, true, Val(1), a, b).f!_rescaled isa
+                UniPolfed.Optimization.RangeKernelOperator)
+    end
+
     @testset "mapping_kernels lists what applies" begin
         out = sprint(io -> mapping_kernels(io, H))
         @test occursin("universal_row_read", out)

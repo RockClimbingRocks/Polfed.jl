@@ -32,7 +32,7 @@ function _run_filtered_patch(
     )
     log_prelanczos(mp, filter, eig_target, n, expected_dim, maxdim, tol, eigentol_rescaled;
                    label = label, rescaled_values = true)
-    result = @stage timer :lanczos lanczos(transformed, mp.sys.x0, eig_target;
+    result = @stage timer :lanczos _filtered_lanczos(transformed, mp.sys.x0, eig_target;
         rot = algorithm_defaults.rot,
         basistype = algorithm_defaults.basistype,
         maxdim = maxdim,

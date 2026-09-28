@@ -110,9 +110,41 @@ function build_optimized_mapping(H::AbstractMatrix, choice, ::Val{bs}, a::Real, 
         fr! = build_range_kernel(kernel, sr, Val(bs))
         n = range_units(kernel, sr, Val(bs))
         (Y, X) -> (fr!(Y, X, 1, n); nothing)
+    elseif supports_range(kernel)
+        fr! = build_range_kernel(kernel, sr, Val(bs))
+        n = range_units(kernel, sr, Val(bs))
+        align = range_alignment(kernel, sr, Val(bs))
+        # the transform will call the range form chunk by chunk: check it across a chunk boundary
+        verify_kernel(_split_range(fr!, n, align), H, a, b, Val(bs), kernel_name(kernel))
+        RangeKernelOperator(build_kernel(kernel, sr, Val(bs)), fr!, n, align)
     else
         build_kernel(kernel, sr, Val(bs))
     end
     verify_kernel(f!_rescaled, H, a, b, Val(bs), kernel_name(kernel))
     return (; f!_rescaled, kernel, structure = s)
+end
+
+"""
+    RangeKernelOperator(whole, range!, units, alignment)
+
+A built kernel that also carries its serial range form ([`build_range_kernel`](@ref)). Callable
+as the whole-block operator `op(Y, X)`; the transform uses `range!`/`units`/`alignment` to run the
+whole Clenshaw recurrence in one threaded region ([`RangeClenshaw`](@ref)) instead of opening the
+kernel's region and a combine region on every step.
+"""
+struct RangeKernelOperator{W,R} <: Function
+    whole::W
+    range!::R
+    units::Int
+    alignment::Int
+end
+
+(op::RangeKernelOperator)(Y, X) = (op.whole(Y, X); nothing)
+
+# The range form applied as two chunks split on an aligned boundary.
+_split_range(fr!, n::Int, align::Int) = (Y, X) -> begin
+    m = min(n, cld(cld(n, align), 2) * align)
+    fr!(Y, X, 1, m)
+    m < n && fr!(Y, X, m + 1, n)
+    return nothing
 end
