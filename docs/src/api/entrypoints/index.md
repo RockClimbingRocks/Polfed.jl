@@ -140,11 +140,13 @@ columns (block Lanczos), matching the shape of the `x0` you pass.
     Even when `x0` is a block, `f!` has to work on **one** vector — a length-`dim` vector under
     [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), a `1 × dim` matrix under
     [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Two stages need it: the
-    spectral-bounds probe, and the DoS, which deliberately probes one vector at a time so the
+    spectral-bounds probe, and the DoS, which by default probes one vector at a time so the
     estimated density does not depend on your block size.
 
     A `mul!` wrapper satisfies this for free. An operator hard-wired to a fixed block width does
-    not, and must be written shape-generically.
+    not, and must be written shape-generically. If `f!` takes any block width and is safe to call
+    concurrently, `DoSConfig(block_size = 8, tasks = Threads.nthreads())` makes the DoS several
+    times faster — the matrix entrypoints do this automatically.
 
 ### Reproducibility
 

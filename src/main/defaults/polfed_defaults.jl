@@ -51,6 +51,15 @@ Default KPM damping kernel (see `Numerics.KPM.get_kernel`).
 """
 const kernel = :Jackson
 
+"""
+    Defaults.polfed.dos_block_size::Int = 8
+
+Default number of KPM probes applied per operator call in the DoS (`DoSConfig.block_size`).
+Wider blocks read `H` once for more probes; past ~8 the gain is small and the buffers
+(`3 · tasks · block_size · dim` elements) keep growing.
+"""
+const dos_block_size = 8
+
 # ── Mapping ───────────────────────────────────────────────────────────────────
 
 """

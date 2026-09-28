@@ -1,11 +1,11 @@
 # Density-of-states adapter: the POLFED-facing wrapper around the Numerics.KPM
-# primitive. DoSConfig (user surface) → density_of_states → DoSResult (moments + ρ).
+# primitive. DoSConfig (user surface) → calculate_dos → DoSResult (moments + ρ).
 # Included directly into `module UniPolfed` (no submodule).
 
 
 """
     DoSConfig(; N=Defaults.polfed.N, R=Defaults.polfed.R, kernel=Defaults.polfed.kernel,
-                rng=Random.default_rng())
+                rng=Random.default_rng(), block_size=nothing, tasks=nothing)
 
 User-facing configuration for POLFED's density-of-states (DoS) estimation step.
 
@@ -13,7 +13,7 @@ POLFED estimates the DoS once, up front, with the kernel polynomial method (KPM)
 `R` stochastic probes and `N` Chebyshev moments, damped by `kernel`. The resulting
 density (in rescaled coordinates) is used to place the target window and size the
 filter. This struct is the public surface; the estimation itself is
-[`density_of_states`](@ref).
+[`calculate_dos`](@ref).
 
 # Fields
 - `N::Int`: number of Chebyshev moments. Higher ⇒ sharper resolution, more cost.
@@ -27,19 +27,31 @@ filter. This struct is the public surface; the estimation itself is
   slightly DIFFERENT windows, and a caller who seeded their own generator for the Hamiltonian
   and starting block still gets an irreproducible target. Pass a seeded generator to pin it.
   Ignored on a [`GPU`](@ref), where probes come from the device generator.
+- `block_size::Union{Int,Nothing}`: probes per operator call — the DoS's own width, never the
+  Krylov block size. `nothing` (default) is [`Defaults.polfed.dos_block_size`](@ref) (`8`) on the
+  matrix entrypoints and `1` on the operator ones. Clamped to `R` and below `dim`; `1` on a GPU.
+- `tasks::Union{Int,Nothing}`: probe blocks run concurrently. `nothing` (default) is
+  `Threads.nthreads()` on the matrix entrypoints and `1` on the operator ones; `1` on a GPU.
+
+!!! warning "Operator entrypoints"
+    On `polfed(f!, …)`, `block_size > 1` hands `f!` a `dim × block_size` block, and `tasks > 1`
+    calls it concurrently (it must be safe on distinct arrays). Opt in only if `f!` supports both.
 
 # Example
 ```julia
 DoSConfig()                        # defaults
 DoSConfig(N = 500, R = 400)        # finer resolution, more probes
 DoSConfig(rng = MersenneTwister(1))# reproducible window
+DoSConfig(block_size = 8, tasks = Threads.nthreads()) # polfed(f!, …) with a generic, thread-safe f!
 ```
 
 # Notes
-There is intentionally no `DoSConfig` → plan resolution step: every field is a
-concrete value with a default, so there is nothing to resolve (unlike the mapping
-or transform configs, which estimate spectral bounds). [`density_of_states`](@ref)
-consumes a `DoSConfig` directly.
+There is intentionally no `DoSConfig` → plan resolution step: the only automatic fields,
+`block_size` and `tasks`, resolve to plain integers per entrypoint ([`_owned_operator_dos`](@ref),
+[`_dos_parallelism`](@ref)). [`calculate_dos`](@ref) consumes a `DoSConfig` directly.
+
+For a fixed `rng` seed and `block_size` the moments are bit-identical for every `tasks`, thread
+count, Krylov block size and `optimize_mapping`.
 
 `rng` is a type parameter rather than an `AbstractRNG` field: it is read once per probe inside
 the moment loop, and an abstract field would box it and force a dynamic dispatch there.
@@ -49,23 +61,43 @@ struct DoSConfig{RNG<:AbstractRNG}
     R::Int
     kernel::Symbol
     rng::RNG
+    block_size::Union{Int,Nothing}
+    tasks::Union{Int,Nothing}
 
     function DoSConfig(;
         N::Int       = Defaults.polfed.N,
         R::Int       = Defaults.polfed.R,
         kernel::Symbol = Defaults.polfed.kernel,
         rng::AbstractRNG = Random.default_rng(),
+        block_size::Union{Int,Nothing} = nothing,
+        tasks::Union{Int,Nothing} = nothing,
     )
-        new{typeof(rng)}(N, R, kernel, rng)
+        isnothing(block_size) || block_size >= 1 || throw(ArgumentError(
+            "DoSConfig: block_size must be >= 1 (or nothing), got $block_size."))
+        isnothing(tasks) || tasks >= 1 ||
+            throw(ArgumentError("DoSConfig: tasks must be >= 1 (or nothing), got $tasks."))
+        new{typeof(rng)}(N, R, kernel, rng, block_size, tasks)
     end
 end
+
+"""
+    _owned_operator_dos(cfg::DoSConfig) -> DoSConfig
+
+`cfg` with the automatic (`nothing`) `block_size`/`tasks` resolved for an operator POLFED owns:
+[`Defaults.polfed.dos_block_size`](@ref) and `Threads.nthreads()`. Explicit values are kept.
+Used by the matrix entrypoints, whose DoS operator is a generic, reentrant `mul!` on `H`.
+"""
+_owned_operator_dos(cfg::DoSConfig) =
+    DoSConfig(N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = cfg.rng,
+              block_size = something(cfg.block_size, Defaults.polfed.dos_block_size),
+              tasks = something(cfg.tasks, Threads.nthreads(:default)))
 
 
 
 """
     DoSResult(moments, ρ)
 
-Result of a density-of-states estimation (see [`density_of_states`](@ref)).
+Result of a density-of-states estimation (see [`calculate_dos`](@ref)).
 
 # Fields
 - `moments::AbstractVector{<:Real}`: the raw KPM Chebyshev moments `μₖ`. Kept
@@ -87,52 +119,60 @@ end
 
 
 """
-    _dos_probe_template(sys::SysInfo) -> AbstractVecOrMat
+    _dos_probe_template(sys::SysInfo, block_size::Int) -> AbstractVecOrMat
 
-The KPM probe buffer for the DoS: **one** Krylov vector, shaped the way this layout's operator
-takes it — a length-`dim` vector under [`ColumnLayout`](@ref), a `1 × dim` matrix under
-[`RowLayout`](@ref), mirroring `_vector_slice`.
+The KPM probe block for the DoS: `dim × block_size` under [`ColumnLayout`](@ref) (a plain
+length-`dim` vector for one probe) and `block_size × dim` under [`RowLayout`](@ref).
 
-Deliberately **not** `sys.x0`. Probing with the user's block made the DoS depend on the Krylov
-block size: `randn!` fills a `dim × bs` block in one draw, and that is not the same random stream
-as `bs` single-vector draws, so one seed produced different probes — and so a different density,
-a different target interval and a different eigenpair set — for every block size. The density is
-a property of `H` alone, so it is estimated one vector at a time and is reproducible from
-`DoSConfig(rng = …)` on its own.
-
-`similar` carries the element type and the device across, so a GPU block yields a GPU probe.
+Deliberately **not** shaped like `sys.x0`, so the density does not depend on the Krylov block
+size. `similar` carries the element type and device across.
 """
-_dos_probe_template(sys::SysInfo) =
-    sys.x0 isa AbstractVector    ? similar(sys.x0) :
-    sys.layout isa RowLayout     ? similar(sys.x0, 1, sys.dim) :
-                                   similar(sys.x0, sys.dim)
-
+function _dos_probe_template(sys::SysInfo, block_size::Int)
+    sys.layout isa RowLayout && return similar(sys.x0, block_size, sys.dim)
+    block_size == 1 && return similar(sys.x0, sys.dim)
+    return similar(sys.x0, sys.dim, block_size)
+end
 
 """
-    density_of_states(cfg::DoSConfig, f!, dim, E, pu) -> DoSResult
+    _dos_parallelism(cfg::DoSConfig, sys::SysInfo) -> (block_size, tasks)
+
+The probe-block width and task count the DoS runs with: `(1, 1)` on a GPU; on the CPU
+`cfg.block_size` clamped to `R` and below `dim` (KPM reads the larger axis as the Hilbert space)
+and `cfg.tasks`, each with `nothing` meaning `1` (the operator-entrypoint default).
+"""
+function _dos_parallelism(cfg::DoSConfig, sys::SysInfo)
+    sys.pu isa GPU && return (1, 1)
+    block_size = clamp(something(cfg.block_size, 1), 1, max(1, min(cfg.R, sys.dim - 1)))
+    return (block_size, something(cfg.tasks, 1))
+end
+
+
+"""
+    calculate_dos(cfg::DoSConfig, f!, sys::SysInfo) -> DoSResult
 
 Estimate the spectral density of a Hermitian operator with the kernel polynomial
 method (KPM) — POLFED's up-front DoS step.
 
 `f!` must apply the **already-rescaled** operator (`H̃ = (H - b)/a`, spectrum in
-`[-1, 1]`) in place: `f!(y, x)` writes `H̃·x` into `y`. The returned density is in
-those rescaled coordinates.
+`[-1, 1]`) in place: `f!(Y, X)` writes `H̃·X` into `Y` for a probe block `X` (see
+[`_dos_probe_template`](@ref)). The returned density is in those rescaled coordinates.
 
 This is a thin adapter over the `Numerics.KPM` primitive: it runs
-[`kpm_moments`](@ref) with the configured `N`/`R` and reconstructs the density with
-[`kpm_density`](@ref) using the configured `kernel`.
+[`kpm_moments`](@ref) with the configured `N`/`R`, block width and task count, and reconstructs
+the density with [`kpm_density`](@ref) using the configured `kernel`.
 
 # Arguments
-- `cfg::DoSConfig`: number of moments `N`, probes `R`, and damping `kernel`.
-- `f!`: in-place action of the rescaled Hermitian operator, `f!(y, x) → y = H̃·x`.
-- `dim::Int`: Hilbert-space dimension (the operator is `dim × dim`).
-- `E::Type{<:Number}`: element type of the probe vectors (e.g. `Float64`).
-- `pu::ProcessingUnit`: [`CPU`](@ref) or [`GPU`](@ref) backend.
+- `cfg::DoSConfig`: moments `N`, probes `R`, `kernel`, `rng`, `block_size`, `tasks`.
+- `f!`: in-place action of the rescaled Hermitian operator, `f!(Y, X) → Y = H̃·X`.
+- `sys::SysInfo`: dimension, element type, device and layout.
 
 # Returns
 - [`DoSResult`](@ref) holding the raw `moments` and the density `ρ(x)`.
 
 # Notes
+On the CPU this runs inside [`with_serial_libraries`](@ref): BLAS and MKL at one thread, the
+parallelism coming from `tasks` concurrent probe blocks.
+
 Correctness requires `f!` to be Hermitian (real spectrum) — KPM's Chebyshev
 expansion and moment-doubling assume it. The density obeys KPM's sum rule
 `∫₋₁¹ ρ = g₀·μ₀`, i.e. the total number of states when the moments are
@@ -143,11 +183,14 @@ function calculate_dos(
     f!::Function,
     sys::SysInfo,
 )
+    block_size, tasks = _dos_parallelism(cfg, sys)
     polfed_log(POLFED_INFO_LEVEL, "Computing the density of states (KPM) on the rescaled operator.",
                N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = typeof(cfg.rng),
-               probe_block_size = 1)
+               probe_block_size = block_size, tasks = tasks)
 
-    moments = kpm_moments(f!, cfg.N, cfg.R, _dos_probe_template(sys), sys.pu; rng = cfg.rng)
+    template = _dos_probe_template(sys, block_size)
+    run() = kpm_moments(f!, cfg.N, cfg.R, template, sys.pu; rng = cfg.rng, ntasks = tasks)
+    moments = sys.pu isa GPU ? run() : with_serial_libraries(run)
     coefficients = kpm_coeffs(moments, cfg.kernel)
     ρ = kpm_density(moments; kernel = cfg.kernel)
     dos = DoSResult(moments, coefficients, ρ)

@@ -2,6 +2,7 @@ using Test
 using UniPolfed
 using LinearAlgebra
 using Random
+using SparseArrays
 
 K = UniPolfed.Numerics.KPM
 
@@ -75,6 +76,70 @@ Base.eltype(::MomTestOp) = Float64
 
         expected = [_kpm_test_cheb(λ[1], k) + _kpm_test_cheb(λ[3], k) for k in 0:N-1]
         @test μ ≈ expected
+    end
+
+    @testset "probe_moments! keeps each probe in its own column" begin
+        λ = [0.3, -0.7, 0.5, -0.1]
+        H = Diagonal(λ)
+        N = 9
+        for (probe, f!) in ((Matrix{Float64}(I, 4, 4), (Y, X) -> mul!(Y, H, X)),     # columns
+                            (Matrix{Float64}(I, 4, 4)[1:3, :], (Y, X) -> mul!(Y, X, H)))  # rows
+            μ = zeros(N, size(probe, 1) == 3 ? 3 : 4)
+            K.probe_moments!(μ, f!, probe, K.ChebyshevWorkspace(probe))
+            for p in axes(μ, 2)
+                @test μ[:, p] ≈ [_kpm_test_cheb(λ[p], k) for k in 0:N-1]
+            end
+        end
+    end
+
+    @testset "block width and ntasks change neither the probes nor the moments" begin
+        # Probes are drawn one at a time and summed in probe order, so with an operator whose
+        # rounding does not depend on the block (elementwise), the moments are BIT-identical for
+        # every width and task count — rows and columns alike, including a ragged last block.
+        dim, N, R = 50, 12, 11
+        d = collect(range(-0.9, 0.95; length = dim))
+        rowop!(Y, X) = (Y .= X .* d'; nothing)
+        colop!(Y, X) = (Y .= d .* X; nothing)
+        run(E, template, f!, nt) =
+            K.kpm_moments(f!, N, R, template, UniPolfed.CPU(); rng = MersenneTwister(3), ntasks = nt)
+
+        for E in (Float64, ComplexF64)
+            ref_row = run(E, zeros(E, 1, dim), rowop!, 1)
+            ref_col = run(E, zeros(E, dim), colop!, 1)
+            for nb in (1, 3, 4), nt in (1, 3)
+                @test run(E, zeros(E, nb, dim), rowop!, nt) == ref_row
+                @test run(E, nb == 1 ? zeros(E, dim) : zeros(E, dim, nb), colop!, nt) == ref_col
+            end
+            @test ref_row ≈ ref_col   # same probes; only the summation order differs
+        end
+    end
+
+    @testset "ntasks is bit-identical with a generic sparse operator" begin
+        Random.seed!(11)
+        dim = 80
+        A = sprandn(dim, dim, 0.1)
+        H = (A + A') ./ (2 * opnorm(Matrix(A + A')))
+        f!(Y, X) = mul!(Y, X, H)
+        μ(nt) = UniPolfed.with_serial_libraries() do   # as calculate_dos runs it
+            K.kpm_moments(f!, 20, 13, zeros(4, dim), UniPolfed.CPU();
+                          rng = MersenneTwister(5), ntasks = nt)
+        end
+        @test μ(1) == μ(2) == μ(5)
+        @test μ(1)[1] ≈ dim   # μ₀ = Tr I
+    end
+
+    @testset "kpm_moments and probe_moments! are type-stable" begin
+        d = collect(range(-0.9, 0.9; length = 30))
+        f!(Y, X) = (Y .= X .* d'; nothing)
+        @inferred K.kpm_moments(f!, 8, 5, zeros(2, 30), UniPolfed.CPU(); ntasks = 2)
+        @inferred K.kpm_moments(f!, 8, 5, zeros(ComplexF32, 3, 30), UniPolfed.CPU())
+        P = Matrix{Float64}(I, 30, 30)[1:3, :]
+        @inferred K.probe_moments!(zeros(8, 3), f!, P, K.ChebyshevWorkspace(P))
+    end
+
+    @testset "kpm_moments rejects a non-positive ntasks" begin
+        @test_throws ArgumentError K.kpm_moments((y, x) -> (y .= x), 2, 2, zeros(4), UniPolfed.CPU();
+                                                 ntasks = 0)
     end
 
     @testset "kpm_moments H = cI is exact" begin

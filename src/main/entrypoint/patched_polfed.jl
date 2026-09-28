@@ -63,10 +63,10 @@ function patched_polfed(
     retry_growth::Real = Defaults.patched_polfed.retry_budget_growth,
     verbosity::Union{Nothing,Integer} = nothing,
 )
-    f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
+    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_patched_polfed_target_pipeline(
         f!, x0_row, howmany, howmany_per_patch, target;
-        mc = mc_row, dosc, tol, eigentol, overestimate_iters,
+        mc = mc_row, dosc = dosc_row, tol, eigentol, overestimate_iters,
         layout = RowLayout(),
         edge_distance, howmany_pad, max_retries, retry_growth,
     )
@@ -127,10 +127,10 @@ function patched_polfed(
     retry_growth::Real = Defaults.patched_polfed.retry_budget_growth,
     verbosity::Union{Nothing,Integer} = nothing,
 )
-    f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
+    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_patched_polfed_window_pipeline(
         f!, x0_row, howmany_per_patch, target;
-        mc = mc_row, dosc, tol, eigentol, overestimate_iters,
+        mc = mc_row, dosc = dosc_row, tol, eigentol, overestimate_iters,
         layout = RowLayout(),
         edge_distance, howmany_pad, max_retries, retry_growth,
     )

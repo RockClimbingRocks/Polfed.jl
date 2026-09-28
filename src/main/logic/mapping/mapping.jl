@@ -116,8 +116,7 @@ Build the in-place rescaled operator `H̃·X = ((H - b)/a)·X` as a closure capt
 function _make_rescaled(f!::F, a, b) where {F}
     return @inline (Y::AbstractVecOrMat, X::AbstractVecOrMat) -> begin
         f!(Y, X)
-        @. Y *= 1 / a
-        @. Y -= (b / a) * X
+        @. Y = Y * (1 / a) - (b / a) * X   # one pass; the same rounding as scaling then shifting
         return nothing
     end
 end
@@ -125,28 +124,27 @@ end
 """
     dos_operator(mp::MappingPlan) -> Function
 
-The rescaled operator the **DoS stage** runs on: `_make_rescaled(mp.f!, mp.a, mp.b)`, built here
-rather than reusing `mp.f!_rescaled`. Two reasons, both because the density of states is a
-property of `H` alone and must not inherit anything from the Krylov block:
-
-- **Shape.** The DoS probes with a single Krylov vector (block size 1, see `_dos_probe_template`).
-  On the matrix path `mp.f!_rescaled` is the fast value-grouped kernel built at `Val(bs)`, and
-  handed a one-vector block it writes the first row and leaves the rest zero. `mp.f!` is always
-  the generic `mul!` operator, which takes any block size — the same reason `mapvals` is built
-  this way rather than from `f!_rescaled`.
-- **Reproducibility.** Probing at a fixed block size makes the KPM probe stream — and therefore
-  the density, the target interval and the returned eigenpairs — independent of the user's block
-  size, and reproducible from `DoSConfig(rng = …)` alone.
-
-Allocates nothing extra: `mp.f!` already exists for the map-back, so this only wraps it in the
-affine rescaling instead of materializing a second operator.
+The rescaled operator the **DoS stage** runs on: `_make_rescaled(mp.f!, mp.a, mp.b)`, not
+`mp.f!_rescaled`. The DoS applies its own probe block (`DoSConfig.block_size`), which the
+`Val(bs)` transform kernel cannot take; `mp.f!` is the generic `mul!` for every
+`optimize_mapping`, so the density never depends on the mapping or the Krylov block size.
 
 !!! note "Operator entrypoints"
-    On `polfed(f!, x0, …)` this is the user's own `f!`. It must therefore accept a **single**
-    Krylov vector — a length-`dim` vector under [`ColumnLayout`](@ref), a `1 × dim` matrix under
-    [`RowLayout`](@ref) — not only the full block.
+    On `polfed(f!, x0, …)` this is the user's own `f!`: it must accept a `dim × block_size` block
+    (a length-`dim` vector when `block_size == 1`), not only the Krylov block.
 """
 dos_operator(mp::MappingPlan) = _make_rescaled(mp.f!, mp.a, mp.b)
+
+"""
+    _serial_bounds_probe(probe, on_gpu::Bool)
+
+Run the bounds-estimation `probe()` inside [`with_serial_libraries`](@ref) (untouched on a GPU),
+so the estimated `Emin`/`Emax` — and every rescaled quantity after them — do not depend on the
+thread count. `probe` must call Lanczos with `blas_threads = nothing`, or its `:auto` would raise
+BLAS back up inside the scope.
+"""
+_serial_bounds_probe(probe::F, on_gpu::Bool) where {F} =
+    on_gpu ? probe() : with_serial_libraries(probe)
 
 """
     _resolve_bounds(cfg::MappingConfig, f!, v0) -> (Emin, Emax)
@@ -166,7 +164,9 @@ function _resolve_bounds(cfg::MappingConfig, f!, v0::AbstractVector)
     polfed_log(POLFED_DEBUG_LEVEL, "Estimating spectral bounds with a Lanczos probe.",
                estimating = isnothing(cfg.Emin) ? (isnothing(cfg.Emax) ? "Emin+Emax" : "Emin") : "Emax")
 
-    res = lanczos_extrema(f!, v0; return_result = true)
+    res = _serial_bounds_probe(
+        () -> lanczos_extrema(f!, v0; return_result = true, blas_threads = nothing),
+        is_gpu_array(v0))
     polfed_log(POLFED_DEBUG_LEVEL, "Bounds probe finished.",
                converged = res.converged, vals = res.vals,
                iterations = res.report.itersneeded, residual = res.report.residual)

@@ -69,9 +69,9 @@ function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany, target1
                        overestimate_iters::Real = Defaults.double_polfed.overestimate_iters,
                        verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
+    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_double_polfed_target_pipeline(f!, x0_row, howmany, target1, target2;
-                        mc = mc_row, dosc = dosc, tol = tol, eigentol = eigentol,
+                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, strategy = strategy,
                         layout = RowLayout())
 end
@@ -122,9 +122,9 @@ function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target1, target2
                        overestimate_iters::Real = Defaults.double_polfed.overestimate_iters,
                        verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row = _prepare_matrix_row_pipeline(H, x0, mc)
+    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_double_polfed_window_pipeline(f!, x0_row, target1, target2;
-                        mc = mc_row, dosc = dosc, tol = tol, eigentol = eigentol,
+                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, strategy = strategy,
                         layout = RowLayout())
 end

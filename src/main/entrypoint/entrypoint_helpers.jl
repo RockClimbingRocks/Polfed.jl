@@ -19,14 +19,18 @@ macro with_verbosity(level, expr)
 end
 
 """
-    _prepare_matrix_row_pipeline(H, x0, mc) -> (f!, x0_row, mc_row)
+    _prepare_matrix_row_pipeline(H, x0, mc, dosc) -> (f!, x0_row, mc_row, dosc_row)
 
 Prepare a concrete matrix for any row-native POLFED entrypoint. The helper resolves missing
 spectral bounds, builds the selected row operator, reorients `x0`, and returns a mapping config
 that carries the row-specific rescaled operator. Count, window, patched, and full entrypoints
 then differ only in the pipeline they call.
+
+`dosc_row` is `dosc` resolved by [`_owned_operator_dos`](@ref): the DoS operator here is
+POLFED's own `mul!` on `H`, which takes any probe block and is safe to run concurrently.
 """
-function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, mc::MappingConfig)
+function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, mc::MappingConfig,
+                                      dosc::DoSConfig)
     size(H, 1) == size(H, 2) ||
         throw(DimensionMismatch("Matrix POLFED entrypoints require a square matrix."))
 
@@ -41,7 +45,8 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
         polfed_log(POLFED_DEBUG_LEVEL, "Estimating spectral bounds with a Lanczos probe on H.",
                    estimating = isnothing(mc.Emin) ? (isnothing(mc.Emax) ? "Emin+Emax" : "Emin") : "Emax",
                    dim = size(H, 1))
-        E1, E2 = lanczos_extrema(H; x0 = collect(v0))
+        probe = () -> lanczos_extrema(H; x0 = collect(v0), blas_threads = nothing)
+        E1, E2 = _serial_bounds_probe(probe, is_gpu_array(x0))
         Emin = isnothing(mc.Emin) ? E1 : mc.Emin
         Emax = isnothing(mc.Emax) ? E2 : mc.Emax
     else
@@ -73,7 +78,7 @@ function _prepare_matrix_row_pipeline(H::AbstractMatrix, x0::AbstractVecOrMat, m
                            clenshaw_finalsum   = mc.clenshaw_finalsum,
                            Emin = Emin, Emax = Emax)
 
-    return rowops.f!, x0_row, mc_row
+    return rowops.f!, x0_row, mc_row, _owned_operator_dos(dosc)
 end
 
 """

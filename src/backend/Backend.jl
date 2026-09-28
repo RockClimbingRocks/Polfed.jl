@@ -5,3 +5,4 @@
 
 include("gpu_dispatch.jl")
 include("ProcessingUnit.jl")
+include("library_threads.jl")   # with_serial_libraries (BLAS + MKL thread scoping)
