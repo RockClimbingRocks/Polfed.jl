@@ -32,7 +32,8 @@ using .Common: should_log, polfed_log, with_verbosity,        # gated POLFED log
                Formatter, fmt, bold, cyan, blue, green, red, yellow,  # Report coloring
                StageTimer, @stage, @stages,                   # named stage timing (pipelines + Lanczos)
                stage_names, total_wall, total_cpu
-using .Numerics.Clenshaw: ClenshawExpansion, build_clenshaw_kernels  # Transform filter evaluation
+using .Numerics.Clenshaw: ClenshawExpansion, build_clenshaw_kernels, # Transform filter evaluation
+                          AxpbyClenshaw, RangeClenshaw       # fused evaluators (matrix entrypoints)
 using .Numerics.KPM: kpm_moments, kpm_density, kpm_coeffs, get_kernel # DoS adapter + Transform state count
 using .Numerics.Lanczos: ReOrthTechnique, OrthonormalBasis,   # Factorization config types
                          FullRO, PartialRO, SelectiveRO,      # reorthogonalization techniques (public)
@@ -48,6 +49,7 @@ using .Numerics.Lanczos: ReOrthTechnique, OrthonormalBasis,   # Factorization co
                          CONVERGENCE_TABLE_HEADER,             # shared per-check table (both report sinks)
                          convergence_table_rows
 using .Optimization: build_optimized_mapping, MappingKernel,   # matrix entrypoint row kernels
+                     RangeKernelOperator,                      # kernel + serial range form (transform)
                      resolve_mapping_kernel,                   # kernel choice resolution (public)
                      kernel_name, mapping_kernels, classify,
                      benchmark_mapping, MappingBenchmark, best, per_column

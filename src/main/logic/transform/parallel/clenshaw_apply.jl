@@ -12,11 +12,12 @@ Apply the Clenshaw `expansion` to `X`, writing `Y`, under the parallelization `s
 
 Methods:
 - [`BlockWise`](@ref): a single whole-block call (the decomposition, when present, lives
-  inside the expansion's matvec).
+  inside the expansion's matvec). Any evaluator `expansion(Y, X, b)` — including the fused
+  [`AxpbyClenshaw`](@ref) / [`RangeClenshaw`](@ref) — is accepted here.
 - [`VectorWise`](@ref) on [`CPU`](@ref): threaded over columns with per-column workspace,
   or — for a vector input, which is a single column — one BLAS-serialized call.
 """
-function clenshaw_apply(expansion::ClenshawExpansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
+function clenshaw_apply(expansion, Y::AbstractVecOrMat, X::AbstractVecOrMat,
                         b::AbstractVector{<:AbstractVecOrMat}, ::ProcessingUnit, ::BlockWise,
                         ::Layout = ColumnLayout())
     expansion(Y, X, b)

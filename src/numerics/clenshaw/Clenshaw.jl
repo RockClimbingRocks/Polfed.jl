@@ -37,6 +37,7 @@ const polynomial_properties = Dict(f => recurrence_weights(Val(f)) for f in SUPP
 include("algorithm/recurrence_relations.jl")
 include("algorithm/final_sum.jl")
 include("algorithm/clenshaw_algorithm.jl")
+include("algorithm/fused_clenshaw.jl")   # AxpbyClenshaw, RangeClenshaw (no per-step pool switch)
 
 """
     build_clenshaw_kernels(mapping!, Val(family)) -> (recurrence!, finalsum!)
@@ -291,6 +292,6 @@ function (clenshaw::ClenshawExpansion{Family})(x::Number) where {Family}
     return clenshaw_algorithm!(clenshaw.coefficients, clenshaw.order, α, β, ϕ₀, ϕ₁, b, x)
 end
 
-export ClenshawExpansion
+export ClenshawExpansion, AxpbyClenshaw, RangeClenshaw
 
 end # module Clenshaw

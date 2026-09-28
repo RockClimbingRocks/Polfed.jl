@@ -30,6 +30,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
         @testset "Backend" begin
             include("backend/ProcessingUnit_tests.jl")
             include("backend/gpu_dispatch_tests.jl")
+            include("backend/openmp_tests.jl")
         end
     end
 
@@ -38,6 +39,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
             include("numerics/clenshaw/algorithm/recurrence_relations_tests.jl")
             include("numerics/clenshaw/algorithm/final_sum_tests.jl")
             include("numerics/clenshaw/algorithm/clenshaw_algorithm_tests.jl")
+            include("numerics/clenshaw/algorithm/fused_clenshaw_tests.jl")
             include("numerics/clenshaw/ClenshawExpansion_tests.jl")
         end
         @testset "KPM" begin
@@ -105,6 +107,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
         @testset "logic" begin
             @testset "mapping" begin
                 include("main/logic/mapping/parallel_tests.jl")
+                include("main/logic/mapping/row_operators_tests.jl")
             end
 
             @testset "dos" begin

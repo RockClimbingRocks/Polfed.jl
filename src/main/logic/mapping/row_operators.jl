@@ -24,7 +24,7 @@ end
 
 
 """
-    _generic_row_rescaled(H, a, b) -> Function
+    _generic_row_rescaled(H, a, b) -> _RowRescaled
 
 A generic **row**-layout rescaled transform operator `Y ← X·H̃` over a `bs × D` block, where
 ``\\tilde H = (H - b I)/a`` is formed **once, here**, and each apply is a bare `mul!`. The
@@ -60,13 +60,61 @@ function _generic_row_rescaled(H::AbstractMatrix, a::Real, b::Real;
                                mkl_threads::Int = Threads.nthreads(:default))
     T = float(eltype(H))
     H̃ = (H - T(b) * I) / T(a)
+    return _RowRescaled(H̃, mkl_threads)
+end
 
-    return @inline (Y::AbstractMatrix, X::AbstractMatrix) -> begin
-        _with_mkl_threads(mkl_threads) do
-            mul!(Y, X, H̃)
-        end
-        return nothing
-    end
+"""
+    _RowRescaled(H̃, mkl_threads)
+
+The generic row operator built by [`_generic_row_rescaled`](@ref): callable as `op(Y, X)`
+(`Y ← X·H̃`), plus the accumulating forms the transform's [`AxpbyClenshaw`](@ref) uses —
+[`_row_axpby!`](@ref) and [`_row_add!`](@ref) — so a whole Clenshaw step stays inside MKL's
+thread team instead of alternating with a Julia threaded combine.
+"""
+struct _RowRescaled{M<:AbstractMatrix} <: Function
+    H̃::M
+    mkl_threads::Int
+end
+
+function (op::_RowRescaled)(Y::AbstractMatrix, X::AbstractMatrix)
+    _with_mkl_threads(() -> mul!(Y, X, op.H̃), op.mkl_threads)
+    return nothing
+end
+
+"""    _row_axpby!(op::_RowRescaled, Y, X, α, β) — `Y ← α·X·H̃ + β·Y`; `β = 0` does not read `Y`."""
+function _row_axpby!(op::_RowRescaled, Y::AbstractMatrix, X::AbstractMatrix, α, β)
+    _with_mkl_threads(() -> mul!(Y, X, op.H̃, α, β), op.mkl_threads)
+    return nothing
+end
+
+"""    _row_add!(op::_RowRescaled, Y, c, X) — `Y ← Y + c·X`, on the same MKL threads as the product."""
+function _row_add!(op::_RowRescaled, Y::AbstractMatrix, c, X::AbstractMatrix)
+    _with_mkl_threads(() -> _mkl_axpy!(c, X, Y), op.mkl_threads)
+    return nothing
+end
+
+"""
+    _mkl_axpy!(c, X, Y) -> Y
+
+`Y ← Y + c·X` through MKL's own `cblas_?axpy_64`, whatever BLAS Julia is using: with OpenBLAS
+behind `LinearAlgebra`, `axpy!` would start a third thread pool next to MKL's. Falls back to
+`axpy!` for anything but contiguous CPU arrays of a BLAS type.
+"""
+function _mkl_axpy!(c, X::Array{T}, Y::Array{T}) where {T<:LinearAlgebra.BlasFloat}
+    length(X) == length(Y) || throw(DimensionMismatch("axpy: X has $(length(X)) entries, Y $(length(Y))."))
+    _cblas_axpy!(Int64(length(X)), T(c), X, Y)
+    return Y
+end
+_mkl_axpy!(c, X, Y) = axpy!(c, X, Y)
+
+for (T, fn) in ((Float64, :cblas_daxpy_64), (Float32, :cblas_saxpy_64))
+    @eval _cblas_axpy!(n::Int64, a::$T, X::Array{$T}, Y::Array{$T}) =
+        @ccall libmkl_rt.$fn(n::Int64, a::$T, X::Ptr{$T}, 1::Int64, Y::Ptr{$T}, 1::Int64)::Cvoid
+end
+for (T, fn) in ((ComplexF64, :cblas_zaxpy_64), (ComplexF32, :cblas_caxpy_64))
+    @eval _cblas_axpy!(n::Int64, a::$T, X::Array{$T}, Y::Array{$T}) =
+        @ccall libmkl_rt.$fn(n::Int64, Ref(a)::Ref{$T}, X::Ptr{$T}, 1::Int64, Y::Ptr{$T},
+                             1::Int64)::Cvoid
 end
 
 
