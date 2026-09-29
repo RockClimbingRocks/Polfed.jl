@@ -42,7 +42,8 @@ Usage: [Bring your own operator](@ref operator_interface),
 ## [`DoSConfig`](@id UniPolfed.DoSConfig)
 
 ```julia
-DoSConfig(; N=250, R=300, kernel=:Jackson)
+DoSConfig(; N=500, R=500, kernel=:Jackson, rng=Random.default_rng(),
+            block_size=nothing, tasks=nothing)
 ```
 
 Controls the kernel-polynomial density-of-states estimate.
@@ -50,6 +51,16 @@ Controls the kernel-polynomial density-of-states estimate.
 - `N` — number of Chebyshev moments. Higher `N` gives finer spectral resolution.
 - `R` — number of stochastic probe vectors. Higher `R` reduces noise.
 - `kernel` — the damping kernel used to suppress Gibbs oscillations.
+- `rng` — generator for the probes; seed it for a reproducible window.
+- `block_size` — probes applied per operator call (the DoS's own width, never the Krylov block
+  size). `nothing`: `8` on the matrix entrypoints, `1` on the operator entrypoints.
+- `tasks` — probe blocks run concurrently. `nothing`: all Julia threads on the matrix
+  entrypoints, `1` on the operator entrypoints.
+
+The DoS runs with BLAS and MKL pinned to one thread; its parallelism comes from `tasks`. For a
+fixed seed and `block_size` the moments are bit-identical for every `tasks`, thread count, Krylov
+block size and `optimize_mapping`. On `polfed(f!, …)`, raise `block_size`/`tasks` only if `f!`
+accepts a `dim × block_size` block and is safe to call concurrently.
 
 Because `:maxdos` is defined as the peak of this estimate, `N` and `R` can shift that
 target. The mathematics is on [The workflow](@ref how_polfed_works).

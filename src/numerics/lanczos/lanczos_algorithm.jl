@@ -3,7 +3,7 @@
 
 Run the core Lanczos iteration loop until the target's stopping criterion is met
 or the iteration budget is exhausted, then return the extracted converged
-eigenpairs and a [`FactorizationReport`](@ref). The number of eigenpairs is
+eigenpairs and a [`FactorizationReport`](@ref). The number of eigenpairs  is
 determined dynamically (value-based targets), so outputs are allocated at extraction.
 """
 function lanczos_algorithm(

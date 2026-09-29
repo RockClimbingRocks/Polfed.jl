@@ -30,6 +30,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
         @testset "Backend" begin
             include("backend/ProcessingUnit_tests.jl")
             include("backend/gpu_dispatch_tests.jl")
+            include("backend/library_threads_tests.jl")
             include("backend/openmp_tests.jl")
         end
     end

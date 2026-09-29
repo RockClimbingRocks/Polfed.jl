@@ -19,8 +19,9 @@ function UniPolfed._prepare_matrix_row_pipeline(
     ::_EntrypointProbeMatrix,
     ::AbstractVecOrMat,
     mc::MappingConfig,
+    dosc::UniPolfed.DoSConfig,
 )
-    return _EntrypointProbeOperator(:matrix), _ENTRYPOINT_ROW_SEED, mc
+    return _EntrypointProbeOperator(:matrix), _ENTRYPOINT_ROW_SEED, mc, dosc
 end
 
 function UniPolfed.run_patched_polfed_target_pipeline(

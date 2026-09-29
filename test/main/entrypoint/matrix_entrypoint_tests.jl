@@ -86,3 +86,19 @@ _closest(vals, E, k) = sort(sort(collect(vals); by = λ -> abs(λ - E))[1:k])
         @test_throws DimensionMismatch polfed(sprand(8, 9, 0.3), randn(8), 2, 0.0)
     end
 end
+
+@testset "matrix entrypoint prepares the DoS for an operator it owns" begin
+    Random.seed!(3)
+    H = _qrem(6)
+    before = BLAS.get_num_threads()
+    _, _, _, dosc = UniPolfed._prepare_matrix_row_pipeline(H, randn(size(H, 1), 2), MappingConfig(),
+                                                          DoSConfig(R = 40))
+    @test dosc.R == 40
+    @test dosc.block_size == UniPolfed.Defaults.polfed.dos_block_size
+    @test dosc.tasks == Threads.nthreads()
+    @test BLAS.get_num_threads() == before    # the serial bounds probe restored it
+
+    _, _, _, kept = UniPolfed._prepare_matrix_row_pipeline(H, randn(size(H, 1)), MappingConfig(),
+                                                          DoSConfig(block_size = 2, tasks = 1))
+    @test (kept.block_size, kept.tasks) == (2, 1)
+end
