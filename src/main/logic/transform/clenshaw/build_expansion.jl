@@ -6,13 +6,13 @@
 # filter arriving here is fully resolved (`target` and `order` set).
 
 """
-    _build_expansion(family, order, coefficients, mp, x0) -> ClenshawExpansion
+    _build_expansion(family, order, coefficients, mp, x0) -> evaluator
 
 Build the operator [`ClenshawExpansion`](@ref) for the transform, selecting the Clenshaw
 kernels from the [`MappingPlan`](@ref):
 
-- neither `mp.clenshaw_recurrence` nor `mp.clenshaw_finalsum` set (the usual case) → derive
-  both from `mp.f!_rescaled`,
+- neither `mp.clenshaw_recurrence` nor `mp.clenshaw_finalsum` set (the usual case) → the
+  evaluator for `mp.f!_rescaled` ([`_operator_expansion`](@ref)),
 - both set → use them directly,
 - only one set → use it and derive the other from `mp.f!_rescaled` via
   [`build_clenshaw_kernels`](@ref).
@@ -29,7 +29,8 @@ A user recurrence is adapted to the internal six-argument form by
 - `x0::AbstractVecOrMat`: probe used to detect a user recurrence's arity.
 
 # Returns
-A [`ClenshawExpansion`](@ref) callable as `expansion(Y, X, b)`.
+An evaluator callable as `expansion(Y, X, b)` — a [`ClenshawExpansion`](@ref) or one of the
+fused forms chosen by [`_operator_expansion`](@ref).
 """
 function _build_expansion(family::Symbol, order::Int, coefficients,
                           mp::MappingPlan, x0::AbstractVecOrMat)
@@ -37,7 +38,7 @@ function _build_expansion(family::Symbol, order::Int, coefficients,
     has_finalsum   = !isnothing(mp.clenshaw_finalsum)
 
     if !has_recurrence && !has_finalsum
-        return ClenshawExpansion(family, coefficients, order, mp.f!_rescaled)
+        return _operator_expansion(family, coefficients, order, mp.f!_rescaled)
     end
 
     recurrence = if has_recurrence
@@ -50,6 +51,30 @@ function _build_expansion(family::Symbol, order::Int, coefficients,
 
     return ClenshawExpansion(family, coefficients, order, recurrence, finalsum)
 end
+
+"""
+    _operator_expansion(family, coefficients, order, op) -> evaluator
+
+The Clenshaw evaluator for the operator `op`, callable as `e(Y, X, b)`:
+
+- [`_RowRescaled`](@ref) (generic matrix path) → [`AxpbyClenshaw`](@ref): every step is one
+  accumulating MKL product plus one MKL `axpy`, all on MKL's threads;
+- [`RangeKernelOperator`](@ref) (optimized kernel with a range form) → [`RangeClenshaw`](@ref):
+  the whole recurrence in one threaded region;
+- anything else → [`ClenshawExpansion`](@ref): operator call, then a threaded combine, per step.
+
+The first two never switch thread pool inside a step.
+"""
+_operator_expansion(family::Symbol, coefficients, order::Int, op) =
+    ClenshawExpansion(family, coefficients, order, op)
+
+_operator_expansion(family::Symbol, coefficients, order::Int, op::_RowRescaled) =
+    AxpbyClenshaw(family, coefficients, order,
+                  (Y, X, α, β) -> _row_axpby!(op, Y, X, α, β),
+                  (Y, c, X) -> _row_add!(op, Y, c, X))
+
+_operator_expansion(family::Symbol, coefficients, order::Int, op::RangeKernelOperator) =
+    RangeClenshaw(family, coefficients, order, op.range!, op.units; alignment = op.alignment)
 
 """
     normalize_clenshaw_recurrence(recurrence, x0, strategy::Parallelization) -> Function

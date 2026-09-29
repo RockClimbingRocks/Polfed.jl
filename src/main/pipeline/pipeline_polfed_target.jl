@@ -35,7 +35,7 @@ function run_polfed_target_pipeline(
     eig_target = resolve_eig_target(exposed_end(filter), howmany)
     log_prelanczos(mp, filter, eig_target, howmany, expected_dim, maxdim, tol, eigentol;
                    interval = interval)
-    result = @stage timer :lanczos lanczos(
+    result = @stage timer :lanczos _filtered_lanczos(
         transformed, mp.sys.x0, eig_target;
         rot = Defaults.polfed.rot,
         basistype = Defaults.polfed.basistype,

@@ -31,7 +31,8 @@ Clenshaw/
 └── Algorithm/                    the pure numerics (no type, no state)
     ├── recurrence_relations.jl   mapping_recurrence! (vec/mat + UniformScaling) · scalar_recurrence
     ├── final_sum.jl              mapping_finalsum!   (vec/mat + UniformScaling) · scalar_finalsum
-    └── clenshaw_algorithm.jl     the reverse-recurrence loop (matrix & scalar) + buffer rotation
+    ├── clenshaw_algorithm.jl     the reverse-recurrence loop (matrix & scalar) + buffer rotation
+    └── fused_clenshaw.jl         AxpbyClenshaw · RangeClenshaw — no per-step switch of thread pool
 ```
 
 The split is **type/API vs. math**: `Clenshaw.jl` is *what the thing is* (the
@@ -161,6 +162,25 @@ accept any `Number`), which supports complex spectral filters; the recurrence
 - **Backwards recurrence** (`k = N → 1`) is the numerically stable direction; the
   3-buffer workspace is rotated by an allocation-free `SVector` permutation after
   each step.
+
+---
+
+## Fused evaluators
+
+`ClenshawExpansion` does each step as "operator call, then a threaded combine". When the operator
+has its own threads (MKL, or a kernel opening its own `@threads` region), every step switches
+thread pool twice, and on many threads that switch can cost more than the step. Two evaluators
+avoid it; both are callable as `e(Y, X, b)` and take the same family/coefficients/order:
+
+| evaluator | operator given as | one step |
+| :--- | :--- | :--- |
+| `AxpbyClenshaw(family, c, K, axpby!, add!)` | `axpby!(Y, X, α, β)`: `Y ← α·A·X + β·Y`; `add!(Y, c, X)`: `Y ← Y + c·X` | one accumulating call + one add, over the oldest buffer in place |
+| `RangeClenshaw(family, c, K, range!, units; alignment, ntasks)` | serial `range!(Y, X, lo, hi)` over work units, disjoint writes | the whole recurrence in ONE `@threads :static` region, two spin barriers per step |
+
+`RangeClenshaw` does the same arithmetic per element as `ClenshawExpansion`, so it is
+bit-identical to it for any `ntasks`; `AxpbyClenshaw` agrees to rounding. The spin barrier
+yields its core after a short spin — if the OS puts two tasks on one core, the one still working
+only runs when the other yields. `RangeClenshaw` cannot run inside another `:static` region.
 
 ---
 

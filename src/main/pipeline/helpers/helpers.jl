@@ -1,4 +1,5 @@
 
+include("filtered_lanczos.jl")   # the filtered Lanczos call every pipeline makes
 include("intervalize_interval.jl")
 include("result_buffer.jl")
 include("resolve_edges.jl")

@@ -28,6 +28,21 @@ it needs no per-step barrier and opens exactly one parallel region for the whole
 loop. `BlockWise` opens one per step and pays a barrier each time, but it is the only option
 that parallelizes a **single** Krylov vector, because there is nothing else to split.
 
+### What a Clenshaw step runs on the matrix entrypoints
+
+`polfed(H, …)` always runs `BlockWise`, and evaluates the filter so that a step never switches
+from one thread pool to another — measured on 16 threads, that switch cost 2–8× the step itself:
+
+- `optimize_mapping = false`: each step is one accumulating MKL product
+  (`Y ← 2·X·H̃ − Y`) plus one MKL `axpy`, all on MKL's own threads.
+- an optimized kernel with a serial range form (every auto-selected kernel except
+  `row_bucketed` at block size 1): the whole ``K``-step recurrence runs in **one** Julia parallel
+  region, the tasks meeting at spin barriers.
+
+During the filtered Lanczos runs MKL's idle threads are told to sleep at once (Intel OpenMP
+blocktime `0`, restored afterwards), so they do not spin on the cores the next filter application
+needs. `polfed(f!, …)` keeps the per-step combine, since POLFED cannot see inside your `f!`.
+
 ### `BlockWise(; groups)`
 
 !!! warning "`groups` is not read yet"

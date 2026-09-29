@@ -117,7 +117,7 @@ function _double_lanczos(
     log_prelanczos(mp, filter, eig_target, n, expected_dim, maxdim, tol, eigentol_used;
                    label = "double POLFED: $label",
                    rescaled_values = !(mapvals === mp.f!))
-    result = @stage timer :lanczos lanczos(transformed, mp.sys.x0, eig_target;
+    result = @stage timer :lanczos _filtered_lanczos(transformed, mp.sys.x0, eig_target;
         rot = Defaults.double_polfed.rot,
         basistype = Defaults.double_polfed.basistype,
         maxdim = maxdim,

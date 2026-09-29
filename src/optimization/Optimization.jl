@@ -46,7 +46,7 @@ export ValueGroup, MappingStructure, classify, rescale,
        MappingKernel, kernel_name, build_kernel,
        build_range_kernel, range_units, range_alignment, supports_range,
        can_apply, why_not, verify_kernel,
-       resolve_mapping_kernel, build_optimized_mapping,
+       resolve_mapping_kernel, build_optimized_mapping, RangeKernelOperator,
        benchmark_mapping, MappingBenchmark, best, per_column
 
 end # module Optimization
