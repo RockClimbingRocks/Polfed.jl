@@ -4,11 +4,11 @@
 # coefficient table, family wiring, and normalization (exact ±1 peaks) are all checked at once.
 
 using Test
-import UniPolfed: EdgeFilter, Defaults, Interval, build_filter, validate_filter,
+import Polfed: EdgeFilter, Defaults, Interval, build_filter, validate_filter,
                exposed_end, polynomial_type, polynomial_order, coefficients, _scalar_filter,
                order_safety_factor, expected_krylov_dim, resolve_eig_target,
                DeltaUpFilter, build_transform
-import UniPolfed.Numerics.Lanczos: BothEnds, LowestEigs, HighestEigs
+import Polfed.Numerics.Lanczos: BothEnds, LowestEigs, HighestEigs
 
 @testset "EdgeFilter" begin
     xs = range(-1.0, 1.0; length = 101)

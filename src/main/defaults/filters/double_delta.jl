@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.filters.double_delta
+    Polfed.Defaults.filters.double_delta
 
 Defaults for [`DoubleDeltaFilter`](@ref) — two peaks (`+1` / `-1`) in one polynomial.
 """

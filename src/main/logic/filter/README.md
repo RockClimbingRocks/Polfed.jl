@@ -80,7 +80,7 @@ and the two resolution chains.
 
 ## Design decisions
 
-- **No per-filter module** — plain includes into `module UniPolfed`; only the *defaults* get a
+- **No per-filter module** — plain includes into `module Polfed`; only the *defaults* get a
   small module, and those now live centrally as `Defaults.filters.<name>`, which keeps
   `cutoff`/`order`/… from colliding between filters and puts every tunable knob in one registry.
 - **Two intervals on the filter**: `interval` (from the DoS — the requested window; sets `target`,

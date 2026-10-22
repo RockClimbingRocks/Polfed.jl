@@ -6,10 +6,10 @@
 # rule below is a statement about a prefix of that order.
 
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 @testset "end_spec" begin
     p = [-3.0, -1.0, 0.0, 2.0, 5.0]        # ascending Ritz values

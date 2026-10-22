@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using SparseArrays
 using Random
 
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
 
 # ── Independent ground-truth XXZ builder ──────────────────────────────────────
 # Build the full-space Hamiltonian from kron products of the standard spin-1/2

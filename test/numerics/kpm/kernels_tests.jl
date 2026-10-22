@@ -1,7 +1,7 @@
 using Test
-using UniPolfed
+using Polfed
 
-K = UniPolfed.Numerics.KPM
+K = Polfed.Numerics.KPM
 
 @testset "kernels" begin
 

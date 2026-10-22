@@ -1,4 +1,4 @@
-module UniPolfed
+module Polfed
 
 # Components are loaded in dependency order: infrastructure, reusable numerics,
 # model builders, optimized mappings, and finally the POLFED pipelines.
@@ -58,7 +58,7 @@ include("main/main.jl")                          # module Defaults + public pipe
 
 # ── public API ───────────────────────────────────────────────────────────────
 # Mirrors `docs/src/api/`: everything a user is documented to call. Names not listed
-# here stay reachable qualified (`UniPolfed.foo`) — the export list is the supported
+# here stay reachable qualified (`Polfed.foo`) — the export list is the supported
 # surface, not the whole namespace.
 export
     # entrypoints

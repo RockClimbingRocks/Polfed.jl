@@ -12,7 +12,7 @@
 #   periodic     every wrap bond, which is where an off-by-one hides
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: HopStructure, classify, rescale, build_kernel, build_hop_kernel,
+import Polfed.Optimization: HopStructure, classify, rescale, build_kernel, build_hop_kernel,
                                MappingKernel, _derive_hop, _hop_lane_width, verify_kernel
 
 _hop_ref(H, X) = permutedims(H * permutedims(X))

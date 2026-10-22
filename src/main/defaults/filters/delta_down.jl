@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.filters.delta_down
+    Polfed.Defaults.filters.delta_down
 
 Defaults for [`DeltaDownFilter`](@ref) — the lowest-end twin of `delta_up`, sign flipped.
 """

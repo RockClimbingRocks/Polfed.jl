@@ -16,9 +16,9 @@ Do you want the whole spectrum?
 
 | Variant | Use when | Returns |
 | :--- | :--- | :--- |
-| [`polfed`](@ref tutorial_polfed) | one target, one window; the default | [`PolfedResult`](@ref UniPolfed.PolfedResult) |
-| [`patched_polfed`](@ref tutorial_patched) | `howmany` is large enough that the dense diagonalization of the projected matrix, or the Krylov basis in memory, dominates the run | [`PatchedResult`](@ref UniPolfed.PatchedResult) |
-| [`full_polfed`](@ref tutorial_full) | you want everything, and ``D \times D`` eigenvectors fit in memory | [`PatchedResult`](@ref UniPolfed.PatchedResult) |
+| [`polfed`](@ref tutorial_polfed) | one target, one window; the default | [`PolfedResult`](@ref Polfed.PolfedResult) |
+| [`patched_polfed`](@ref tutorial_patched) | `howmany` is large enough that the dense diagonalization of the projected matrix, or the Krylov basis in memory, dominates the run | [`PatchedResult`](@ref Polfed.PatchedResult) |
+| [`full_polfed`](@ref tutorial_full) | you want everything, and ``D \times D`` eigenvectors fit in memory | [`PatchedResult`](@ref Polfed.PatchedResult) |
 
 The signal to switch from `polfed` to `patched_polfed` is **not** a large polynomial order —
 a big `howmany` gives you a *small* order. It is the *Timings* section: when the time spent
@@ -53,10 +53,10 @@ memory allows; stop when the Lanczos time stops improving.
 
 | Situation | Strategy |
 | :--- | :--- |
-| GPU arrays | [`BlockWise`](@ref UniPolfed.BlockWise) — the device parallelizes itself |
-| Single vector | [`BlockWise`](@ref UniPolfed.BlockWise) — the only one that can split one vector |
-| Block Lanczos, `block_size == nthreads()` | [`VectorWise`](@ref UniPolfed.VectorWise) — one vector per thread |
-| Block Lanczos, any other block size | [`BlockWise`](@ref UniPolfed.BlockWise) |
+| GPU arrays | [`BlockWise`](@ref Polfed.BlockWise) — the device parallelizes itself |
+| Single vector | [`BlockWise`](@ref Polfed.BlockWise) — the only one that can split one vector |
+| Block Lanczos, `block_size == nthreads()` | [`VectorWise`](@ref Polfed.VectorWise) — one vector per thread |
+| Block Lanczos, any other block size | [`BlockWise`](@ref Polfed.BlockWise) |
 
 Both use every thread; they differ in where the parallel region opens — inside each Clenshaw
 step (`BlockWise`) or around the whole recurrence (`VectorWise`). Leaving `parallel_strategy`
@@ -69,7 +69,7 @@ unset resolves this table for you. Details in [Parallelization](@ref paralleliza
 - `(:offset, η)` and `(:rescaled, ε)` measure from **different origins**. See
   [Target modes](@ref polfed_targets).
 - If a `:maxdos` result surprises you, raise `N` and `R` in
-  [`DoSConfig`](@ref UniPolfed.DoSConfig) and check whether the detected peak moved.
+  [`DoSConfig`](@ref Polfed.DoSConfig) and check whether the detected peak moved.
 - **Avoid a symmetric spectrum with a centered target** in tests. Exact degeneracies cannot
   be separated by Lanczos, and you will see `converged = 0` for reasons that have nothing to
   do with your settings.

@@ -1,8 +1,8 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 
-K = UniPolfed.Numerics.KPM
+K = Polfed.Numerics.KPM
 
 chebT(x, k) = cos(k * acos(x))
 

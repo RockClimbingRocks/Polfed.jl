@@ -9,7 +9,7 @@
 # block seeds.
 
 using LinearAlgebra, SparseArrays, Random
-using UniPolfed: polfed, MappingConfig, DoSConfig, PolfedResult
+using Polfed: polfed, MappingConfig, DoSConfig, PolfedResult
 
 # QREM: diag(ε) + hx·Σᵢ σᵢˣ — single off-diagonal value, L single-bit-flip neighbours per row
 # (the structured regime the row kernels target). Real-symmetric, so a genuine Hermitian operator.
@@ -91,14 +91,14 @@ end
     Random.seed!(3)
     H = _qrem(6)
     before = BLAS.get_num_threads()
-    _, _, _, dosc = UniPolfed._prepare_matrix_row_pipeline(H, randn(size(H, 1), 2), MappingConfig(),
+    _, _, _, dosc = Polfed._prepare_matrix_row_pipeline(H, randn(size(H, 1), 2), MappingConfig(),
                                                           DoSConfig(R = 40))
     @test dosc.R == 40
-    @test dosc.block_size == UniPolfed.Defaults.polfed.dos_block_size
+    @test dosc.block_size == Polfed.Defaults.polfed.dos_block_size
     @test dosc.tasks == Threads.nthreads()
     @test BLAS.get_num_threads() == before    # the serial bounds probe restored it
 
-    _, _, _, kept = UniPolfed._prepare_matrix_row_pipeline(H, randn(size(H, 1)), MappingConfig(),
+    _, _, _, kept = Polfed._prepare_matrix_row_pipeline(H, randn(size(H, 1)), MappingConfig(),
                                                           DoSConfig(block_size = 2, tasks = 1))
     @test (kept.block_size, kept.tasks) == (2, 1)
 end

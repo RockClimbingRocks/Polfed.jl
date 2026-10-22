@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.filters.edge
+    Polfed.Defaults.filters.edge
 
 Defaults for [`EdgeFilter`](@ref) — the monotone monomial used for spectrum-edge windows.
 """

@@ -14,7 +14,7 @@
 #   opt-in           a kernel with no range form says so rather than being given a wrong one
 
 using LinearAlgebra, SparseArrays, Random
-import UniPolfed.Optimization: MappingKernel, classify, build_kernel, build_range_kernel,
+import Polfed.Optimization: MappingKernel, classify, build_kernel, build_range_kernel,
                                range_units, range_alignment, supports_range
 
 """    _chunks(n, a, k) -> Vector{UnitRange} — split `1:n` into ~`k` chunks aligned to `a`."""

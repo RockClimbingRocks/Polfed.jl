@@ -1,17 +1,17 @@
 
 using Test
-using UniPolfed
+using Polfed
 
 @testset "DeltaDownFilter construction" begin
     @testset "exact interval contract" begin
-        iv = UniPolfed.Interval(-0.1, 0.1)
-        f = UniPolfed.build_filter(
-            UniPolfed.DeltaDownFilter, iv;
+        iv = Polfed.Interval(-0.1, 0.1)
+        f = Polfed.build_filter(
+            Polfed.DeltaDownFilter, iv;
             cutoff = -0.17,
             order_safety_factor = 0.97,
         )
 
-        P = UniPolfed._scalar_filter(f)
+        P = Polfed._scalar_filter(f)
 
         # Exact results obtained numerically.
         @test f.order == 25
@@ -33,13 +33,13 @@ using UniPolfed
     end
 
     @testset "symmetric filter identities, δ=$(δ)" for δ in [0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 1e-2, 1e-3, 1e-4, 1e-5]
-        iv = UniPolfed.Interval(-δ, δ)
-        f = UniPolfed.build_filter(
-            UniPolfed.DeltaDownFilter, iv;
+        iv = Polfed.Interval(-δ, δ)
+        f = Polfed.build_filter(
+            Polfed.DeltaDownFilter, iv;
             cutoff = -0.17,
             order_safety_factor = 0.97,
         )
-        P = UniPolfed._scalar_filter(f)
+        P = Polfed._scalar_filter(f)
 
         @test f.interval.left       <  f.target             < f.interval.right
         @test f.passband.left       <  f.target             < f.passband.right
@@ -56,12 +56,12 @@ using UniPolfed
     end
 
     @testset "Verify identities - non-symmetric filter, target=$(target), δ=$(δ)" for δ in [1e-1, 1e-2, 1e-3, 1e-4, 1e-5], target in [1e-3, 1e-2, 1e-1, 0.2, 0.4, 0.6, 0.7, 0.8]
-        iv = UniPolfed.Interval(target - δ, target + δ)
-        f = UniPolfed.build_filter(UniPolfed.DeltaDownFilter, iv;
+        iv = Polfed.Interval(target - δ, target + δ)
+        f = Polfed.build_filter(Polfed.DeltaDownFilter, iv;
             cutoff = -0.17,
             order_safety_factor = 0.97,
         )
-        P = UniPolfed._scalar_filter(f)
+        P = Polfed._scalar_filter(f)
 
 
         @test f.interval.left     <  f.target < f.interval.right

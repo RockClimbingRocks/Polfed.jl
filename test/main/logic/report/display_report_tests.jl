@@ -4,7 +4,7 @@
 # keyword lands on the IO property it stands for, that both call forms agree, and that the
 # accepted argument set is the report/result union and nothing else. Uses the shared fixture.
 
-import UniPolfed: display_report, _auto_color, ReportLike, Report, PolfedResult
+import Polfed: display_report, _auto_color, ReportLike, Report, PolfedResult
 
 @testset "display_report" begin
     # Render through the verb; `sprint` gives a non-TTY sink, so `color` defaults to false.

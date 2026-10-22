@@ -9,7 +9,7 @@
 # `show` picks the plain rendering automatically when output is redirected to a file.
 
 using LinearAlgebra, SparseArrays, Random
-using UniPolfed: polfed, MappingConfig
+using Polfed: polfed, MappingConfig
 
 # QREM: diag(ε) + hx·Σᵢσᵢˣ — the standard structured Hermitian test Hamiltonian.
 function qrem(L::Int; hx = 0.7)

@@ -1,6 +1,6 @@
 using Logging
 using Test
-using UniPolfed: Common, DoSResult, Interval, integrate_chebyshev_weighted,
+using Polfed: Common, DoSResult, Interval, integrate_chebyshev_weighted,
               intervalize_interval, intervalize_interval_overlapping
 
 function _pipeline_uniform_dos(total_states::Real = 1000)

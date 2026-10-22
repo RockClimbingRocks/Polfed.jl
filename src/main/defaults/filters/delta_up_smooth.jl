@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.filters.delta_up_smooth
+    Polfed.Defaults.filters.delta_up_smooth
 
 Defaults for [`DeltaUpSmoothFilter`](@ref) — the Jackson-damped fallback, last in the
 interior chain.

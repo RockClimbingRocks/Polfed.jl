@@ -28,7 +28,7 @@ include("spin_half_chains.jl")
         use_sparse::Bool=true,
     )
 
-Construct a Quantum Sun Hamiltonian through the public `UniPolfed.Models`
+Construct a Quantum Sun Hamiltonian through the public `Polfed.Models`
 namespace.
 
 By default this builds the full Hilbert-space Quantum Sun model. With
@@ -79,7 +79,7 @@ magnetization sector.
 # Notes
 
 - This is the public constructor you should use in examples and workflows:
-  `using UniPolfed.Models: qsun_hamiltonian`.
+  `using Polfed.Models: qsun_hamiltonian`.
 - The `use_U1=true` path reduces the Hilbert-space dimension by keeping only
   states in the requested total-`S_z` sector.
 - This is a forwarding wrapper around the internal QSun implementation,

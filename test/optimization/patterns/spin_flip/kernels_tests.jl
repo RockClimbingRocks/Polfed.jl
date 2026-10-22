@@ -7,7 +7,7 @@
 #         value-grouped assumption, and the one where the payoff is largest.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: FlipStructure, classify, rescale, build_kernel, MappingKernel,
+import Polfed.Optimization: FlipStructure, classify, rescale, build_kernel, MappingKernel,
                                build_flip_kernel, _derive_flip, _packed_lane_width
 
 _flip_ref(H, X) = permutedims(H * permutedims(X))

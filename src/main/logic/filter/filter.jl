@@ -48,7 +48,7 @@ See `filter_types/delta_up/` for the reference implementation.
 abstract type AbstractFilter end
 
 # Interface stubs — declared here so each filter's file can add methods to the SAME generic
-# functions without an `import` (all filters are plain includes in `module UniPolfed`).
+# functions without an `import` (all filters are plain includes in `module Polfed`).
 function coefficients end
 function polynomial_type end
 

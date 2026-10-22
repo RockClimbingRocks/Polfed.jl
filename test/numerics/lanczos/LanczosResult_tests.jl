@@ -1,6 +1,6 @@
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 using LinearAlgebra
 using Random
 

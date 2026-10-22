@@ -1,11 +1,11 @@
 # Architecture and development
 
-UniPolfed separates reusable numerical kernels from the POLFED workflow and from
+Polfed separates reusable numerical kernels from the POLFED workflow and from
 the physical models used to construct Hamiltonians. The package root loads the
 components in dependency order:
 
 ```text
-UniPolfed
+Polfed
 ├── common          logging, formatting, timing, numerical utilities
 ├── backend         CPU/GPU dispatch hooks and processing-unit types
 ├── numerics
@@ -24,15 +24,15 @@ UniPolfed
 ## Module boundaries
 
 `Common`, `Numerics`, `Models`, and `Optimization` are submodules.
-Files below `main/` are included directly into `UniPolfed`, so the public
+Files below `main/` are included directly into `Polfed`, so the public
 algorithm types and functions live at the package top level. `backend/` is also
 included at the top level because the CUDA extension installs methods into
-`UniPolfed`'s dispatch hooks.
+`Polfed`'s dispatch hooks.
 
 An included file shares the namespace of its enclosing module. External
 packages therefore belong in the module root that uses them, before its
 `include` statements. Imports between submodules should be relative. A sibling
-is reached with `..Sibling`; a name owned by `UniPolfed` from a nested module
+is reached with `..Sibling`; a name owned by `Polfed` from a nested module
 requires enough leading dots to reach the package root.
 
 Dependencies should point inward toward reusable layers:
@@ -99,11 +99,11 @@ block size; performance rankings are hardware- and model-dependent. The generic
 From the repository root:
 
 ```bash
-julia --project=. -e 'using UniPolfed'
+julia --project=. -e 'using Polfed'
 julia --project=. -e 'using Pkg; Pkg.test()'
 bash docs/build.sh
 julia --project=. examples/reporting.jl
 ```
 
-CUDA behavior is provided by `ext/UniPolfedCUDAExt.jl` and is testable only on a
+CUDA behavior is provided by `ext/PolfedCUDAExt.jl` and is testable only on a
 CUDA-capable host.

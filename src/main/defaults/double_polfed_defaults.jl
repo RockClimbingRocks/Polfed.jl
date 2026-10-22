@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.double_polfed
+    Polfed.Defaults.double_polfed
 
 Default registry for the `double_polfed` variant, following the per-function pattern of
 [`Defaults.polfed`](@ref). Only the knobs that are genuinely *double*-specific are new here —

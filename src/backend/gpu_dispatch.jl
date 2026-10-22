@@ -1,15 +1,15 @@
 # GPU dispatch plumbing.
 #
-# These bindings live directly in `module UniPolfed` (this file is included at the
+# These bindings live directly in `module Polfed` (this file is included at the
 # top level, not inside a submodule) so the CUDA extension can hook them as
-# `UniPolfed._set_cuda_backend!`, `UniPolfed.is_gpu_array`, etc. When CUDA.jl is not
+# `Polfed._set_cuda_backend!`, `Polfed.is_gpu_array`, etc. When CUDA.jl is not
 # loaded every GPU accessor is inert and `is_gpu_array` returns `false`.
 
 CUDA_AVAILABLE = false
 
 cuda_available() = CUDA_AVAILABLE
 _set_cuda_available!(available::Bool) = (@eval CUDA_AVAILABLE = $available; nothing)
-_cuda_unavailable() = error("CUDA support is not active. Install and load CUDA.jl (`using CUDA`) before passing CUDA arrays to UniPolfed.")
+_cuda_unavailable() = error("CUDA support is not active. Install and load CUDA.jl (`using CUDA`) before passing CUDA arrays to Polfed.")
 
 const _GPU_ARRAY = Ref{Any}(nothing)
 const _GPU_MATRIX = Ref{Any}(nothing)

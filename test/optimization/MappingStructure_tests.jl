@@ -3,7 +3,7 @@
 # extractor REFUSED: rows of differing length, and several distinct off-diagonal values.
 
 using LinearAlgebra, SparseArrays
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
 
 @testset "MappingStructure / classify" begin
 

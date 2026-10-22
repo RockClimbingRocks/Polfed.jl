@@ -1,6 +1,6 @@
 using LinearAlgebra
 using Test
-using UniPolfed: ColumnLayout, RowLayout, _DenseResultBuffer, _WindowResultBuffer,
+using Polfed: ColumnLayout, RowLayout, _DenseResultBuffer, _WindowResultBuffer,
               _store_pair!, _store_interval!, _finalize_result!
 
 @testset "result buffers" begin

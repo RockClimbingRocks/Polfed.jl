@@ -1,9 +1,8 @@
 # [Citation](@id citation)
 
-If `UniPolfed.jl` helps your research, please cite the original `Polfed.jl`
-scientific article and the `UniPolfed.jl` software. Citations are one of the
-clearest ways to make research software visible, useful, and maintainable for
-the community.
+If `Polfed.jl` helps your research, please cite both the scientific article and
+the software. Citations are one of the clearest ways to make research software
+visible, useful, and maintainable for the community.
 
 ```@raw html
 <a id="article"></a>
@@ -34,7 +33,7 @@ The article is not accepted yet. For now, please cite the arXiv preprint:
 
 ## Citing the Code
 
-Please also cite the `UniPolfed.jl` software itself when you use the package in
+Please also cite the `Polfed.jl` software itself when you use the package in
 published work, especially if the implementation, Hamiltonian builders, or
 documentation examples were part of your workflow.
 
@@ -42,11 +41,11 @@ A formal software citation is not available yet. Until a DOI or official
 software-citation entry exists, you can use this placeholder:
 
 ```bibtex
-@software{UniPolfed_jl,
-  title        = {UniPolfed.jl: Polynomial filtering eigensolver and Hamiltonian tools for quantum many-body simulations},
+@software{Polfed_jl,
+  title        = {Polfed.jl: Polynomial filtering eigensolver and Hamiltonian tools for quantum many-body simulations},
   author       = {Rok Pintar and contributors},
   year         = {2026},
-  url          = {https://github.com/RockClimbingRocks/UniPolfed.jl},
+  url          = {https://github.com/RockClimbingRocks/Polfed.jl},
   note         = {Software citation placeholder; replace with the official code citation when available.},
 }
 ```

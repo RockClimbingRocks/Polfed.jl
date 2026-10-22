@@ -1,16 +1,16 @@
 using Test
 using LinearAlgebra
 using Random
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 # Keep the allocation probe in a function so local Test.@testset bindings do not become
 # captured-box allocations in the measurement itself.
 _coefficient_reorthogonalization!(Q, W, coeff, pu) =
-    UniPolfed.Numerics.Lanczos.reorthogonalization!(
-        UniPolfed.Numerics.Lanczos.ColumnLayout(), Q, W, coeff, pu)
+    Polfed.Numerics.Lanczos.reorthogonalization!(
+        Polfed.Numerics.Lanczos.ColumnLayout(), Q, W, coeff, pu)
 _coefficient_reorthogonalization_allocations(Q, W, coeff, pu) =
     @allocated _coefficient_reorthogonalization!(Q, W, coeff, pu)
 

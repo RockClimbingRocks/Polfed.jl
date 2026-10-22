@@ -1,9 +1,9 @@
 # [Models](@id docs_models_reference)
 
-Public Hamiltonian constructors exposed through `UniPolfed.Models`.
+Public Hamiltonian constructors exposed through `Polfed.Models`.
 
 ```julia
-using UniPolfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
 ```
 
 These are **optional**. They exist so the tutorials have something concrete to run and so
@@ -17,7 +17,7 @@ This page is the constructor reference.
 ## Quantum Sun
 
 ```@docs
-UniPolfed.Models.qsun_hamiltonian
+Polfed.Models.qsun_hamiltonian
 ```
 
 See also: [Quantum Sun (QSun)](@ref qsun_model).
@@ -25,7 +25,7 @@ See also: [Quantum Sun (QSun)](@ref qsun_model).
 ## XXZ
 
 ```@docs
-UniPolfed.Models.xxz_hamiltonian
+Polfed.Models.xxz_hamiltonian
 ```
 
 See also: [XXZ](@ref xxz_model) and the worked optimization example in
@@ -34,7 +34,7 @@ See also: [XXZ](@ref xxz_model) and the worked optimization example in
 ## J1-J2
 
 ```@docs
-UniPolfed.Models.j1j2_hamiltonian
+Polfed.Models.j1j2_hamiltonian
 ```
 
 See also: [J1-J2](@ref j1j2_model).

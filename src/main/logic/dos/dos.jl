@@ -1,6 +1,6 @@
 # Density-of-states adapter: the POLFED-facing wrapper around the Numerics.KPM
 # primitive. DoSConfig (user surface) → calculate_dos → DoSResult (moments + ρ).
-# Included directly into `module UniPolfed` (no submodule).
+# Included directly into `module Polfed` (no submodule).
 
 
 """

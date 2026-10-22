@@ -3,7 +3,7 @@
 # once here keeps the report testset fast.
 
 using LinearAlgebra, SparseArrays, Random
-using UniPolfed: polfed, MappingConfig, PolfedResult
+using Polfed: polfed, MappingConfig, PolfedResult
 
 # QREM: diag(ε) + hx·Σᵢσᵢˣ — the structured Hermitian matrix used across the report tests.
 function _report_qrem(L::Int; hx = 0.7)

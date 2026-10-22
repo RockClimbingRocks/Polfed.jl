@@ -2,8 +2,8 @@
 # check that the built closure actually agrees with `mul!`, which runs on every real build.
 
 using LinearAlgebra, SparseArrays
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
-using UniPolfed.Optimization: auto_score
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Optimization: auto_score
 
 @testset "universal / validate" begin
 

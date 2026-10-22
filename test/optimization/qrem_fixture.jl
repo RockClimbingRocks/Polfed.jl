@@ -3,7 +3,7 @@
 # visible to the per-source test files.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: ValueGroup, MappingStructure, classify, rescale,
+import Polfed.Optimization: ValueGroup, MappingStructure, classify, rescale,
                                n_values, is_regular, KernelInfo, REGISTRY,
                                MappingKernel, kernel_name, build_kernel,
                                can_apply, why_not, verify_kernel, mapping_kernels,

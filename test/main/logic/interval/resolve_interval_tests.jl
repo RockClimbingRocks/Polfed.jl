@@ -1,5 +1,5 @@
 using Test
-using UniPolfed
+using Polfed
 
 function gaussian_dos(peak, width, dim; N = 80, M = 8000)
     base(x) = exp(-((x - peak)^2) / width^2)
@@ -30,11 +30,11 @@ function gaussian_dos(peak, width, dim; N = 80, M = 8000)
     coefficients[2:end] .*= 2 / M
 
     moments = copy(coefficients)
-    return UniPolfed.DoSResult(moments, coefficients, ρ)
+    return Polfed.DoSResult(moments, coefficients, ρ)
 end
 
 state_count(dos, interval) =
-    UniPolfed.integrate_chebyshev_weighted(dos.coefficients, interval.left, interval.right) / π
+    Polfed.integrate_chebyshev_weighted(dos.coefficients, interval.left, interval.right) / π
 
 
 @testset "resolve_interval" begin
@@ -44,7 +44,7 @@ state_count(dos, interval) =
         howmany = 2
         peak = 0.2
         dos = gaussian_dos(peak, 0.25, dim)
-        interval = UniPolfed.resolve_interval(UniPolfed.Target(peak, howmany, :center), dos)
+        interval = Polfed.resolve_interval(Polfed.Target(peak, howmany, :center), dos)
 
         @test (interval.left + interval.right) / 2 ≈ peak atol = 1e-8
         @test state_count(dos, interval) ≈ howmany rtol = 1e-4
@@ -55,7 +55,7 @@ state_count(dos, interval) =
         howmany = 2
         peak = -0.2
         dos = gaussian_dos(peak, 0.25, dim)
-        interval = UniPolfed.resolve_interval(UniPolfed.Target(peak, howmany, :left), dos)
+        interval = Polfed.resolve_interval(Polfed.Target(peak, howmany, :left), dos)
 
         @test interval.left ≈ peak atol = 1e-8
         @test state_count(dos, interval) ≈ howmany rtol = 1e-4
@@ -66,7 +66,7 @@ state_count(dos, interval) =
         howmany = 2
         peak = 0.2
         dos = gaussian_dos(peak, 0.25, dim)
-        interval = UniPolfed.resolve_interval(UniPolfed.Target(peak, howmany, :right), dos)
+        interval = Polfed.resolve_interval(Polfed.Target(peak, howmany, :right), dos)
 
         @test interval.right ≈ peak atol = 1e-8
         @test state_count(dos, interval) ≈ howmany rtol = 1e-4
@@ -76,14 +76,14 @@ state_count(dos, interval) =
         dos = gaussian_dos(0.0, 0.25, 10)
 
         @test_logs (:warn, r"widest window") begin
-            interval = UniPolfed.resolve_interval(UniPolfed.Target(0.8, 100, :center), dos)
+            interval = Polfed.resolve_interval(Polfed.Target(0.8, 100, :center), dos)
             @test interval.left ≈ -0.2
             @test interval.right ≈ 1.0
         end
     end
 
     @testset "invalid target placement is rejected" begin
-        @test_throws ArgumentError UniPolfed.Target(0.0, 1, :middle)
-        @test_throws ArgumentError UniPolfed._window_reshape(0.0, :middle, 0.1)
+        @test_throws ArgumentError Polfed.Target(0.0, 1, :middle)
+        @test_throws ArgumentError Polfed._window_reshape(0.0, :middle, 0.1)
     end
 end

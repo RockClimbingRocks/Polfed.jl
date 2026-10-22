@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using SparseArrays
 using Random
 
-Q = UniPolfed.Models.QSun
+Q = Polfed.Models.QSun
 
 @testset "quantum_sun_u1_conserving (build_hamiltonian_cons)" begin
 

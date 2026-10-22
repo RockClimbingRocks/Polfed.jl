@@ -1,7 +1,7 @@
 # Kernel Polynomial Method (KPM)
 
 Direction-independent KPM moments and density-of-states reconstruction. The module is
-loaded by `Numerics.jl` and used by UniPolfed's density-of-states stage.
+loaded by `Numerics.jl` and used by Polfed's density-of-states stage.
 
 The public API is intentionally small:
 
@@ -57,7 +57,7 @@ whole block. The probes are still independent:
 `ntasks` runs that many blocks concurrently, each with its own buffers; the draws are
 serialized in probe order, so the result is bit-identical for every `ntasks`. `f!` must be
 safe to call concurrently on distinct arrays. Library threading is the caller's business —
-UniPolfed's DoS stage wraps the call in `with_serial_libraries`.
+Polfed's DoS stage wraps the call in `with_serial_libraries`.
 
 ```julia
 mu = kpm_moments(f!, 250, 300, zeros(8, size(H, 1)), CPU(); rng = MersenneTwister(1),

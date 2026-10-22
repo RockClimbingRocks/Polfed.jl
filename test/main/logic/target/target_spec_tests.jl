@@ -1,5 +1,5 @@
 using Test
-using UniPolfed
+using Polfed
 
 
 
@@ -22,8 +22,8 @@ using UniPolfed
         ]
 
         for target in targets
-            target_spec = UniPolfed.normalize_target_spec(target)
-            @test target_spec isa UniPolfed.TargetSpec
+            target_spec = Polfed.normalize_target_spec(target)
+            @test target_spec isa Polfed.TargetSpec
         end
     end
 
@@ -47,7 +47,7 @@ using UniPolfed
         ]
 
         for target in targets
-            @test_throws ArgumentError UniPolfed.normalize_target_spec(target)
+            @test_throws ArgumentError Polfed.normalize_target_spec(target)
         end
 
     end

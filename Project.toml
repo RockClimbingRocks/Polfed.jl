@@ -1,6 +1,6 @@
-name = "UniPolfed"
-uuid = "247dffe4-f6d7-4896-b7ab-80fa76f84f6b"
-version = "0.1.0"
+name = "Polfed"
+uuid = "467b4f57-cce5-4b05-af51-83574939c5b4"
+version = "1.0.0"
 authors = ["RockClimbingRocks <rok123.pintar2@gmail.com> and contributors"]
 
 [deps]
@@ -19,7 +19,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [extensions]
-UniPolfedCUDAExt = "CUDA"
+PolfedCUDAExt = "CUDA"
 
 [compat]
 CUDA = "5.8"

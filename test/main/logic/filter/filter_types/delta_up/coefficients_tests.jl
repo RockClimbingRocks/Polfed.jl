@@ -3,15 +3,15 @@
 # at the target, dropping to `cutoff` at the passband edges.
 
 using Test
-using UniPolfed
+using Polfed
 
 @testset "DeltaUpFilter - coefficients" begin
     
     @testset "target = 0.0 -> odd coefficients = 0.0 " begin
         δ = 1e-2
-        iv = UniPolfed.Interval(-δ, δ)
-        filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-        coefs = UniPolfed.coefficients(filter)
+        iv = Polfed.Interval(-δ, δ)
+        filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+        coefs = Polfed.coefficients(filter)
 
 
         odd_coefs_zero = true
@@ -27,9 +27,9 @@ using UniPolfed
 
     @testset "target = 0.0 -> even coeffs for n>0 are of the same magnitude " begin
         δ = 1e-2
-        iv = UniPolfed.Interval(-δ, δ)
-        filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-        coefs = UniPolfed.coefficients(filter)
+        iv = Polfed.Interval(-δ, δ)
+        filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+        coefs = Polfed.coefficients(filter)
 
 
         even_coefs_are_the_same = true
@@ -45,9 +45,9 @@ using UniPolfed
 
     @testset "target = 0.0 -> even coeffs for n>0 are of the same magnitude " begin
         δ = 1e-2
-        iv = UniPolfed.Interval(-δ, δ)
-        filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-        coefs = UniPolfed.coefficients(filter)
+        iv = Polfed.Interval(-δ, δ)
+        filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+        coefs = Polfed.coefficients(filter)
 
 
         even_coefs_are_the_same = true
@@ -63,9 +63,9 @@ using UniPolfed
 
     @testset "target = 0.0 -> even coeffs for n=0 half of the magnitude" begin
         δ = 1e-2
-        iv = UniPolfed.Interval(-δ, δ)
-        filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-        coefs = UniPolfed.coefficients(filter)
+        iv = Polfed.Interval(-δ, δ)
+        filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+        coefs = Polfed.coefficients(filter)
 
 
         even_coefs_half_magnitude = true
@@ -82,9 +82,9 @@ using UniPolfed
 
     @testset "target = 0.0 -> even coeffs change of sign" begin
         δ = 1e-2
-        iv = UniPolfed.Interval(-δ, δ)
-        filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-        coefs = UniPolfed.coefficients(filter)
+        iv = Polfed.Interval(-δ, δ)
+        filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+        coefs = Polfed.coefficients(filter)
 
         even_coefs_change_sign1 = true
         even_coefs_change_sign2 = true
@@ -108,9 +108,9 @@ using UniPolfed
 
         for target in [0., 1e-3, 1e-2, 1e-1, 0.2, 0.4, 0.9]
             δ = 1e-2
-            iv = UniPolfed.Interval(target-δ,target+δ)
-            filter = UniPolfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
-            P = UniPolfed._scalar_filter(filter)
+            iv = Polfed.Interval(target-δ,target+δ)
+            filter = Polfed.DeltaUpFilter(iv; order = 25, cutoff = +0.17, order_safety_factor = 1)
+            P = Polfed._scalar_filter(filter)
 
             @test P(target) ≈ 1.0 atol = 1e-10
         end

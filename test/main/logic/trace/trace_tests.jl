@@ -6,16 +6,16 @@
 # assertions match on stable message fragments, not on whole lines.
 
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra, SparseArrays, Random
 using Logging
 
 # Plain globals, not `const`: every test file is `include`d into the same `Main`, and
-# common/Formatter_tests.jl and common/logging_tests.jl already bind `C = UniPolfed.Common`
+# common/Formatter_tests.jl and common/logging_tests.jl already bind `C = Polfed.Common`
 # there. Declaring it `const` here fails with "cannot declare Main.C constant; it was
 # already declared global".
-C = UniPolfed.Common
-P = UniPolfed
+C = Polfed.Common
+P = Polfed
 
 # A structured, asymmetric Hermitian fixture (single off-diagonal value, one bit-flip neighbour
 # per site) — an interior target on it is non-degenerate, as `polfed` needs.
@@ -141,7 +141,7 @@ _has(records, fragment) = any(contains(fragment), _messages(records))
         # log site must go through `polfed_log` instead — checked at the source, since a missed
         # site only shows up as noise in someone else's run.
         offenders = String[]
-        for (root, _, files) in walkdir(joinpath(pkgdir(UniPolfed), "src")), file in files
+        for (root, _, files) in walkdir(joinpath(pkgdir(Polfed), "src")), file in files
             endswith(file, ".jl") || continue
             path = joinpath(root, file)
             endswith(path, joinpath("common", "logging.jl")) && continue

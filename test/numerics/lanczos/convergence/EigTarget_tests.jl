@@ -4,10 +4,10 @@
 # the walker in `converged_run_tests.jl`.
 
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 @testset "EigTarget" begin
 

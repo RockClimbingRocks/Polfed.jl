@@ -1,4 +1,4 @@
-using UniPolfed
+using Polfed
 using BenchmarkTools
 using LinearAlgebra
 using Polyester: @batch
@@ -191,9 +191,9 @@ function main()
     scale = (Emax - Emin) / 2
     shift = (Emax + Emin) / 2
 
-    built = UniPolfed.build_optimized_mapping(
+    built = Polfed.build_optimized_mapping(
         H,
-        UniPolfed.MappingKernel(:spin_flip, :packed; W=0, G=4),
+        Polfed.MappingKernel(:spin_flip, :packed; W=0, G=4),
         Val(bs),
         scale,
         shift,

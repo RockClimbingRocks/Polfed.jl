@@ -1,11 +1,11 @@
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
-using UniPolfed.Common: stage_names, total_wall, total_cpu
+using Polfed
+using Polfed.Numerics.Lanczos
+using Polfed.Common: stage_names, total_wall, total_cpu
 using LinearAlgebra
 using Random
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 Random.seed!(424242)
 

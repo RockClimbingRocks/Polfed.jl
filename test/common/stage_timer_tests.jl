@@ -8,7 +8,7 @@
 #   • the ambient scope is restored even when the timed expression throws
 
 using Test
-using UniPolfed.Common: StageTimer, @stage, @stages, stage_names, total_wall, total_cpu,
+using Polfed.Common: StageTimer, @stage, @stages, stage_names, total_wall, total_cpu,
                      _stage_current, _elapsed, _cpu_time_ns
 
 @testset "StageTimer" begin

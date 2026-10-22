@@ -1,16 +1,16 @@
 # [Quantum Sun (QSun)](@id qsun_model)
 
 The Quantum Sun model is a compact many-body model for avalanche-driven
-ergodicity restoration. In UniPolfed it is useful both physically and
+ergodicity restoration. In Polfed it is useful both physically and
 numerically: physically because it separates a small ergodic grain from a set
 of outer spins with decaying couplings, and numerically because it produces
 sparse disordered Hamiltonians that are natural inputs for
-[`polfed`](@ref UniPolfed.polfed).
+[`polfed`](@ref Polfed.polfed).
 
-The main constructor is [`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian):
+The main constructor is [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian):
 
 ```julia
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed.Models: qsun_hamiltonian
 
 # qsun_hamiltonian(L_loc, L_grain, g0, α; kwargs...)
 H = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
@@ -18,7 +18,7 @@ H = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
 
 For the full Julia constructor signature, argument types, keyword meanings,
 and return types, see [Models](@ref docs_models_reference), in particular
-[`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian).
+[`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian).
 
 ## Model Definition
 
@@ -29,7 +29,7 @@ QSun supports two closely related conventions:
 - both constructions generalize directly to higher spins such as `S = 1`,
   `S = 3/2`, and so on.
 
-Both are built through the same [`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian)
+Both are built through the same [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian)
 interface.
 
 ### Conventional Quantum Sun Model
@@ -168,7 +168,7 @@ sector before being normalized.
 The parameters `L_loc`, `L_grain`, `g0`, `α`, `γ`, `w`, `hz`, `ζ`, `S`,
 `rng`, and `use_sparse` keep the same meaning as in the conventional model.
 The new ingredients are:
-- `use_U1=true`: tells [`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian)
+- `use_U1=true`: tells [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian)
   to build the U(1)-symmetric model instead of the conventional one.
 - `S_z`: total magnetization sector kept in the reduced Hilbert space.
 
@@ -190,8 +190,8 @@ and is usually the most natural first choice.
 ## Basic Example
 
 The most direct way to work with QSun is to construct the Hamiltonian with
-[`qsun_hamiltonian`](@ref UniPolfed.Models.qsun_hamiltonian) and then pass it into
-[`polfed`](@ref UniPolfed.polfed).
+[`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian) and then pass it into
+[`polfed`](@ref Polfed.polfed).
 
 If you want the complete constructor reference while reading this page, jump
 to [Models](@ref docs_models_reference).
@@ -199,8 +199,8 @@ to [Models](@ref docs_models_reference).
 ### Full-Hilbert-Space Example
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 using Random
 
@@ -295,7 +295,7 @@ The Quantum Sun model is a useful benchmark for several reasons:
 - The model is easy to vary across disorder realizations and parameter
   regimes, while still remaining rich enough to display nontrivial many-body
   behavior.
-- It is particularly well matched to [`polfed`](@ref UniPolfed.polfed), because
+- It is particularly well matched to [`polfed`](@ref Polfed.polfed), because
   one usually wants interior or near-middle-spectrum eigenpairs of fairly
   large sparse Hamiltonians to study ergodicity-breaking transitions at
   infinite temperature.

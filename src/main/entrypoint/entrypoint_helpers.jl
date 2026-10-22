@@ -9,7 +9,7 @@ previous level afterwards (also on error). `level === nothing` — the default o
 `verbosity` keyword — evaluates `expr` unchanged, leaving the global level alone.
 
 This is what lets `polfed(H, x0, 50, :maxdos; verbosity = 3)` trace one run without the caller
-having to set and reset `UniPolfed.Common.verbosity[]` around it.
+having to set and reset `Polfed.Common.verbosity[]` around it.
 """
 macro with_verbosity(level, expr)
     quote

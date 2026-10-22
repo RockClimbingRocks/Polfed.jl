@@ -1,9 +1,9 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using Random
 
-Q = UniPolfed.Models.QSun
+Q = Polfed.Models.QSun
 
 @testset "random_utils" begin
 

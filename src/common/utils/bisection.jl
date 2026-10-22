@@ -25,7 +25,7 @@ then returns the interval midpoint.
 # Notes
 This is a POLFED-agnostic numerical utility. It backs the spectral-transform
 resolutions (bounds from DoS mass, polynomial order from cutoff), where the
-monotone bisection targets are built in `UniPolfed/Transform/`.
+monotone bisection targets are built in `Polfed/Transform/`.
 """
 function bisection(f, x1::Real, x2::Real; tol::Real=1e-8, max_iter::Int=500)
     if f(x1) * f(x2) > 0

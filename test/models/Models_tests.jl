@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using SparseArrays
 using Random
 
-using UniPolfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
 
 @testset "Models namespace" begin
 
@@ -17,12 +17,12 @@ using UniPolfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
     @testset "qsun_hamiltonian wrapper forwards to QSun" begin
         # the typed Models wrapper must agree with the underlying QSun method
         H = qsun_hamiltonian(2, 2, 1.0, 0.5; rng = MersenneTwister(1))
-        ref = UniPolfed.Models.QSun.qsun_hamiltonian(2, 2, 1.0, 0.5; rng = MersenneTwister(1))
+        ref = Polfed.Models.QSun.qsun_hamiltonian(2, 2, 1.0, 0.5; rng = MersenneTwister(1))
         @test H == ref
         @test size(H) == (16, 16)
 
         Hu = qsun_hamiltonian(2, 2, 1.0, 0.5; use_U1 = true, S_z = 0.0, rng = MersenneTwister(2))
-        refu = UniPolfed.Models.QSun.qsun_hamiltonian(2, 2, 1.0, 0.5; use_U1 = true, S_z = 0.0,
+        refu = Polfed.Models.QSun.qsun_hamiltonian(2, 2, 1.0, 0.5; use_U1 = true, S_z = 0.0,
                                                    rng = MersenneTwister(2))
         @test Hu == refu
         @test size(Hu) == (6, 6)

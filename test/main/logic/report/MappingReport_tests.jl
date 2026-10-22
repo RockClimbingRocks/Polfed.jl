@@ -1,10 +1,10 @@
 # MappingReport: operator-string mapping, snapshot from a MappingPlan, and section rendering.
 
 using LinearAlgebra
-using UniPolfed: MappingConfig, BlockWise, build_mapping_plan
-import UniPolfed: MappingReport, _operator_str, render_mapping, ColumnLayout, RowLayout, Formatter
+using Polfed: MappingConfig, BlockWise, build_mapping_plan
+import Polfed: MappingReport, _operator_str, render_mapping, ColumnLayout, RowLayout, Formatter
 
-using UniPolfed.Optimization: MappingKernel
+using Polfed.Optimization: MappingKernel
 
 @testset "MappingReport" begin
     @testset "_operator_str covers every optimize_mapping form" begin

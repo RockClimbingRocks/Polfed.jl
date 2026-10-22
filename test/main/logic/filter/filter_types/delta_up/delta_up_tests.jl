@@ -3,19 +3,19 @@
 # at the target, dropping to `cutoff` at the passband edges.
 
 using Test
-using UniPolfed
+using Polfed
 
 @testset "DeltaUpFilter - construction" begin
 
     @testset "Unbuilt filter has negative order" begin
-        iv = UniPolfed.Interval(-0.1, 0.1)
-        f = UniPolfed.DeltaUpFilter(iv)
+        iv = Polfed.Interval(-0.1, 0.1)
+        f = Polfed.DeltaUpFilter(iv)
         @test f.order < 0
     end
 
     @testset "Filter interval is set correctly" begin
-        iv = UniPolfed.Interval(-0.1, 0.1)
-        f = UniPolfed.DeltaUpFilter(iv) 
+        iv = Polfed.Interval(-0.1, 0.1)
+        f = Polfed.DeltaUpFilter(iv) 
         @test f.interval == iv
     end
 

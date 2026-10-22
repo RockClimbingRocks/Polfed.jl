@@ -1,7 +1,7 @@
 # resolve_mapping_kernel + build_optimized_mapping: the boundary the POLFED pipeline consumes.
 
 using LinearAlgebra, SparseArrays
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
 
 @testset "resolve + build_optimized_mapping" begin
     H = xxz_hamiltonian(10, 5, 1.0, 0.55, 0.0; boundary=:periodic, field=0.0, use_sparse=true)
@@ -51,7 +51,7 @@ using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
         a, b = 4.0, 0.25
         D = size(H, 1)
         op = build_optimized_mapping(H, true, Val(2), a, b).f!_rescaled
-        @test op isa UniPolfed.Optimization.RangeKernelOperator
+        @test op isa Polfed.Optimization.RangeKernelOperator
         @test (op.units, op.alignment) == (D, 1)
         X = rand(2, D); Y1 = similar(X); Y2 = similar(X)
         op(Y1, X)                                             # the whole-block form
@@ -59,7 +59,7 @@ using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
         @test Y1 == Y2
         # row_bucketed (auto at bs = 1) has no range form: a plain closure, as before
         @test !(build_optimized_mapping(H, true, Val(1), a, b).f!_rescaled isa
-                UniPolfed.Optimization.RangeKernelOperator)
+                Polfed.Optimization.RangeKernelOperator)
     end
 
     @testset "mapping_kernels lists what applies" begin

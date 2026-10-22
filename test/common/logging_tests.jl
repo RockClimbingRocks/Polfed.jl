@@ -1,9 +1,9 @@
 using Test
-using UniPolfed
+using Polfed
 using Random
 using Logging
 
-C = UniPolfed.Common
+C = Polfed.Common
 
 @testset "logging" begin
     @testset "should_log respects the verbosity threshold" begin
@@ -94,7 +94,7 @@ C = UniPolfed.Common
             counts = map(0:4) do v
                 C.verbosity[] = v
                 logs, _ = Test.collect_test_logs(min_level = Logging.Debug) do
-                    UniPolfed.polfed(H, copy(x0), 4, (:unrescaled, 0.0))
+                    Polfed.polfed(H, copy(x0), 4, (:unrescaled, 0.0))
                 end
                 length(logs)
             end

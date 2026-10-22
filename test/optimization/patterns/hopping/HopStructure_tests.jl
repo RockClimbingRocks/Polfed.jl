@@ -6,7 +6,7 @@
 # REFUSE rather than fit a wrong shape to.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: HopStructure, classify, rescale, n_axes, _derive_hop,
+import Polfed.Optimization: HopStructure, classify, rescale, n_axes, _derive_hop,
                                MappingStructure
 
 """

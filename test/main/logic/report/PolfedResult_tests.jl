@@ -3,7 +3,7 @@
 # shared fixture (report_fixture.jl).
 
 using LinearAlgebra
-using UniPolfed: PolfedResult, MappingConfig, polfed, eigenvector, eigenpair
+using Polfed: PolfedResult, MappingConfig, polfed, eigenvector, eigenpair
 
 @testset "PolfedResult" begin
     @testset "destructures as (vals, vecs, report), like LanczosResult" begin

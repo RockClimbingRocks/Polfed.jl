@@ -2,7 +2,7 @@
 # truth (kernel identities, peak normalization, lobe suppression) rather than snapshots, and
 # against the sharp filter it is derived from.
 
-using UniPolfed: Interval, DeltaUpFilter, DeltaUpSmoothFilter, Defaults,
+using Polfed: Interval, DeltaUpFilter, DeltaUpSmoothFilter, Defaults,
                  build_filter, validate_filter, _scalar_filter, _jackson_kernel,
                  coefficients, passband, cutoff, exposed_end, polynomial_order,
                  polynomial_type, order_safety_factor, expected_krylov_dim,

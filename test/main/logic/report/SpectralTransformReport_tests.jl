@@ -2,8 +2,8 @@
 # section rendering.
 
 using LinearAlgebra
-using UniPolfed: MappingConfig, BlockWise, build_mapping_plan
-import UniPolfed: SpectralTransformReport, format_target_strategy, render_transform,
+using Polfed: MappingConfig, BlockWise, build_mapping_plan
+import Polfed: SpectralTransformReport, format_target_strategy, render_transform,
               Interval, DeltaUpFilter, TargetMiddle, TargetMaxDoS, TargetOffset,
               TargetAbsolute, TargetRescaled, Formatter
 

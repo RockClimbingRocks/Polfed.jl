@@ -2,7 +2,7 @@
 # resolution — no operator, no Lanczos — so the cost model is asserted directly on the numbers it
 # is made of, not inferred from a run's timing.
 
-import UniPolfed: resolve_double_strategy, DoubleStrategy, double_order, Interval,
+import Polfed: resolve_double_strategy, DoubleStrategy, double_order, Interval,
                DoubleDeltaFilter, EdgeFilter, polynomial_order, Defaults
 
 @testset "resolve_double_strategy" begin

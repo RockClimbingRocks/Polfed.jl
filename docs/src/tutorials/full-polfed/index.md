@@ -6,8 +6,8 @@ with its own defaults, because "everything" is not just a very wide window: ther
 target to resolve, and the result is dense by construction.
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
@@ -21,7 +21,7 @@ tiled; `howmany_per_patch` is the only sizing knob.
 
 ## What you get back
 
-A [`PatchedResult`](@ref UniPolfed.PatchedResult), unpacking as `(vals, vecs, report)` like
+A [`PatchedResult`](@ref Polfed.PatchedResult), unpacking as `(vals, vecs, report)` like
 every other entrypoint. Here `vecs` is **one dense ``D \times D`` matrix** — the honest cost of
 asking for every eigenvector, and what bounds the problem size: full POLFED is memory-limited in
 a way that `polfed` and `patched_polfed` are not.
@@ -78,7 +78,7 @@ avoid in the first place.
 
 ## Reading the output
 
-The report is the same [`PatchedReport`](@ref UniPolfed.PatchedReport) that
+The report is the same [`PatchedReport`](@ref Polfed.PatchedReport) that
 `patched_polfed` returns, so
 [that page's output section](@ref tutorial_patched) applies in full. Three things matter
 more here:

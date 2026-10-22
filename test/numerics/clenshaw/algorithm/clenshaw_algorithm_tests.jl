@@ -1,8 +1,8 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 
-CL = UniPolfed.Numerics.Clenshaw
+CL = Polfed.Numerics.Clenshaw
 
 # Ground-truth helpers (independent of the implementation under test).
 single_term(n) = k -> (k == n ? 1.0 : 0.0)          # expansion = φ_n alone

@@ -1,7 +1,7 @@
 # Unified CPU/GPU processing-unit adapter.
 #
 # This replaces the two former copies (`Lanczos/ProcessingUnit.jl`, which had
-# 4 fields, and `UniPolfed/Structs/ProcessingUnit.jl`, which had 6). The 6-field
+# 4 fields, and `Polfed/Structs/ProcessingUnit.jl`, which had 6). The 6-field
 # superset below is the canonical version used by every component.
 
 """

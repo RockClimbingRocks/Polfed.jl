@@ -1,10 +1,10 @@
 using Test
 using LinearAlgebra
 using Random
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 # A `bs`-vector block in the given layout: D×bs (column) or bs×D (row).
 makeblock(::ColumnLayout, ::Type{T}, D, bs) where {T} = randn(T, D, bs)

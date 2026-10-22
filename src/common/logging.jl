@@ -49,7 +49,7 @@ Runtime POLFED logging level. Typical values:
 - `3` (`POLFED_DEBUG_LEVEL`) — DEBUG + INFO + WARN (detailed tracing)
 - `4` (`POLFED_DEEP_DEBUG_LEVEL`) — DEEP + DEBUG + INFO + WARN (per-iteration tracing)
 
-Set it at runtime, e.g. `UniPolfed.Common.verbosity[] = 2`.
+Set it at runtime, e.g. `Polfed.Common.verbosity[] = 2`.
 """
 const verbosity = Ref(POLFED_WARN_LEVEL)
 

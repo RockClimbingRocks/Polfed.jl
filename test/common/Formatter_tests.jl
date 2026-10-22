@@ -1,7 +1,7 @@
 using Test
-using UniPolfed
+using Polfed
 
-C = UniPolfed.Common
+C = Polfed.Common
 
 @testset "Formatter" begin
     on  = C.Formatter(true)

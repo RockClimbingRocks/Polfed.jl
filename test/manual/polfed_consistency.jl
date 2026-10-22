@@ -1,7 +1,7 @@
 # =====================================================================================
 # POLFED consistency test suite
 #
-# Validates that every UniPolfed entrypoint agrees with full exact diagonalization (ED)
+# Validates that every Polfed entrypoint agrees with full exact diagonalization (ED)
 # and — just as importantly — with *itself* across different ways of asking for the same
 # eigenpairs:
 #
@@ -33,13 +33,13 @@
 # as BUDGET-limited or INTERVAL-limited; see its docstring and testset 11.
 # =====================================================================================
 
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using Random
 using SparseArrays
 using Test
 
-const P = UniPolfed
+const P = Polfed
 
 # Keep the pipelines quiet (level 1 = warnings only). Bump to 2/3 while debugging.
 P.Common.verbosity[] = 1

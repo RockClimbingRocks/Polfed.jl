@@ -1,7 +1,7 @@
 
 using Test
-using UniPolfed
-using UniPolfed: Interval, TargetRescaledWindow, TargetAbsoluteWindow, resolve_window,
+using Polfed
+using Polfed: Interval, TargetRescaledWindow, TargetAbsoluteWindow, resolve_window,
               howmany_in_interval, DoSResult
 
 @testset "resolve_window" begin
@@ -47,7 +47,7 @@ end
 @testset "howmany_in_interval" begin
     # Synthetic DoS: only the k=0 Chebyshev coefficient (moments/ρ are unused here).
     dos   = DoSResult([1.0], [1.0], x -> 1.0)
-    icw(l, r) = UniPolfed.integrate_chebyshev_weighted([1.0], l, r) / π
+    icw(l, r) = Polfed.integrate_chebyshev_weighted([1.0], l, r) / π
 
     @testset "count + buffer wiring (default buffer = 2·blocksize)" begin
         for (l, r) in [(-1.0, 1.0), (0.0, 1.0), (-0.3, 0.3)]

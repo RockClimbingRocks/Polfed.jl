@@ -1,9 +1,9 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using SparseArrays
 
-CL = UniPolfed.Numerics.Clenshaw
+CL = Polfed.Numerics.Clenshaw
 ClenshawExpansion = CL.ClenshawExpansion
 
 # Ground truth: T_n(A) via the matrix Chebyshev recurrence.

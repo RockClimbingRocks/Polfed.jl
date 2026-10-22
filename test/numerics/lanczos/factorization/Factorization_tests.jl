@@ -1,10 +1,10 @@
 using Test
 using LinearAlgebra
 using Random
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 # Build a factorization and run `k` Lanczos iterations (mirrors lanczos_algorithm's
 # driver loop). Returns (factorization, ok) where `ok=false` signals breakdown.

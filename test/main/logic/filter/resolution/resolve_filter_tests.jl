@@ -1,5 +1,5 @@
 
-import UniPolfed: resolve_filter, Interval, DeltaUpFilter, DeltaDownFilter, DoubleDeltaFilter,
+import Polfed: resolve_filter, Interval, DeltaUpFilter, DeltaDownFilter, DoubleDeltaFilter,
                EdgeFilter, validate_filter, exposed_end, _cutoff_values, _build_candidate,
                _first_valid, Defaults
 

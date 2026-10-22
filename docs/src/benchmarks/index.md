@@ -19,7 +19,7 @@ Fill this in for every measurement set:
 | Cores / threads used | — |
 | RAM | — |
 | Julia version | — |
-| UniPolfed version | — |
+| Polfed version | — |
 | Element type | — |
 | Date measured | — |
 

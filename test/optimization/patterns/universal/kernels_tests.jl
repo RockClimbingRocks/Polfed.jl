@@ -3,7 +3,7 @@
 # two shapes that previously errored now work too.
 
 using LinearAlgebra, SparseArrays
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian
 
 @testset "universal / row_read" begin
 

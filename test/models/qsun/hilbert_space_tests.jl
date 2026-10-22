@@ -1,7 +1,7 @@
 using Test
-using UniPolfed
+using Polfed
 
-Q = UniPolfed.Models.QSun
+Q = Polfed.Models.QSun
 
 @testset "hilbert_space" begin
 

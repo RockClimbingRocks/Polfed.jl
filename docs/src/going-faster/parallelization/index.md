@@ -1,7 +1,7 @@
 # [Parallelization](@id parallelization)
 
 Lever 2 from [The bottleneck](@ref going_faster): apply the operator to many things at once.
-The strategy is set through [`MappingConfig`](@ref UniPolfed.MappingConfig).
+The strategy is set through [`MappingConfig`](@ref Polfed.MappingConfig).
 
 ## The strategies
 
@@ -10,11 +10,11 @@ to the Clenshaw recurrence that evaluates the filter.
 
 | Strategy | Parallel region | Typical use |
 | :--- | :--- | :--- |
-| [`BlockWise`](@ref UniPolfed.BlockWise) | **inside** each Clenshaw step — the block goes to the operator in one call and is split across threads there, one region per step | GPU runs; single vectors; anything where the block is not a multiple of the thread count |
-| [`VectorWise`](@ref UniPolfed.VectorWise) | **around** the whole recurrence — one Clenshaw run per Krylov vector, each with its own buffers | block Lanczos where the block size equals the thread count |
+| [`BlockWise`](@ref Polfed.BlockWise) | **inside** each Clenshaw step — the block goes to the operator in one call and is split across threads there, one region per step | GPU runs; single vectors; anything where the block is not a multiple of the thread count |
+| [`VectorWise`](@ref Polfed.VectorWise) | **around** the whole recurrence — one Clenshaw run per Krylov vector, each with its own buffers | block Lanczos where the block size equals the thread count |
 
 ```julia
-using UniPolfed
+using Polfed
 
 mc_block  = MappingConfig(parallel_strategy = BlockWise())
 mc_vector = MappingConfig(parallel_strategy = VectorWise())
@@ -91,9 +91,9 @@ inside the kernel instead.
 
 !!! note "The split follows the layout"
     `VectorWise` splits along whichever axis holds the Krylov vectors: **columns** under
-    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout) (each thread takes a
+    [`ColumnLayout`](@ref Polfed.Numerics.Lanczos.ColumnLayout) (each thread takes a
     length-`D` column) and **rows** under
-    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout), which is what the matrix
+    [`RowLayout`](@ref Polfed.Numerics.Lanczos.RowLayout), which is what the matrix
     entrypoint uses (each thread takes a `1 × D` row). A row-layout block is therefore split
     into `bs` vectors of length `D`, never into `D` fragments of length `bs`.
 

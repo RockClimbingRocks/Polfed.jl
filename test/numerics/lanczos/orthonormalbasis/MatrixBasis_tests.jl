@@ -1,9 +1,9 @@
 using Test
 using LinearAlgebra
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 @testset "MatrixBasis" begin
     pu = CPU()

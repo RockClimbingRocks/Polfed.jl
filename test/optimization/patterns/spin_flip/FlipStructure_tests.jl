@@ -4,7 +4,7 @@
 # at construction — the kernels run under `@inbounds`, so nothing throws at matvec time.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: FlipStructure, n_masks, rescale, classify, _derive_flip
+import Polfed.Optimization: FlipStructure, n_masks, rescale, classify, _derive_flip
 
 """    sun_sparse(L; α) -> (H, masks, values, diags) — 2-bit masks, all values different."""
 function sun_sparse(L::Int; α = 0.75, T = Float64)
@@ -83,7 +83,7 @@ end
 
     @testset "_derive_flip declines what is not a flip operator" begin
         # a symmetry sector: the index is a rank, not a configuration, and dim is not 2^L
-        H = UniPolfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.55, 0.3;
+        H = Polfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.55, 0.3;
                                              boundary = :periodic, use_sparse = true)
         @test isnothing(_derive_flip(classify(H)))
 

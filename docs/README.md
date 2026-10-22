@@ -45,8 +45,8 @@ The URL follows the folder structure. For example:
 - **Model pages open with a "you do not need this model" note.** The shipped Hamiltonians
   are conveniences; the risk is readers thinking POLFED only works on them.
 - **The API Reference excludes internals.** Only what a user can see and call.
-- **Cross-reference anchors** use the `UniPolfed.`-prefixed form for API objects
-  (`@ref UniPolfed.polfed`) and short slugs for pages (`@ref tutorial_polfed`).
+- **Cross-reference anchors** use the `Polfed.`-prefixed form for API objects
+  (`@ref Polfed.polfed`) and short slugs for pages (`@ref tutorial_polfed`).
 - **Diagrams are inline SVG**, theme-aware via `html.theme--documenter-dark` and the
   catppuccin variants. Mermaid would be more diffable but needs `DocumenterMermaid` added
   to `docs/Project.toml`; that swap has not been made.
@@ -89,14 +89,14 @@ never writes outside this repository.
 The docs are published under:
 
 ```text
-https://rockclimbingrocks.github.io/UniPolfed.jl/
+https://rockclimbingrocks.github.io/Polfed.jl/
 ```
 
 Subpages follow the same path structure:
 
 ```text
-https://rockclimbingrocks.github.io/UniPolfed.jl/citation/
-https://rockclimbingrocks.github.io/UniPolfed.jl/getting-started/quickstart/
+https://rockclimbingrocks.github.io/Polfed.jl/citation/
+https://rockclimbingrocks.github.io/Polfed.jl/getting-started/quickstart/
 ```
 
 The landing page content is `docs/src/index.md`.

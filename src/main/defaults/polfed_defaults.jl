@@ -1,8 +1,8 @@
 """
-    UniPolfed.Defaults.polfed
+    Polfed.Defaults.polfed
 
 Default parameter values for the `polfed` entrypoint and its pipeline, referenced qualified
-(e.g. `Defaults.polfed.N`) so the names never leak into `module UniPolfed`'s namespace. Defaults are
+(e.g. `Defaults.polfed.N`) so the names never leak into `module Polfed`'s namespace. Defaults are
 **per function**: a variant like `patched_polfed` carries its own [`Defaults.patched_polfed`](@ref).
 
 Filter-specific defaults live in [`Defaults.filters`](@ref) (a sibling, not a child — every

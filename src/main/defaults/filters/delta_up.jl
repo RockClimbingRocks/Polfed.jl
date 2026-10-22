@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.filters.delta_up
+    Polfed.Defaults.filters.delta_up
 
 Defaults for [`DeltaUpFilter`](@ref) — the reference delta filter. Referenced qualified
 (`Defaults.filters.delta_up.cutoff`) so `cutoff`/`order`/… never collide across filters.

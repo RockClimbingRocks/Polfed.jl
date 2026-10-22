@@ -1,4 +1,4 @@
-using UniPolfed
+using Polfed
 using Test
 using Logging
 
@@ -15,7 +15,7 @@ using Logging
 const _quiet = get(ENV, "POLFED_TEST_VERBOSE", "0") == "0"
 const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) : global_logger()
 
-@testset "UniPolfed.jl" begin
+@testset "Polfed.jl" begin
 
     @testset "Infrastructure" begin
         @testset "Common" begin

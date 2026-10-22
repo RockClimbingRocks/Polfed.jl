@@ -1,8 +1,8 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 
-CL = UniPolfed.Numerics.Clenshaw
+CL = Polfed.Numerics.Clenshaw
 
 @testset "final_sum" begin
 

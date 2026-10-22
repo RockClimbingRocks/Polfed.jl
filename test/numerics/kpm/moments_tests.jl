@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using Random
 using SparseArrays
 
-K = UniPolfed.Numerics.KPM
+K = Polfed.Numerics.KPM
 
 # Closed-form Chebyshev value, |x| ≤ 1.
 _kpm_test_cheb(x, k) = cos(k * acos(x))
@@ -101,7 +101,7 @@ Base.eltype(::MomTestOp) = Float64
         rowop!(Y, X) = (Y .= X .* d'; nothing)
         colop!(Y, X) = (Y .= d .* X; nothing)
         run(E, template, f!, nt) =
-            K.kpm_moments(f!, N, R, template, UniPolfed.CPU(); rng = MersenneTwister(3), ntasks = nt)
+            K.kpm_moments(f!, N, R, template, Polfed.CPU(); rng = MersenneTwister(3), ntasks = nt)
 
         for E in (Float64, ComplexF64)
             ref_row = run(E, zeros(E, 1, dim), rowop!, 1)
@@ -120,8 +120,8 @@ Base.eltype(::MomTestOp) = Float64
         A = sprandn(dim, dim, 0.1)
         H = (A + A') ./ (2 * opnorm(Matrix(A + A')))
         f!(Y, X) = mul!(Y, X, H)
-        μ(nt) = UniPolfed.with_serial_libraries() do   # as calculate_dos runs it
-            K.kpm_moments(f!, 20, 13, zeros(4, dim), UniPolfed.CPU();
+        μ(nt) = Polfed.with_serial_libraries() do   # as calculate_dos runs it
+            K.kpm_moments(f!, 20, 13, zeros(4, dim), Polfed.CPU();
                           rng = MersenneTwister(5), ntasks = nt)
         end
         @test μ(1) == μ(2) == μ(5)
@@ -131,14 +131,14 @@ Base.eltype(::MomTestOp) = Float64
     @testset "kpm_moments and probe_moments! are type-stable" begin
         d = collect(range(-0.9, 0.9; length = 30))
         f!(Y, X) = (Y .= X .* d'; nothing)
-        @inferred K.kpm_moments(f!, 8, 5, zeros(2, 30), UniPolfed.CPU(); ntasks = 2)
-        @inferred K.kpm_moments(f!, 8, 5, zeros(ComplexF32, 3, 30), UniPolfed.CPU())
+        @inferred K.kpm_moments(f!, 8, 5, zeros(2, 30), Polfed.CPU(); ntasks = 2)
+        @inferred K.kpm_moments(f!, 8, 5, zeros(ComplexF32, 3, 30), Polfed.CPU())
         P = Matrix{Float64}(I, 30, 30)[1:3, :]
         @inferred K.probe_moments!(zeros(8, 3), f!, P, K.ChebyshevWorkspace(P))
     end
 
     @testset "kpm_moments rejects a non-positive ntasks" begin
-        @test_throws ArgumentError K.kpm_moments((y, x) -> (y .= x), 2, 2, zeros(4), UniPolfed.CPU();
+        @test_throws ArgumentError K.kpm_moments((y, x) -> (y .= x), 2, 2, zeros(4), Polfed.CPU();
                                                  ntasks = 0)
     end
 
@@ -151,7 +151,7 @@ Base.eltype(::MomTestOp) = Float64
         template = zeros(Float64, dim)
         f!(y, x) = (y .= c .* x)
 
-        μ = K.kpm_moments(f!, N, R, template, UniPolfed.CPU())
+        μ = K.kpm_moments(f!, N, R, template, Polfed.CPU())
 
         expected = [dim * _kpm_test_cheb(c, k) for k in 0:N-1]
         @test μ ≈ expected
@@ -168,7 +168,7 @@ Base.eltype(::MomTestOp) = Float64
         template = zeros(E, dim)
         f!(y, x) = (y .= c .* x)
 
-        μ = K.kpm_moments(f!, N, R, template, UniPolfed.CPU())
+        μ = K.kpm_moments(f!, N, R, template, Polfed.CPU())
 
         expected = [dim * _kpm_test_cheb(c, k) for k in 0:N-1]
         @test eltype(μ) === S
@@ -186,12 +186,12 @@ Base.eltype(::MomTestOp) = Float64
         col_shapes = Set{Tuple{Int,Int}}()
         col_calls = Ref(0)
         f_col!(Y, X) = (col_calls[] += 1; push!(col_shapes, size(X)); Y .= c .* X)
-        μ_col = K.kpm_moments(f_col!, N, R, zeros(Float64, dim, block), UniPolfed.CPU())
+        μ_col = K.kpm_moments(f_col!, N, R, zeros(Float64, dim, block), Polfed.CPU())
 
         row_shapes = Set{Tuple{Int,Int}}()
         row_calls = Ref(0)
         f_row!(Y, X) = (row_calls[] += 1; push!(row_shapes, size(X)); Y .= c .* X)
-        μ_row = K.kpm_moments(f_row!, N, R, zeros(Float64, block, dim), UniPolfed.CPU())
+        μ_row = K.kpm_moments(f_row!, N, R, zeros(Float64, block, dim), Polfed.CPU())
 
         @test μ_col ≈ expected
         @test μ_row ≈ expected
@@ -210,10 +210,10 @@ Base.eltype(::MomTestOp) = Float64
         f_row!(Y, X) = mul!(Y, X, H)
 
         Random.seed!(123)
-        μ_col = K.kpm_moments(f_col!, N, R, zeros(Float64, size(H, 1), 1), UniPolfed.CPU())
+        μ_col = K.kpm_moments(f_col!, N, R, zeros(Float64, size(H, 1), 1), Polfed.CPU())
 
         Random.seed!(123)
-        μ_row = K.kpm_moments(f_row!, N, R, zeros(Float64, 1, size(H, 1)), UniPolfed.CPU())
+        μ_row = K.kpm_moments(f_row!, N, R, zeros(Float64, 1, size(H, 1)), Polfed.CPU())
 
         @test μ_row ≈ μ_col
     end

@@ -1,8 +1,8 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 
-Q = UniPolfed.Models.QSun
+Q = Polfed.Models.QSun
 
 # Materialize an on-site spin operator as a dense (d × d) matrix by applying the
 # bit-packed primitive to each single-site basis state `si ∈ 0:(d-1)` (encoded as

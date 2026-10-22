@@ -8,10 +8,10 @@
 # with unconverged pairs between it and the window, must not certify that window's edge.
 
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 
-LZ = UniPolfed.Numerics.Lanczos
+LZ = Polfed.Numerics.Lanczos
 
 # A filtered spectrum: `E` rescaled energies, `p` the filter applied to them (a unimodal
 # peak at `center`, as a delta filter is). Returned ascending in `p`, as Lanczos hands

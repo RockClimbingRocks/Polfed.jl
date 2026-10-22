@@ -8,8 +8,8 @@ entrypoint to reach for unless your energy window is very wide (then see
 ## Setup
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 L_loc, L_grain, g0, α = 12, 2, 1.0, 0.5
@@ -147,7 +147,7 @@ is its window form. See [Patched POLFED](@ref tutorial_patched).
 ### `:maxdos` moves when you change the DoS
 
 `:maxdos` is *defined* as the peak of the KPM estimate, so the two knobs in
-[`DoSConfig`](@ref UniPolfed.DoSConfig) can shift it:
+[`DoSConfig`](@ref Polfed.DoSConfig) can shift it:
 
 - `N` — more Chebyshev moments, finer resolution, often more visible peaks.
 - `R` — more stochastic probes, less noise, a more stable peak location.
@@ -218,7 +218,7 @@ the *original* ``H`` is below it.
 
 ### The result object
 
-[`PolfedResult`](@ref UniPolfed.PolfedResult) destructures as `(vals, vecs, report)` — the same
+[`PolfedResult`](@ref Polfed.PolfedResult) destructures as `(vals, vecs, report)` — the same
 protocol every other entrypoint and `lanczos` use:
 
 ```julia
@@ -249,7 +249,7 @@ end
     `vecs` is `D × n` and `vecs[:, i]` is the `i`-th eigenvector — for the operator path and the
     matrix path alike. The matrix entrypoints work in row layout internally and return a lazy
     `transpose` of those rows (no copy), so the indexing does not depend on it.
-    [`eigenvector`](@ref UniPolfed.eigenvector) gives the same thing as a view.
+    [`eigenvector`](@ref Polfed.eigenvector) gives the same thing as a view.
 
 `vals`/`vecs`/`residuals` are already filtered to the requested interval and sorted with
 respect to ``H``. Because the in-interval pairs form a contiguous run, the eigenvector
@@ -385,15 +385,15 @@ drops the color automatically. Both switches are also available as IO properties
 Five levels, each strictly adding to the one below:
 
 ```julia
-UniPolfed.Common.verbosity[] = 0   # silent
-UniPolfed.Common.verbosity[] = 1   # warn      — potential issues
-UniPolfed.Common.verbosity[] = 2   # info      — one line per pipeline stage
-UniPolfed.Common.verbosity[] = 3   # debug     — bound probes, filter ladder, per-check convergence
-UniPolfed.Common.verbosity[] = 4   # deep      — per-iteration tracing
+Polfed.Common.verbosity[] = 0   # silent
+Polfed.Common.verbosity[] = 1   # warn      — potential issues
+Polfed.Common.verbosity[] = 2   # info      — one line per pipeline stage
+Polfed.Common.verbosity[] = 3   # debug     — bound probes, filter ladder, per-check convergence
+Polfed.Common.verbosity[] = 4   # deep      — per-iteration tracing
 ```
 
 Level `0` is genuinely silent: POLFED routes its own warnings through
-[`polfed_log`](@ref UniPolfed.Common.polfed_log) rather than `@warn`, so they are suppressed
+[`polfed_log`](@ref Polfed.Common.polfed_log) rather than `@warn`, so they are suppressed
 too. Level `4` scales with the run and can produce thousands of lines — use it to find
 *where inside a stage* something goes wrong, not for production.
 

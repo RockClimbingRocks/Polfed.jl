@@ -875,7 +875,7 @@ into two ordinary runs rather than an error.
 
 - The two intervals must be **disjoint**, with ``\text{interval}_1`` strictly left of
   ``\text{interval}_2``. Overlapping or touching windows are a single connected region — a job
-  for [`polfed`](@ref UniPolfed.polfed), or `patched_polfed` if it is wide.
+  for [`polfed`](@ref Polfed.polfed), or `patched_polfed` if it is wide.
 - Each target is the **midpoint** of its interval; you do not set the peaks directly.
 - Exactly two windows are supported. More than that is what `patched_polfed` is for.
 

@@ -10,10 +10,10 @@
 #     harvested from one Krylov space. The public multi-window entrypoint is tracked in the roadmap.
 
 using LinearAlgebra, SparseArrays, Random, Logging, Test
-using UniPolfed: polfed, MappingConfig, PolfedResult
-import UniPolfed: EdgeFilter, Interval, build_filter, build_transform, build_mapping_plan,
+using Polfed: polfed, MappingConfig, PolfedResult
+import Polfed: EdgeFilter, Interval, build_filter, build_transform, build_mapping_plan,
                resolve_eig_target, exposed_end
-import UniPolfed.Numerics.Lanczos: lanczos
+import Polfed.Numerics.Lanczos: lanczos
 
 # QREM: diag(ε) + hx·Σᵢ σᵢˣ (see matrix_entrypoint_tests / qrem_fixture). Real-symmetric.
 function _qrem_e(L::Int; hx = 0.7, T = Float64)

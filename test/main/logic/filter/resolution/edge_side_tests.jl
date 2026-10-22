@@ -2,7 +2,7 @@
 # TOUCHING ±1 is edge territory; a near-edge window like [-0.99, -0.9] is deliberately :interior
 # (the delta cutoff ladder handles it); the full spectrum is rejected.
 
-import UniPolfed: edge_side, _check_interval, Interval
+import Polfed: edge_side, _check_interval, Interval
 
 @testset "edge_side" begin
     @testset "classification" begin

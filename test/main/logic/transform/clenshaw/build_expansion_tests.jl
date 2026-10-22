@@ -1,5 +1,5 @@
 using Test
-using UniPolfed
+using Polfed
 
 @testset "build_expansion" begin
     @testset "normalize_clenshaw_recurrence accepts 5-argument recurrence" begin
@@ -11,10 +11,10 @@ using UniPolfed
         end
 
         x0 = ones(Float64, 4)
-        recurrence! = UniPolfed.normalize_clenshaw_recurrence(
+        recurrence! = Polfed.normalize_clenshaw_recurrence(
             recurrence5!,
             x0,
-            UniPolfed.BlockWise(),
+            Polfed.BlockWise(),
         )
 
         b1 = zeros(4)
@@ -36,10 +36,10 @@ using UniPolfed
         end
 
         x0 = ones(Float64, 4)
-        recurrence! = UniPolfed.normalize_clenshaw_recurrence(
+        recurrence! = Polfed.normalize_clenshaw_recurrence(
             recurrence6!,
             x0,
-            UniPolfed.BlockWise(),
+            Polfed.BlockWise(),
         )
 
         b1 = zeros(4)
@@ -56,15 +56,15 @@ using UniPolfed
         x0 = ones(Float64, 4)
         bad_recurrence!(_b1, _b2) = nothing
 
-        @test_throws ArgumentError UniPolfed.normalize_clenshaw_recurrence(
+        @test_throws ArgumentError Polfed.normalize_clenshaw_recurrence(
             bad_recurrence!,
             x0,
-            UniPolfed.BlockWise(),
+            Polfed.BlockWise(),
         )
     end
     @testset "_operator_expansion picks the evaluator from the operator" begin
-        C = UniPolfed.Numerics.Clenshaw
-        H = UniPolfed.Models.xxz_hamiltonian(8, 4, 1.0, 0.55, 0.0; boundary = :periodic,
+        C = Polfed.Numerics.Clenshaw
+        H = Polfed.Models.xxz_hamiltonian(8, 4, 1.0, 0.55, 0.0; boundary = :periodic,
                                              field = 0.0, use_sparse = true)
         D, bs, a, b = size(H, 1), 2, 4.0, 0.25
         coef = k -> 1 / (1 + k)
@@ -72,18 +72,18 @@ using UniPolfed
         ws() = [rand(bs, D) for _ in 1:3]
         ref(op, K) = C.ClenshawExpansion(:Chebyshev, coef, K, op)(zeros(bs, D), X, ws())
 
-        gen = UniPolfed._generic_row_rescaled(H, a, b)
-        e = UniPolfed._operator_expansion(:Chebyshev, coef, 30, gen)
+        gen = Polfed._generic_row_rescaled(H, a, b)
+        e = Polfed._operator_expansion(:Chebyshev, coef, 30, gen)
         @test e isa C.AxpbyClenshaw
         @test e(zeros(bs, D), X, ws()) ≈ ref(gen, 30) rtol = 1e-12
 
-        opt = UniPolfed.build_optimized_mapping(H, :universal_row_read, Val(bs), a, b).f!_rescaled
-        @test opt isa UniPolfed.RangeKernelOperator
-        e = UniPolfed._operator_expansion(:Chebyshev, coef, 30, opt)
+        opt = Polfed.build_optimized_mapping(H, :universal_row_read, Val(bs), a, b).f!_rescaled
+        @test opt isa Polfed.RangeKernelOperator
+        e = Polfed._operator_expansion(:Chebyshev, coef, 30, opt)
         @test e isa C.RangeClenshaw
         @test e(zeros(bs, D), X, ws()) == ref(opt.whole, 30)   # same arithmetic, bit for bit
 
         plain = (Y, Z) -> (Y .= 0.5 .* Z; nothing)
-        @test UniPolfed._operator_expansion(:Chebyshev, coef, 30, plain) isa C.ClenshawExpansion
+        @test Polfed._operator_expansion(:Chebyshev, coef, 30, plain) isa C.ClenshawExpansion
     end
 end

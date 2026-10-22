@@ -7,7 +7,7 @@
 # the `window_roundtrip_QREM` notebook.
 
 using LinearAlgebra, SparseArrays, Random, Logging, Test
-using UniPolfed: polfed, MappingConfig, PolfedResult
+using Polfed: polfed, MappingConfig, PolfedResult
 
 # QREM: diag(ε) + hx·Σᵢ σᵢˣ (see matrix_entrypoint_tests / qrem_fixture). Real-symmetric.
 function _qrem_w(L::Int; hx = 0.7, T = Float64)

@@ -1,6 +1,6 @@
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
+using Polfed
+using Polfed.Numerics.Lanczos
 using LinearAlgebra
 using Random
 
@@ -30,7 +30,7 @@ using Random
             rc = lanczos(f_col!, x0c, target; maxdim = 36)
             rr = lanczos(f_row!, x0r, target; maxdim = 36, layout = RowLayout())
 
-            want = target isa UniPolfed.Numerics.Lanczos.Lowest ? exact[1:3] : exact[end-2:end]
+            want = target isa Polfed.Numerics.Lanczos.Lowest ? exact[1:3] : exact[end-2:end]
 
             # both converge the same count and the correct values
             @test rc.converged == 3

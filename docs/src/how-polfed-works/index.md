@@ -660,7 +660,7 @@ E_c = \frac{E_{\max}+E_{\min}}{2}.
 ``\varepsilon = (E - E_c)/\Delta E`` maps ``E_{\min} \mapsto -1`` and ``E_{\max} \mapsto +1``.
 
 ``E_{\min}`` and ``E_{\max}`` come from a short both-ends Lanczos probe unless you supply them
-through [`MappingConfig`](@ref UniPolfed.MappingConfig). They are **estimates**: a true extreme
+through [`MappingConfig`](@ref Polfed.MappingConfig). They are **estimates**: a true extreme
 eigenvalue can land exactly on ``\pm 1``, or a hair beyond. POLFED tolerates that rather than
 clamping it.
 
@@ -680,7 +680,7 @@ stochastic traces:
 \approx \frac{1}{R}\sum_{r=1}^{R}\langle r|T_n(\tilde H)|r\rangle .
 ```
 
-Two knobs, both in [`DoSConfig`](@ref UniPolfed.DoSConfig) — and they fail in *different* ways.
+Two knobs, both in [`DoSConfig`](@ref Polfed.DoSConfig) — and they fail in *different* ways.
 Move them:
 
 ```@raw html
@@ -1045,7 +1045,7 @@ in the final sum, the total is exactly **``K`` sparse matrix–vector products**
 In POLFED this loop is not written out at the call site — it is packaged into the closure that
 Lanczos receives, and both the recurrence step and the final sum can be swapped for fused,
 model-specific kernels via `clenshaw_recurrence` and `clenshaw_finalsum` in
-[`MappingConfig`](@ref UniPolfed.MappingConfig). See
+[`MappingConfig`](@ref Polfed.MappingConfig). See
 [Bring your own operator](@ref operator_interface).
 
 ### ⑥ Lanczos on the filtered operator

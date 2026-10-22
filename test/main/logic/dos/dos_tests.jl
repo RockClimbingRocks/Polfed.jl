@@ -1,15 +1,15 @@
 using Test
-using UniPolfed
+using Polfed
 using Random
 using LinearAlgebra
 
-K = UniPolfed.Numerics.KPM
+K = Polfed.Numerics.KPM
 
 _dos_test_cheb(x, k) = cos(k * acos(x))
 
 @testset "DoS" begin
     @testset "DoSConfig keyword overrides" begin
-        cfg = UniPolfed.DoSConfig(N = 100, R = 50, kernel = :Dirichlet)
+        cfg = Polfed.DoSConfig(N = 100, R = 50, kernel = :Dirichlet)
         @test cfg.N == 100
         @test cfg.R == 50
         @test cfg.kernel == :Dirichlet
@@ -23,33 +23,33 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         Random.seed!(20250101)
         A = Symmetric(randn(dim, dim) ./ (4 * sqrt(dim)))
         f!(y, x) = mul!(y, A, x)
-        sys = UniPolfed.SysInfo(zeros(Float64, dim), UniPolfed.CPU())
+        sys = Polfed.SysInfo(zeros(Float64, dim), Polfed.CPU())
 
-        seeded(seed) = UniPolfed.calculate_dos(
-            UniPolfed.DoSConfig(N = 32, R = 4, rng = MersenneTwister(seed)), f!, sys).moments
+        seeded(seed) = Polfed.calculate_dos(
+            Polfed.DoSConfig(N = 32, R = 4, rng = MersenneTwister(seed)), f!, sys).moments
 
         @test seeded(7) == seeded(7)                    # bit-identical, not just ≈
         @test seeded(7) != seeded(8)                    # a different seed really does differ
 
-        unseeded() = UniPolfed.calculate_dos(UniPolfed.DoSConfig(N = 32, R = 4), f!, sys).moments
+        unseeded() = Polfed.calculate_dos(Polfed.DoSConfig(N = 32, R = 4), f!, sys).moments
         @test unseeded() != unseeded()                  # the default stays stochastic
 
         # The generator type is a parameter, so the config stays concretely typed.
-        @test UniPolfed.DoSConfig(rng = MersenneTwister(1)) isa
-              UniPolfed.DoSConfig{MersenneTwister}
+        @test Polfed.DoSConfig(rng = MersenneTwister(1)) isa
+              Polfed.DoSConfig{MersenneTwister}
     end
 
     @testset "calculate_dos returns moments, coefficients, and density" begin
         c = 0.3
         dim = 16
-        cfg = UniPolfed.DoSConfig(N = 64, R = 8, kernel = :Jackson)
-        sys = UniPolfed.SysInfo(zeros(Float64, dim), UniPolfed.CPU())
+        cfg = Polfed.DoSConfig(N = 64, R = 8, kernel = :Jackson)
+        sys = Polfed.SysInfo(zeros(Float64, dim), Polfed.CPU())
         f!(y, x) = (y .= c .* x)
 
-        res = UniPolfed.calculate_dos(cfg, f!, sys)
+        res = Polfed.calculate_dos(cfg, f!, sys)
 
         exact = [dim * _dos_test_cheb(c, k) for k in 0:cfg.N-1]
-        @test res isa UniPolfed.DoSResult
+        @test res isa Polfed.DoSResult
         @test res.moments ≈ exact rtol = 1e-10
         @test res.coefficients ≈ K.kpm_coeffs(res.moments, cfg.kernel)
 
@@ -63,15 +63,15 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         # on the operator entrypoints it defaults to a single vector (`f!` is only promised that).
         c = 0.4
         dim = 10
-        cfg = UniPolfed.DoSConfig(N = 8, R = 5)
+        cfg = Polfed.DoSConfig(N = 8, R = 5)
         exact = [dim * _dos_test_cheb(c, k) for k in 0:cfg.N-1]
 
         for block in (1, 2, 4)
-            sys = UniPolfed.SysInfo(zeros(Float64, dim, block), UniPolfed.CPU())
+            sys = Polfed.SysInfo(zeros(Float64, dim, block), Polfed.CPU())
             shapes = Set{Tuple}()
             f!(Y, X) = (push!(shapes, size(X)); Y .= c .* X)
 
-            res = UniPolfed.calculate_dos(cfg, f!, sys)
+            res = Polfed.calculate_dos(cfg, f!, sys)
 
             @test res.moments ≈ exact
             @test shapes == Set([(dim,)])   # a length-dim vector, never (dim, block)
@@ -81,11 +81,11 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
     @testset "kernel changes coefficients and density but not moments" begin
         c = 0.25
         dim = 12
-        sys = UniPolfed.SysInfo(zeros(Float64, dim), UniPolfed.CPU())
+        sys = Polfed.SysInfo(zeros(Float64, dim), Polfed.CPU())
         f!(y, x) = (y .= c .* x)
 
-        res_j = UniPolfed.calculate_dos(UniPolfed.DoSConfig(N = 64, R = 8, kernel = :Jackson), f!, sys)
-        res_d = UniPolfed.calculate_dos(UniPolfed.DoSConfig(N = 64, R = 8, kernel = :Dirichlet), f!, sys)
+        res_j = Polfed.calculate_dos(Polfed.DoSConfig(N = 64, R = 8, kernel = :Jackson), f!, sys)
+        res_d = Polfed.calculate_dos(Polfed.DoSConfig(N = 64, R = 8, kernel = :Dirichlet), f!, sys)
 
         @test res_j.moments ≈ res_d.moments
         @test !isapprox(res_j.coefficients, res_d.coefficients)
@@ -98,9 +98,9 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
         # `dim × bs` block in one draw — a different random stream from `bs` single-vector
         # draws — and one seed produced a different density, interval and eigenpair set per
         # block size. The DoS now draws its probes one at a time into its own block width.
-        H = UniPolfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.7, 0.5; rng = MersenneTwister(7))
+        H = Polfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.7, 0.5; rng = MersenneTwister(7))
         D = size(H, 1)
-        seeded() = UniPolfed.DoSConfig(rng = MersenneTwister(2024))
+        seeded() = Polfed.DoSConfig(rng = MersenneTwister(2024))
 
         reference = nothing
         for bs in (1, 2, 4, 8)
@@ -125,57 +125,57 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
 
         # The optimized kernel path shares the same generic DoS operator, so it agrees too.
         v3 = polfed(H, x0, 12, :maxdos; verbosity = 0, dosc = seeded(),
-                    mc = UniPolfed.MappingConfig(optimize_mapping = true)).vals
+                    mc = Polfed.MappingConfig(optimize_mapping = true)).vals
         @test length(v3) == length(reference)
         @test v3 ≈ reference atol = 1e-10
     end
 
     @testset "the probe template is the DoS block, shaped by the layout" begin
-        L = UniPolfed.Numerics.Lanczos
+        L = Polfed.Numerics.Lanczos
         # column layout: dim × block, a plain vector for one probe (what `mul!(y, H, x)` takes)
-        sysc = UniPolfed.SysInfo(rand(16, 4), UniPolfed.CPU(), L.ColumnLayout())
-        @test size(UniPolfed._dos_probe_template(sysc, 1)) == (16,)
-        @test size(UniPolfed._dos_probe_template(sysc, 3)) == (16, 3)
+        sysc = Polfed.SysInfo(rand(16, 4), Polfed.CPU(), L.ColumnLayout())
+        @test size(Polfed._dos_probe_template(sysc, 1)) == (16,)
+        @test size(Polfed._dos_probe_template(sysc, 3)) == (16, 3)
         # row layout: block × dim (what `mul!(Y, X, H)` takes)
-        sysr = UniPolfed.SysInfo(rand(4, 16), UniPolfed.CPU(), L.RowLayout())
-        @test size(UniPolfed._dos_probe_template(sysr, 1)) == (1, 16)
-        @test size(UniPolfed._dos_probe_template(sysr, 8)) == (8, 16)
+        sysr = Polfed.SysInfo(rand(4, 16), Polfed.CPU(), L.RowLayout())
+        @test size(Polfed._dos_probe_template(sysr, 1)) == (1, 16)
+        @test size(Polfed._dos_probe_template(sysr, 8)) == (8, 16)
         # the width is the DoS's own, not the Krylov block's
-        sysv = UniPolfed.SysInfo(rand(16), UniPolfed.CPU(), L.ColumnLayout())
-        @test size(UniPolfed._dos_probe_template(sysv, 5)) == (16, 5)
+        sysv = Polfed.SysInfo(rand(16), Polfed.CPU(), L.ColumnLayout())
+        @test size(Polfed._dos_probe_template(sysv, 5)) == (16, 5)
     end
 
     @testset "block_size and tasks: overrides, validation, auto resolution" begin
-        cfg = UniPolfed.DoSConfig(block_size = 4, tasks = 3)
+        cfg = Polfed.DoSConfig(block_size = 4, tasks = 3)
         @test (cfg.block_size, cfg.tasks) == (4, 3)
-        @test_throws ArgumentError UniPolfed.DoSConfig(block_size = 0)
-        @test_throws ArgumentError UniPolfed.DoSConfig(tasks = 0)
+        @test_throws ArgumentError Polfed.DoSConfig(block_size = 0)
+        @test_throws ArgumentError Polfed.DoSConfig(tasks = 0)
 
         # matrix entrypoints own the operator: auto → the DoS default width, all threads
-        owned = UniPolfed._owned_operator_dos(UniPolfed.DoSConfig(N = 7, R = 9, kernel = :Dirichlet))
+        owned = Polfed._owned_operator_dos(Polfed.DoSConfig(N = 7, R = 9, kernel = :Dirichlet))
         @test (owned.N, owned.R, owned.kernel) == (7, 9, :Dirichlet)
-        @test owned.block_size == UniPolfed.Defaults.polfed.dos_block_size
+        @test owned.block_size == Polfed.Defaults.polfed.dos_block_size
         @test owned.tasks == Threads.nthreads()
-        kept = UniPolfed._owned_operator_dos(cfg)
+        kept = Polfed._owned_operator_dos(cfg)
         @test (kept.block_size, kept.tasks) == (4, 3)
 
         # what calculate_dos runs with: auto → 1 (operator entrypoints); width clamped to R and
         # below dim; one probe and one task on a GPU
-        sys = UniPolfed.SysInfo(zeros(10), UniPolfed.CPU())
-        @test UniPolfed._dos_parallelism(UniPolfed.DoSConfig(), sys) == (1, 1)
-        @test UniPolfed._dos_parallelism(UniPolfed.DoSConfig(block_size = 8, tasks = 2), sys) == (8, 2)
-        @test UniPolfed._dos_parallelism(UniPolfed.DoSConfig(block_size = 16), sys) == (9, 1)
-        @test UniPolfed._dos_parallelism(UniPolfed.DoSConfig(R = 3, block_size = 8), sys) == (3, 1)
+        sys = Polfed.SysInfo(zeros(10), Polfed.CPU())
+        @test Polfed._dos_parallelism(Polfed.DoSConfig(), sys) == (1, 1)
+        @test Polfed._dos_parallelism(Polfed.DoSConfig(block_size = 8, tasks = 2), sys) == (8, 2)
+        @test Polfed._dos_parallelism(Polfed.DoSConfig(block_size = 16), sys) == (9, 1)
+        @test Polfed._dos_parallelism(Polfed.DoSConfig(R = 3, block_size = 8), sys) == (3, 1)
     end
 
     @testset "tasks and block width leave the density unchanged" begin
-        H = UniPolfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.7, 0.5; rng = MersenneTwister(7))
+        H = Polfed.Models.xxz_hamiltonian(10, 5, 1.0, 0.7, 0.5; rng = MersenneTwister(7))
         D = size(H, 1)
         a = opnorm(Matrix(H), 2) * 1.01
         f!(Y, X) = (mul!(Y, X, H); Y ./= a; nothing)
-        sys = UniPolfed.SysInfo(zeros(4, D), UniPolfed.CPU(), UniPolfed.Numerics.Lanczos.RowLayout())
-        μ(bs, nt) = UniPolfed.calculate_dos(
-            UniPolfed.DoSConfig(N = 40, R = 21, rng = MersenneTwister(1), block_size = bs, tasks = nt),
+        sys = Polfed.SysInfo(zeros(4, D), Polfed.CPU(), Polfed.Numerics.Lanczos.RowLayout())
+        μ(bs, nt) = Polfed.calculate_dos(
+            Polfed.DoSConfig(N = 40, R = 21, rng = MersenneTwister(1), block_size = bs, tasks = nt),
             f!, sys).moments
 
         @test μ(8, 1) == μ(8, 3)             # task count: bit-identical
@@ -184,8 +184,8 @@ _dos_test_cheb(x, k) = cos(k * acos(x))
 
     @testset "calculate_dos restores the BLAS thread count" begin
         before = LinearAlgebra.BLAS.get_num_threads()
-        sys = UniPolfed.SysInfo(zeros(Float64, 12), UniPolfed.CPU())
-        UniPolfed.calculate_dos(UniPolfed.DoSConfig(N = 8, R = 3), (y, x) -> (y .= 0.2 .* x), sys)
+        sys = Polfed.SysInfo(zeros(Float64, 12), Polfed.CPU())
+        Polfed.calculate_dos(Polfed.DoSConfig(N = 8, R = 3), (y, x) -> (y .= 0.2 .* x), sys)
         @test LinearAlgebra.BLAS.get_num_threads() == before
     end
 end

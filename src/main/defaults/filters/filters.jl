@@ -11,7 +11,7 @@
 # chains below name filter TYPES, which do not exist until the filter files have loaded.
 
 """
-    UniPolfed.Defaults.filters
+    Polfed.Defaults.filters
 
 Filter defaults, one submodule per filter (`Defaults.filters.delta_up.cutoff`, …), plus the
 filter-agnostic geometry knobs shared by the resolution machinery.

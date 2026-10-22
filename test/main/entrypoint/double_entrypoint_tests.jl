@@ -7,7 +7,7 @@
 # assert that it picked one of them and got the same answer.
 
 using LinearAlgebra, SparseArrays, Random, Test
-using UniPolfed: double_polfed, polfed, MappingConfig, PolfedResult, DoublePolfedResult
+using Polfed: double_polfed, polfed, MappingConfig, PolfedResult, DoublePolfedResult
 
 # QREM: diag(ε) + hx·Σᵢ σᵢˣ — real-symmetric, no spectral symmetry to trip the filters.
 function _qrem_d(L::Int; hx = 0.7, T = Float64)
@@ -85,7 +85,7 @@ end
         @test res.reason === :ratio
         # The decision must agree with the rule it claims to follow.
         @test (res.strategy === :double) ==
-              (res.ratio >= UniPolfed.Defaults.double_polfed.double_ratio)
+              (res.ratio >= Polfed.Defaults.double_polfed.double_ratio)
     end
 
     @testset "results come back in the CALLER's argument order" begin

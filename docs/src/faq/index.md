@@ -62,16 +62,16 @@ basis and the projected diagonalization both grow with `howmany`. See
 
 ### Threads do not seem to help
 
-[`VectorWise`](@ref UniPolfed.VectorWise) splits the Krylov block by **vector**. With a
+[`VectorWise`](@ref Polfed.VectorWise) splits the Krylov block by **vector**. With a
 vector `x0` there is one vector and nothing to split. Either pass a matrix `x0` (block
-Lanczos) or use [`BlockWise`](@ref UniPolfed.BlockWise), which parallelizes inside the kernel
+Lanczos) or use [`BlockWise`](@ref Polfed.BlockWise), which parallelizes inside the kernel
 and is the only strategy that helps a single vector.
 
 ### `VectorWise` leaves threads idle
 
 It opens one task per Krylov vector, so a block with fewer vectors than threads cannot use
 them all — POLFED warns when it sees this. Either match the block size to `nthreads()`, or use
-[`BlockWise`](@ref UniPolfed.BlockWise), which splits the basis-state range instead. See
+[`BlockWise`](@ref Polfed.BlockWise), which splits the basis-state range instead. See
 [Choosing a strategy](@ref parallelization_reasoning).
 
 ## Setup and configuration
@@ -79,7 +79,7 @@ them all — POLFED warns when it sees this. Either match the block size to `nth
 ### Which mapping keyword do I need?
 
 `parallel_strategy` and `optimize_mapping`, both inside
-[`MappingConfig`](@ref UniPolfed.MappingConfig). Start with `optimize_mapping = true` if
+[`MappingConfig`](@ref Polfed.MappingConfig). Start with `optimize_mapping = true` if
 your matrix is structured.
 
 ### I passed `f!_rescaled` and nothing changed
@@ -103,7 +103,7 @@ spectrum**; `:offset` measures from the **DoS maximum** toward an edge. See
 ### `:maxdos` moved between runs
 
 `:maxdos` is the peak of a *stochastic* KPM estimate, so `N` and `R` in
-[`DoSConfig`](@ref UniPolfed.DoSConfig) can shift it. Raise `R` for a more stable peak, `N`
+[`DoSConfig`](@ref Polfed.DoSConfig) can shift it. Raise `R` for a more stable peak, `N`
 for finer resolution.
 
 ## Errors
@@ -130,7 +130,7 @@ loaded** (`using CUDA`) — the extension stays dormant until it is.
 ## Diagnosing anything else
 
 ```julia
-UniPolfed.Common.verbosity[] = 3   # bound probes, filter ladder, per-check convergence
+Polfed.Common.verbosity[] = 3   # bound probes, filter ladder, per-check convergence
 ```
 
 Level `3` is usually the right level for a setup problem; level `4` adds per-iteration

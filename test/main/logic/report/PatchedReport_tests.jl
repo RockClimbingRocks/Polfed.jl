@@ -1,6 +1,6 @@
 using Test
-using UniPolfed
-using UniPolfed: PatchedReport, run_patched_polfed_window_pipeline
+using Polfed
+using Polfed: PatchedReport, run_patched_polfed_window_pipeline
 using LinearAlgebra, SparseArrays, Random
 
 # QREM: diag(ε) + hx·Σᵢ σᵢˣ — a real-symmetric operator with a full, non-degenerate spectrum.
@@ -23,11 +23,11 @@ end
     f!(Y, X) = mul!(Y, H, X)
     x0 = rand(D); x0 ./= norm(x0)
 
-    saved = UniPolfed.Common.verbosity[]
-    UniPolfed.Common.verbosity[] = 0
+    saved = Polfed.Common.verbosity[]
+    Polfed.Common.verbosity[] = 0
     # Window touches the left edge → one edge peel + several interior patches: exercises both kinds.
     vals, vecs, report = run_patched_polfed_window_pipeline(f!, x0, 12, (:rescaled, (-1.0, 0.4)))
-    UniPolfed.Common.verbosity[] = saved
+    Polfed.Common.verbosity[] = saved
 
     @testset "structure carries one record per run" begin
         @test report isa PatchedReport
@@ -39,7 +39,7 @@ end
         @test any(==(:edge_lowest), kinds)
         @test any(==(:interior), kinds)
         # The full per-run FactorizationReport is retained (not just aggregates).
-        @test all(p -> p.factorization isa UniPolfed.Numerics.Lanczos.FactorizationReport, report.patches)
+        @test all(p -> p.factorization isa Polfed.Numerics.Lanczos.FactorizationReport, report.patches)
     end
 
     @testset "renders the four sections (plain)" begin

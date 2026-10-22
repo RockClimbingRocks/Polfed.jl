@@ -2,8 +2,8 @@
 
 using BenchmarkTools, LinearAlgebra, SparseArrays, StaticArrays, Random, StaticArrays
 
-using UniPolfed
-const OPT = UniPolfed.Optimization
+using Polfed
+const OPT = Polfed.Optimization
 
 include("clenshaw/Clenshaw.jl")
 include("../qrem.jl")            # qrem_hamiltonian

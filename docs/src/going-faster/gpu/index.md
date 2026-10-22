@@ -6,13 +6,13 @@ massively data-parallel, memory-bound, and regular in its access pattern, which 
 description of what GPUs are built for.
 
 The interface barely changes: move the arrays to the device and call
-[`polfed`](@ref UniPolfed.polfed) exactly as before.
+[`polfed`](@ref Polfed.polfed) exactly as before.
 
 ## Baseline on CPU
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H_cpu  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse=true)
@@ -44,7 +44,7 @@ Hamiltonian you want the sparse CSR form.
 
 ## Strategy on GPU
 
-Use [`BlockWise`](@ref UniPolfed.BlockWise) — the device supplies its own parallelism and
+Use [`BlockWise`](@ref Polfed.BlockWise) — the device supplies its own parallelism and
 host-side decomposition only adds overhead. It is already the default for device arrays;
 setting it explicitly just documents the intent.
 
@@ -71,7 +71,7 @@ CPU, build the rescaled matrix there, then move it across:
 using SparseArrays
 
 f_cpu! = (Y, X) -> mul!(Y, H_cpu, X)
-Emin, Emax = UniPolfed.Numerics.Lanczos.lanczos_extrema(f_cpu!, x0_cpu; maxdim=1000)
+Emin, Emax = Polfed.Numerics.Lanczos.lanczos_extrema(f_cpu!, x0_cpu; maxdim=1000)
 
 spread = (Emax - Emin) / 2
 center = (Emax + Emin) / 2
@@ -130,7 +130,7 @@ display_report(result)
 
 These are templates, not production kernels — each allocates a temporary per call, which is
 the first thing to remove in a fused model-specific implementation. The integration point
-stays [`MappingConfig`](@ref UniPolfed.MappingConfig).
+stays [`MappingConfig`](@ref Polfed.MappingConfig).
 
 ## Block Lanczos helps more on GPU
 

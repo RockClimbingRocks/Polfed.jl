@@ -55,7 +55,7 @@ to exploit:
 ### Extract a compact representation
 
 ```julia
-using UniPolfed.Models: xxz_hamiltonian
+using Polfed.Models: xxz_hamiltonian
 using SparseArrays
 
 construct_XXZ_matrix(L::Int, Delta::Real, Lup::Int) =
@@ -190,7 +190,7 @@ The transform runs on ``\tilde H = (H-b)/a``. If you only supply `f!`, POLFED re
 runtime — extra vector passes in the hottest loop. Supply the rescaled action directly:
 
 ```julia
-Emin, Emax = UniPolfed.Numerics.Lanczos.lanczos_extrema(f_custom!, x0; maxdim=1000)
+Emin, Emax = Polfed.Numerics.Lanczos.lanczos_extrema(f_custom!, x0; maxdim=1000)
 spread = (Emax - Emin) / 2
 center = (Emax + Emin) / 2
 

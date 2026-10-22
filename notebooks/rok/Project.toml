@@ -18,14 +18,14 @@ SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-UniPolfed = "247dffe4-f6d7-4896-b7ab-80fa76f84f6b"
+Polfed = "467b4f57-cce5-4b05-af51-83574939c5b4"
 
 [sources]
-UniPolfed = {path = "../.."}
+Polfed = {path = "../.."}
 
 [compat]
 CSV = "0.10"
 DataFrames = "1"
 PythonPlot = "1"
-UniPolfed = "0.1"
+Polfed = "1"
 julia = "1.10"

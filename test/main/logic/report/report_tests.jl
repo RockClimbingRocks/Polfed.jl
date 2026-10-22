@@ -1,8 +1,8 @@
 # Report rendering & behavior: shared helpers, the four sections, color on/off, the optional
 # convergence-history table, and GPU CPU-time suppression. Uses the shared fixture.
 
-import UniPolfed: _underscore, _fmt_secs, _safe_pct, Report, render_timings, Formatter
-using UniPolfed.Common: stage_names, total_wall
+import Polfed: _underscore, _fmt_secs, _safe_pct, Report, render_timings, Formatter
+using Polfed.Common: stage_names, total_wall
 
 @testset "Report rendering" begin
     @testset "formatting helpers" begin
@@ -84,7 +84,7 @@ using UniPolfed.Common: stage_names, total_wall
         @test occursin("Convergence check ran", withtbl)
         # Assert against the header CONSTANT, not literals: the columns are diagnostic output
         # that gets reworded, and a hardcoded title turns a rename into a red suite.
-        for col in UniPolfed.CONVERGENCE_TABLE_HEADER
+        for col in Polfed.CONVERGENCE_TABLE_HEADER
             @test occursin(col, withtbl)
         end
     end

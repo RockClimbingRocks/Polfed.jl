@@ -68,7 +68,7 @@ on this same product. See [Going faster](@ref going_faster).
 ## Where you can intervene
 
 The transform is built from a rescaled operator action, and every part of it is
-replaceable through [`MappingConfig`](@ref UniPolfed.MappingConfig):
+replaceable through [`MappingConfig`](@ref Polfed.MappingConfig):
 
 | Keyword | What it replaces |
 | :--- | :--- |

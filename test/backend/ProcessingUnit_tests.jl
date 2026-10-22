@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 
 @testset "ProcessingUnit" begin
     @testset "CPU() carries the unified field set and they work" begin
-        cpu = UniPolfed.CPU()
-        @test cpu isa UniPolfed.ProcessingUnit
+        cpu = Polfed.CPU()
+        @test cpu isa Polfed.ProcessingUnit
         @test cpu.Matrix === Matrix
         @test cpu.Vector === Vector
         @test cpu.zeros(2) == [0.0, 0.0]
@@ -15,12 +15,12 @@ using UniPolfed
     end
 
     @testset "GPU() errors when CUDA is not loaded" begin
-        @test UniPolfed.cuda_available() == false
-        @test_throws ErrorException UniPolfed.GPU()
+        @test Polfed.cuda_available() == false
+        @test_throws ErrorException Polfed.GPU()
     end
 
     @testset "type hierarchy" begin
-        @test UniPolfed.CPU <: UniPolfed.ProcessingUnit
-        @test UniPolfed.GPU <: UniPolfed.ProcessingUnit
+        @test Polfed.CPU <: Polfed.ProcessingUnit
+        @test Polfed.GPU <: Polfed.ProcessingUnit
     end
 end

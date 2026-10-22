@@ -1,16 +1,16 @@
-using Documenter, UniPolfed
+using Documenter, Polfed
 
 makedocs(
-    modules=[UniPolfed],
+    modules=[Polfed],
     authors="RockClimbingRocks <rok123.pintar2@gmail.com> and contributors",
-    sitename="UniPolfed.jl",
+    sitename="Polfed.jl",
     remotes=nothing,
     checkdocs=:none,
     doctest=false,
     pagesonly=true,
     format=Documenter.HTML(
-        canonical="https://rockclimbingrocks.github.io/UniPolfed.jl/",
-        repolink="https://github.com/RockClimbingRocks/UniPolfed.jl",
+        canonical="https://rockclimbingrocks.github.io/Polfed.jl/",
+        repolink="https://github.com/RockClimbingRocks/Polfed.jl",
         edit_link=nothing,
         assets=String[],
     ),
@@ -74,7 +74,7 @@ makedocs(
 
 if get(ENV, "DOCUMENTER_DEPLOY", "false") == "true"
     deploydocs(
-        repo="github.com/RockClimbingRocks/UniPolfed.jl.git",
+        repo="github.com/RockClimbingRocks/Polfed.jl.git",
         devbranch="main",
     )
 end

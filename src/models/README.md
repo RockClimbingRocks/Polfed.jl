@@ -6,7 +6,7 @@ feeding straight into the spectral-transform pipeline.
 
 This tier is **standalone** — it depends only on the Julia standard library
 (`LinearAlgebra`, `SparseArrays`, `Random`) and never reaches into the `Numerics/`
-or `UniPolfed/` tiers. That is the litmus test for living here: a model is just an
+or `Polfed/` tiers. That is the litmus test for living here: a model is just an
 operator, with no knowledge of how POLFED will diagonalize it.
 
 Two families are provided:
@@ -34,7 +34,7 @@ src/models/
     └── quantum_sun_u1_conserving.jl  build_hamiltonian_cons  (fixed-Sᶻ sector)
 ```
 
-`Models` is a submodule of `UniPolfed`, included directly at the package top level
+`Models` is a submodule of `Polfed`, included directly at the package top level
 (sibling to `Numerics`). `QSun` is a submodule of `Models`;
 `spin_operators.jl` and the other files under `qsun/` share that namespace. Only
 `Models.jl` and `QSun.jl` declare modules.
@@ -42,7 +42,7 @@ src/models/
 Public entry points:
 
 ```julia
-using UniPolfed.Models: xxz_hamiltonian, j1j2_hamiltonian, qsun_hamiltonian
+using Polfed.Models: xxz_hamiltonian, j1j2_hamiltonian, qsun_hamiltonian
 ```
 
 ---

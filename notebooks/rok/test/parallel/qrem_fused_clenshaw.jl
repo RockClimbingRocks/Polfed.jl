@@ -1,4 +1,4 @@
-using UniPolfed
+using Polfed
 using LinearAlgebra: diag
 using Polyester: @batch
 using Printf
@@ -9,7 +9,7 @@ using Statistics: median
 
 include("../qrem.jl")
 
-const Opt = UniPolfed.Optimization
+const Opt = Polfed.Optimization
 
 # Standalone experiment: fuse the affine Clenshaw update
 #

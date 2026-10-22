@@ -1,10 +1,10 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using SparseArrays
 using Random
 
-Q = UniPolfed.Models.QSun
+Q = Polfed.Models.QSun
 
 @testset "qsun_hamiltonian (dispatch wrapper)" begin
 

@@ -1,14 +1,14 @@
 using LinearAlgebra
 using Test
-using UniPolfed
+using Polfed
 
 function with_silent_polfed_logs(f)
-    old_verbosity = UniPolfed.Common.verbosity[]
-    UniPolfed.Common.verbosity[] = UniPolfed.Common.POLFED_SILENT_LEVEL
+    old_verbosity = Polfed.Common.verbosity[]
+    Polfed.Common.verbosity[] = Polfed.Common.POLFED_SILENT_LEVEL
     try
         return f()
     finally
-        UniPolfed.Common.verbosity[] = old_verbosity
+        Polfed.Common.verbosity[] = old_verbosity
     end
 end
 
@@ -19,22 +19,22 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(Float64, D)
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(
                 Emin = -1.0,
                 Emax = 1.0,
-                parallel_strategy = UniPolfed.BlockWise(),
+                parallel_strategy = Polfed.BlockWise(),
             ),
             f!,
             x0,
         )
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.2, 0.2);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.2, 0.2);
             order = 8,
         )
 
-        f!_transformed = UniPolfed.build_transform(filter, mp)
+        f!_transformed = Polfed.build_transform(filter, mp)
         X = collect(1.0:D)
         Y = similar(X)
 
@@ -51,26 +51,26 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(Float64, length(λ))
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin = -1.0, Emax = 1.0),
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(Emin = -1.0, Emax = 1.0),
             f!,
             x0,
         )
 
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
-        f!_transformed = UniPolfed.build_transform(filter, mp)
+        f!_transformed = Polfed.build_transform(filter, mp)
 
         X = collect(1.0:length(λ))
         Y = similar(X)
 
         f!_transformed(Y, X)
 
-        P = UniPolfed._scalar_filter(filter)
+        P = Polfed._scalar_filter(filter)
         expected = P.(λ) .* X
 
         @test Y ≈ expected
@@ -82,31 +82,31 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(Float64, length(λ))
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(
                 Emin=-1.0,
                 Emax=1.0,
-                parallel_strategy=UniPolfed.BlockWise(),
+                parallel_strategy=Polfed.BlockWise(),
             ),
             f!,
             x0,
         )
-        filter = UniPolfed.build_filter(
-            UniPolfed.DoubleDeltaFilter,
-            UniPolfed.Interval(-0.80, -0.70),
-            UniPolfed.Interval(0.20, 0.30);
+        filter = Polfed.build_filter(
+            Polfed.DoubleDeltaFilter,
+            Polfed.Interval(-0.80, -0.70),
+            Polfed.Interval(0.20, 0.30);
             order1=8,
             order2=13,
         )
 
-        @test UniPolfed.polynomial_order(filter) === 13
+        @test Polfed.polynomial_order(filter) === 13
 
-        transform! = UniPolfed.build_transform(filter, mp)
+        transform! = Polfed.build_transform(filter, mp)
         X = collect(1.0:length(λ))
         Y = similar(X)
         transform!(Y, X)
 
-        expected = UniPolfed._scalar_filter(filter).(λ) .* X
+        expected = Polfed._scalar_filter(filter).(λ) .* X
         @test Y ≈ expected
     end
 
@@ -114,15 +114,15 @@ end
         H = Diagonal([-1.0, 0.0, 1.0])
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(3)
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin=-1.0, Emax=1.0),
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(Emin=-1.0, Emax=1.0),
             f!,
             x0,
         )
-        unresolved = UniPolfed.DeltaUpFilter(UniPolfed.Interval(-0.2, 0.2))
+        unresolved = Polfed.DeltaUpFilter(Polfed.Interval(-0.2, 0.2))
 
-        @test UniPolfed.polynomial_order(unresolved) < 0
-        @test_throws ArgumentError UniPolfed.build_transform(unresolved, mp)
+        @test Polfed.polynomial_order(unresolved) < 0
+        @test_throws ArgumentError Polfed.build_transform(unresolved, mp)
     end
 
     @testset "matches scalar filter on diagonal operator for block input" begin
@@ -132,28 +132,28 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(Float64, length(λ), 2)
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(
                 Emin = -1.0,
                 Emax = 1.0,
-                parallel_strategy = UniPolfed.BlockWise(),
+                parallel_strategy = Polfed.BlockWise(),
             ),
             f!,
             x0,
         )
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
-        f!_transformed = UniPolfed.build_transform(filter, mp)
+        f!_transformed = Polfed.build_transform(filter, mp)
         X = reshape(collect(1.0:(2 * length(λ))), length(λ), 2)
         Y = similar(X)
 
         f!_transformed(Y, X)
 
-        P = UniPolfed._scalar_filter(filter)
+        P = Polfed._scalar_filter(filter)
         expected = P.(λ) .* X
 
         @test Y ≈ expected
@@ -166,24 +166,24 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(ComplexF64, length(λ))
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin = -1.0, Emax = 1.0),
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(Emin = -1.0, Emax = 1.0),
             f!,
             x0,
         )
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
-        f!_transformed = UniPolfed.build_transform(filter, mp)
+        f!_transformed = Polfed.build_transform(filter, mp)
         X = ComplexF64[1 + 2im, -2 + 0.5im, 3 - im, -4 - 2im, 5 + 0im]
         Y = similar(X)
 
         f!_transformed(Y, X)
 
-        P = UniPolfed._scalar_filter(filter)
+        P = Polfed._scalar_filter(filter)
         expected = P.(λ) .* X
 
         @test eltype(Y) === ComplexF64
@@ -197,24 +197,24 @@ end
         f!(Y, X) = (mul!(Y, H, X); nothing)
         x0 = ones(Float32, length(λ))
 
-        mp = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin = -1.0f0, Emax = 1.0f0),
+        mp = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(Emin = -1.0f0, Emax = 1.0f0),
             f!,
             x0,
         )
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
-        f!_transformed = UniPolfed.build_transform(filter, mp)
+        f!_transformed = Polfed.build_transform(filter, mp)
         X = Float32[1, -2, 3, -4, 5]
         Y = similar(X)
 
         f!_transformed(Y, X)
 
-        P = UniPolfed._scalar_filter(filter)
+        P = Polfed._scalar_filter(filter)
         expected = Float32.(P.(λ)) .* X
 
         @test eltype(Y) === Float32
@@ -227,34 +227,34 @@ end
         D = length(λ)
         bs = 2
 
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
         f_col!(Y, X) = (mul!(Y, H, X); nothing)
         x0_col = ones(Float64, D, bs)
-        mp_col = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(Emin = -1.0, Emax = 1.0, parallel_strategy = UniPolfed.BlockWise()),
+        mp_col = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(Emin = -1.0, Emax = 1.0, parallel_strategy = Polfed.BlockWise()),
             f_col!,
             x0_col,
         )
-        transform_col! = UniPolfed.build_transform(filter, mp_col)
+        transform_col! = Polfed.build_transform(filter, mp_col)
 
         f_row!(Y, X) = (mul!(Y, X, H); nothing)
         x0_row = permutedims(x0_col)
-        mp_row = UniPolfed.build_mapping_plan(
-            UniPolfed.MappingConfig(
+        mp_row = Polfed.build_mapping_plan(
+            Polfed.MappingConfig(
                 Emin = -1.0,
                 Emax = 1.0,
                 f!_rescaled = f_row!,
-                parallel_strategy = UniPolfed.BlockWise(),
+                parallel_strategy = Polfed.BlockWise(),
             ),
             f_row!,
             x0_row,
         )
-        transform_row! = UniPolfed.build_transform(filter, mp_row)
+        transform_row! = Polfed.build_transform(filter, mp_row)
 
         X_col = reshape(collect(1.0:(D * bs)), D, bs)
         X_row = permutedims(X_col)
@@ -272,16 +272,16 @@ end
         H = Diagonal(λ)
         D = length(λ)
         f!(Y, X) = (mul!(Y, H, X); nothing)
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
         function transformed_with(strategy)
             x0 = ones(Float64, D)
-            mp = UniPolfed.build_mapping_plan(
-                UniPolfed.MappingConfig(
+            mp = Polfed.build_mapping_plan(
+                Polfed.MappingConfig(
                     Emin = -1.0,
                     Emax = 1.0,
                     parallel_strategy = strategy,
@@ -289,15 +289,15 @@ end
                 f!,
                 x0,
             )
-            transform! = UniPolfed.build_transform(filter, mp)
+            transform! = Polfed.build_transform(filter, mp)
             X = collect(1.0:D)
             Y = similar(X)
             transform!(Y, X)
             return Y
         end
 
-        Y_blockwise = transformed_with(UniPolfed.BlockWise())
-        Y_vectorwise = transformed_with(UniPolfed.VectorWise())
+        Y_blockwise = transformed_with(Polfed.BlockWise())
+        Y_vectorwise = transformed_with(Polfed.VectorWise())
 
         @test Y_vectorwise ≈ Y_blockwise
     end
@@ -308,17 +308,17 @@ end
         D = length(λ)
         bs = 2
         f!(Y, X) = (mul!(Y, H, X); nothing)
-        filter = UniPolfed.build_filter(
-            UniPolfed.DeltaUpFilter,
-            UniPolfed.Interval(-0.1, 0.1);
+        filter = Polfed.build_filter(
+            Polfed.DeltaUpFilter,
+            Polfed.Interval(-0.1, 0.1);
             order = 12,
         )
 
         function transformed_with(strategy)
             x0 = ones(Float64, D, bs)
             mp = with_silent_polfed_logs() do
-                UniPolfed.build_mapping_plan(
-                    UniPolfed.MappingConfig(
+                Polfed.build_mapping_plan(
+                    Polfed.MappingConfig(
                         Emin = -1.0,
                         Emax = 1.0,
                         parallel_strategy = strategy,
@@ -327,15 +327,15 @@ end
                     x0,
                 )
             end
-            transform! = UniPolfed.build_transform(filter, mp)
+            transform! = Polfed.build_transform(filter, mp)
             X = reshape(collect(1.0:(D * bs)), D, bs)
             Y = similar(X)
             transform!(Y, X)
             return Y
         end
 
-        Y_blockwise = transformed_with(UniPolfed.BlockWise())
-        Y_vectorwise = transformed_with(UniPolfed.VectorWise())
+        Y_blockwise = transformed_with(Polfed.BlockWise())
+        Y_vectorwise = transformed_with(Polfed.VectorWise())
 
         @test Y_vectorwise ≈ Y_blockwise
     end

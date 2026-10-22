@@ -65,11 +65,11 @@ least trustworthy.
 
 ## Calling it
 
-Two modes, distinguished by arity — exactly like [`polfed`](@ref UniPolfed.polfed):
+Two modes, distinguished by arity — exactly like [`polfed`](@ref Polfed.polfed):
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
@@ -82,8 +82,8 @@ vals, vecs, report = patched_polfed(H, x0, 10_000, 3333, :maxdos)
 vals, vecs, report = patched_polfed(H, x0, 3333, (-0.5, 0.5))
 ```
 
-The return is a [`PatchedResult`](@ref UniPolfed.PatchedResult), unpacking as
-`(vals, vecs, report)` exactly like [`polfed`](@ref UniPolfed.polfed) — only the report type
+The return is a [`PatchedResult`](@ref Polfed.PatchedResult), unpacking as
+`(vals, vecs, report)` exactly like [`polfed`](@ref Polfed.polfed) — only the report type
 differs, because a patched run is N+2 separate solves with no single convergence history.
 Use `eigenvector(result, i)` for individual eigenvectors: in **window mode** `vecs` is not a
 matrix at all but a vector of independently owned vectors, so each completed patch matrix can be
@@ -108,7 +108,7 @@ vals, vecs, report = patched_polfed(H, x0, 3333, (-0.5, 0.5);
 ```
 
 `mc`, `dosc`, `tol`, `eigentol` and `overestimate_iters` are accepted too, and mean exactly what
-they mean in [`polfed`](@ref UniPolfed.polfed).
+they mean in [`polfed`](@ref Polfed.polfed).
 
 ## How it avoids returning garbage
 
@@ -131,8 +131,8 @@ deduplicated at the end, so seam states appear exactly once.
 
 ## Reading the output
 
-The third return value is a [`PatchedReport`](@ref UniPolfed.PatchedReport), which
-aggregates one [`PatchReport`](@ref UniPolfed.PatchReport) per run:
+The third return value is a [`PatchedReport`](@ref Polfed.PatchedReport), which
+aggregates one [`PatchReport`](@ref Polfed.PatchReport) per run:
 
 ```julia
 display_report(report)

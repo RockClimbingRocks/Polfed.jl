@@ -38,15 +38,15 @@ candidate, the run falls back to two separate runs.
 Everything below runs against this setup:
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(8, 2, 1.0, 0.5; use_sparse = true)
 x0 = normalize!(rand(size(H, 1)))
 ```
 
-The two modes mirror [`polfed`](@ref UniPolfed.polfed) and are distinguished by **arity** — the
+The two modes mirror [`polfed`](@ref Polfed.polfed) and are distinguished by **arity** — the
 two targets are separate arguments, because a bare `(lo, hi)` is already a window spec:
 
 ```julia
@@ -61,7 +61,7 @@ result = double_polfed(H, x0, (50, 150), -0.65, 0.45)
 ```
 
 The two windows must be **disjoint with a gap between them** — a single connected region is a job
-for [`polfed`](@ref UniPolfed.polfed), or `patched_polfed` if it is wide. The targets may be given
+for [`polfed`](@ref Polfed.polfed), or `patched_polfed` if it is wide. The targets may be given
 in either order; results come back in the order you passed them.
 
 Force a path with `strategy` when you want to measure rather than trust:
@@ -76,7 +76,7 @@ double_polfed(H, x0, w1, w2; strategy = :separate)   # two runs
 ## The result
 
 `double_polfed` returns a `DoublePolfedResult`: two ordinary
-[`PolfedResult`](@ref UniPolfed.PolfedResult)s plus the decision that produced them. It
+[`PolfedResult`](@ref Polfed.PolfedResult)s plus the decision that produced them. It
 destructures, so the two windows are separated at the call site:
 
 ```julia
@@ -95,7 +95,7 @@ result.ratio         # min(K₁,K₂)/max(K₁,K₂) — what the decision was m
 result.order_double  # K_d, or 0 on the separate path
 ```
 
-Walk the pairs with [`eigenpair`](@ref UniPolfed.eigenpair), not by iterating the result:
+Walk the pairs with [`eigenpair`](@ref Polfed.eigenpair), not by iterating the result:
 a `PolfedResult` iterates as the three-element `(vals, vecs, report)` destructuring, so
 `for (λ, v) in lower` does **not** loop over eigenpairs.
 

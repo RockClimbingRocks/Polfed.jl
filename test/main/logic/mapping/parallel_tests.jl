@@ -14,9 +14,9 @@
 # binds a thread count to the mapping flag and the thread count then defaults to the host's.
 
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra, SparseArrays, Random
-import UniPolfed: resolve_parallelization, warn_parallelization, with_verbosity,
+import Polfed: resolve_parallelization, warn_parallelization, with_verbosity,
                   _vector_slice, MappingConfig, polfed,
                   BlockWise, VectorWise, CPU, ColumnLayout, RowLayout
 

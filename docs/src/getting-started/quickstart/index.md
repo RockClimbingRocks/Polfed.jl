@@ -9,8 +9,8 @@ We use the Quantum Sun model as a stand-in for your Hamiltonian. Any sparse Herm
 matrix works just as well.
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 L_loc   = 12
@@ -71,7 +71,7 @@ v1 = vecs[:, 1]                   # the 1st eigenvector
 This holds for every entrypoint and both call paths — the matrix entrypoints run in row layout
 internally and hand back a lazy `transpose` of those rows (no copy), so you never have to think
 about it. `vecs` is a view into the solver's storage; `copy(vecs)` gives an independent `Matrix`.
-If you want a view of a single eigenvector, [`eigenvector`](@ref UniPolfed.eigenvector) does the
+If you want a view of a single eigenvector, [`eigenvector`](@ref Polfed.eigenvector) does the
 same thing without allocating:
 
 ```julia

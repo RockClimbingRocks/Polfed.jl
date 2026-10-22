@@ -8,7 +8,7 @@ Each entrypoint has an **operator** method (`f(f!, x0, …)`) and a **matrix** m
 untouched; the matrix method builds optimized row-layout kernels and works in row layout.
 See [The operator interface](@ref operator_interface) below.
 
-## [`polfed`](@id UniPolfed.polfed)
+## [`polfed`](@id Polfed.polfed)
 
 ```julia
 polfed(H,  x0, howmany, target;       mc, dosc, tol, eigentol, overestimate_iters)
@@ -38,12 +38,12 @@ requested energy interval.
 - `eigentol` — acceptance tolerance, ``\lVert H v - \lambda v \rVert < \texttt{eigentol}``.
 - `overestimate_iters` — Krylov budget inflation factor.
 
-**Returns** a [`PolfedResult`](@ref UniPolfed.PolfedResult), which destructures as
+**Returns** a [`PolfedResult`](@ref Polfed.PolfedResult), which destructures as
 `vals, vecs, report`.
 
 Tutorial: [POLFED](@ref tutorial_polfed).
 
-## [`patched_polfed`](@id UniPolfed.patched_polfed)
+## [`patched_polfed`](@id Polfed.patched_polfed)
 
 ```julia
 patched_polfed(H,  x0, howmany, howmany_per_patch, target; kwargs...)
@@ -63,15 +63,15 @@ count target near a point; without it, `target` must be an explicit window —
 - `max_retries` — coverage retries per patch (default `3`).
 - `retry_growth` — budget multiplier per retry (default `2.0`).
 
-**Returns** a [`PatchedResult`](@ref UniPolfed.PatchedResult), destructuring as
-`vals, vecs, report` with a [`PatchedReport`](@ref UniPolfed.PatchedReport). In count mode
+**Returns** a [`PatchedResult`](@ref Polfed.PatchedResult), destructuring as
+`vals, vecs, report` with a [`PatchedReport`](@ref Polfed.PatchedReport). In count mode
 `vecs` is one preallocated matrix; in window mode each eigenvector is independently owned (a
 vector of vectors), so completed patch matrices can be released as the run proceeds. Use
-[`eigenvector`](@ref UniPolfed.eigenvector) to get one regardless of form.
+[`eigenvector`](@ref Polfed.eigenvector) to get one regardless of form.
 
 Tutorial: [Patched POLFED](@ref tutorial_patched).
 
-## [`double_polfed`](@id UniPolfed.double_polfed)
+## [`double_polfed`](@id Polfed.double_polfed)
 
 ```julia
 double_polfed(H,  x0, howmany, target1, target2; strategy, kwargs...)
@@ -90,7 +90,7 @@ two single-window orders are comparable, two independent runs otherwise. Force i
 `strategy = :double` or `:separate`.
 
 **Returns** a `DoublePolfedResult` — the two windows as ordinary
-[`PolfedResult`](@ref UniPolfed.PolfedResult)s, in the caller's argument order, plus the
+[`PolfedResult`](@ref Polfed.PolfedResult)s, in the caller's argument order, plus the
 decision that produced them:
 
 ```julia
@@ -104,7 +104,7 @@ result.ratio         # min(K₁,K₂)/max(K₁,K₂) — what the decision was m
 
 Tutorial: [Double POLFED](@ref tutorial_double).
 
-## [`full_polfed`](@id UniPolfed.full_polfed)
+## [`full_polfed`](@id Polfed.full_polfed)
 
 ```julia
 full_polfed(H,  x0, howmany_per_patch; kwargs...)
@@ -115,7 +115,7 @@ Resolve the complete spectrum edge-first. There is no target argument. Accepts t
 keywords as `patched_polfed`, but defaults come from `Defaults.full_polfed` (notably
 `retry_growth = 1.5` and `optimize_mapping` on).
 
-**Returns** a [`PatchedResult`](@ref UniPolfed.PatchedResult), destructuring as
+**Returns** a [`PatchedResult`](@ref Polfed.PatchedResult), destructuring as
 `vals, vecs, report`, where `vecs` is one dense ``D \times D`` matrix. If completeness cannot be
 certified, the converged pairs are returned with a warning.
 
@@ -138,8 +138,8 @@ columns (block Lanczos), matching the shape of the `x0` you pass.
 
 !!! important "`f!` must also accept a single Krylov vector"
     Even when `x0` is a block, `f!` has to work on **one** vector — a length-`dim` vector under
-    [`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), a `1 × dim` matrix under
-    [`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Two stages need it: the
+    [`ColumnLayout`](@ref Polfed.Numerics.Lanczos.ColumnLayout), a `1 × dim` matrix under
+    [`RowLayout`](@ref Polfed.Numerics.Lanczos.RowLayout). Two stages need it: the
     spectral-bounds probe, and the DoS, which by default probes one vector at a time so the
     estimated density does not depend on your block size.
 
@@ -160,11 +160,11 @@ result = polfed(H, x0, 100, :maxdos; dosc = DoSConfig(rng = MersenneTwister(2024
 
 With a seeded `rng` the answer is reproducible and **independent of the Krylov block size** — the
 same seed gives the same eigenpairs at `block_size = 1` and `block_size = 8`. On a
-[`GPU`](@ref UniPolfed.GPU) the device generator is used and `rng` is ignored, so a GPU DoS is not
+[`GPU`](@ref Polfed.GPU) the device generator is used and `rng` is ignored, so a GPU DoS is not
 reproducible from a host seed.
 
 ```julia
-using UniPolfed
+using Polfed
 using LinearAlgebra
 
 f!(Y, X) = mul!(Y, H, X)          # the trivial wrapper, as an example
@@ -211,7 +211,7 @@ result = polfed(f!, x0, 100, :maxdos; mc = mc)
 You can also run the probe yourself:
 
 ```julia
-Emin, Emax = UniPolfed.Numerics.Lanczos.lanczos_extrema(f!, x0; maxdim=1000)
+Emin, Emax = Polfed.Numerics.Lanczos.lanczos_extrema(f!, x0; maxdim=1000)
 ```
 
 ### Supply the rescaled operator too
@@ -280,7 +280,7 @@ mc = MappingConfig(clenshaw_recurrence = crr!, clenshaw_finalsum = cfs!)
 
 In production you would replace the bodies with fused kernels that avoid the temporary
 allocation entirely; the integration point stays
-[`MappingConfig`](@ref UniPolfed.MappingConfig). What the recurrence is doing mathematically
+[`MappingConfig`](@ref Polfed.MappingConfig). What the recurrence is doing mathematically
 is on [On-the-fly mapping](@ref on_the_fly_mapping).
 
 ### Benchmark the kernel before you benchmark POLFED
@@ -315,7 +315,7 @@ not solve the same problem — most likely the spectral bounds differ.
 
 ## Filter sizing and introspection
 
-### [`expected_krylov_dim`](@id UniPolfed.expected_krylov_dim)
+### [`expected_krylov_dim`](@id Polfed.expected_krylov_dim)
 
 ```julia
 expected_krylov_dim(filter, howmany, block_size, eta)
@@ -337,7 +337,7 @@ with the constants in `Defaults.filters.<name>.krylov_fit_A` / `_alpha` / `_xc`.
 `Defaults.double_polfed.krylov_overhead`; [`EdgeFilter`](@ref filters) keeps its own
 (untuned) linear estimate.
 
-### [`order_safety_factor`](@id UniPolfed.order_safety_factor)
+### [`order_safety_factor`](@id Polfed.order_safety_factor)
 
 ```julia
 order_safety_factor(filter)
@@ -349,9 +349,9 @@ return `1.0`.
 ## Mapping-optimization helpers
 
 Used by the matrix path; exposed for callers building their own kernels. They live in
-`UniPolfed.Optimization`.
+`Polfed.Optimization`.
 
-### [`classify`](@id UniPolfed.Optimization.classify)
+### [`classify`](@id Polfed.Optimization.classify)
 
 ```julia
 classify(H; tol=1e-12, round_digits=12)
@@ -360,7 +360,7 @@ classify(H; tol=1e-12, round_digits=12)
 Analyze a structured matrix and return its value-grouped representation, a
 `MappingStructure`.
 
-### [`resolve_mapping_kernel`](@id UniPolfed.Optimization.resolve_mapping_kernel)
+### [`resolve_mapping_kernel`](@id Polfed.Optimization.resolve_mapping_kernel)
 
 ```julia
 resolve_mapping_kernel(choice, H, Val(block_size); secs=0.5)
@@ -369,7 +369,7 @@ resolve_mapping_kernel(choice, H, Val(block_size); secs=0.5)
 Resolve `true`/`:auto`, a kernel name, or a `(kernel = …, …)` named tuple into
 a concrete kernel plus tuning parameters.
 
-### [`build_optimized_mapping`](@id UniPolfed.Optimization.build_optimized_mapping)
+### [`build_optimized_mapping`](@id Polfed.Optimization.build_optimized_mapping)
 
 ```julia
 build_optimized_mapping(H, choice, Val(block_size), a, b; secs=0.5)
@@ -380,7 +380,7 @@ containing `f!_rescaled`, the selected kernel id, and its tuning parameters.
 
 ## Low-level Lanczos utilities
 
-### [`lanczos`](@id UniPolfed.Numerics.Lanczos.lanczos)
+### [`lanczos`](@id Polfed.Numerics.Lanczos.lanczos)
 
 ```julia
 lanczos(A_or_f!, x0, target; kwargs...)
@@ -391,7 +391,7 @@ Run the Hermitian Lanczos or block-Lanczos eigensolver directly, with no filteri
 `LowestEigs(n)`, `HighestEigs(n)` or `BothEnds(n_low, n_high)` as explicit targets, or the
 integer convenience form with `which=:SR` / `:LR`. Returns a `LanczosResult`.
 
-### [`lanczos_extrema`](@id UniPolfed.Numerics.Lanczos.lanczos_extrema)
+### [`lanczos_extrema`](@id Polfed.Numerics.Lanczos.lanczos_extrema)
 
 ```julia
 lanczos_extrema(H; x0=nothing, maxdim=100, power_iters=3)
@@ -405,8 +405,8 @@ the `(Emin, Emax)` pair.
 ## A full call with explicit configuration
 
 ```julia
-using UniPolfed: polfed, MappingConfig, DoSConfig, BlockWise
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed: polfed, MappingConfig, DoSConfig, BlockWise
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse=true)

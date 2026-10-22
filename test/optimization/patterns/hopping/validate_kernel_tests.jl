@@ -5,7 +5,7 @@
 # pinned here, along with the registry wiring that makes the pattern reachable by name.
 
 using LinearAlgebra, SparseArrays
-import UniPolfed.Optimization: classify, can_apply, why_not, auto_score, MappingKernel,
+import Polfed.Optimization: classify, can_apply, why_not, auto_score, MappingKernel,
                                REGISTRY, _find, resolve_mapping_kernel, build_optimized_mapping,
                                kernel_name, _hop_lane_width, _hop_packed_ok, HopStructure
 

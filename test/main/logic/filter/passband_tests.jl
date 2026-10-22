@@ -1,5 +1,5 @@
 using Test
-using UniPolfed: passband, resolve_filter, build_filter, EdgeFilter, DeltaUpFilter, DeltaDownFilter,
+using Polfed: passband, resolve_filter, build_filter, EdgeFilter, DeltaUpFilter, DeltaDownFilter,
               Interval
 
 # The `passband(filter)` accessor is the safety gate's notion of "where the filter is trustworthy":

@@ -1,9 +1,9 @@
 using Test
-using UniPolfed
+using Polfed
 using LinearAlgebra
 using Random
 
-const _FC = UniPolfed.Numerics.Clenshaw
+const _FC = Polfed.Numerics.Clenshaw
 
 # Ground truth: S(A)·X through the eigendecomposition, S(λ) = Σ cₖ Pₖ(λ) evaluated by the
 # (already tested) scalar Clenshaw path.

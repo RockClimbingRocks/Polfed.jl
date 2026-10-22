@@ -2,7 +2,7 @@ using LinearAlgebra
 using Random
 using SparseArrays
 using Test
-using UniPolfed: DoSConfig, MappingConfig, full_polfed, patched_polfed
+using Polfed: DoSConfig, MappingConfig, full_polfed, patched_polfed
 
 @testset "edge-first patched and full pipelines" begin
     Random.seed!(2407)

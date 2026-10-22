@@ -5,7 +5,7 @@
 #
 # Filters get their own sibling module rather than living under `polfed`, because every
 # entrypoint resolves filters. Everything is referenced qualified, so the names never leak into
-# `module UniPolfed`.
+# `module Polfed`.
 #
 # INCLUDE ORDER — this file is included AFTER `logic/` (see main.jl), because
 # `filters/filters.jl` names filter TYPES. That is safe only because every `Defaults.*` reference

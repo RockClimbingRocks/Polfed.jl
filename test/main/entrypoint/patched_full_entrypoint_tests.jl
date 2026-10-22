@@ -1,6 +1,6 @@
 using LinearAlgebra
 using Test
-using UniPolfed: MappingConfig, RowLayout, full_polfed, patched_polfed
+using Polfed: MappingConfig, RowLayout, full_polfed, patched_polfed
 
 struct _EntrypointProbeOperator
     origin::Symbol
@@ -15,16 +15,16 @@ Base.getindex(::_EntrypointProbeMatrix, i::Int, j::Int) = Float64(i == j)
 
 const _ENTRYPOINT_ROW_SEED = reshape(collect(1.0:4.0), 1, 4)
 
-function UniPolfed._prepare_matrix_row_pipeline(
+function Polfed._prepare_matrix_row_pipeline(
     ::_EntrypointProbeMatrix,
     ::AbstractVecOrMat,
     mc::MappingConfig,
-    dosc::UniPolfed.DoSConfig,
+    dosc::Polfed.DoSConfig,
 )
     return _EntrypointProbeOperator(:matrix), _ENTRYPOINT_ROW_SEED, mc, dosc
 end
 
-function UniPolfed.run_patched_polfed_target_pipeline(
+function Polfed.run_patched_polfed_target_pipeline(
     operator::_EntrypointProbeOperator,
     x0::AbstractVecOrMat,
     howmany::Integer,
@@ -38,7 +38,7 @@ function UniPolfed.run_patched_polfed_target_pipeline(
     )
 end
 
-function UniPolfed.run_patched_polfed_window_pipeline(
+function Polfed.run_patched_polfed_window_pipeline(
     operator::_EntrypointProbeOperator,
     x0::AbstractVecOrMat,
     howmany_per_patch::Integer,
@@ -51,7 +51,7 @@ function UniPolfed.run_patched_polfed_window_pipeline(
     )
 end
 
-function UniPolfed.run_full_polfed_pipeline(
+function Polfed.run_full_polfed_pipeline(
     operator::_EntrypointProbeOperator,
     x0::AbstractVecOrMat,
     howmany_per_patch::Integer;

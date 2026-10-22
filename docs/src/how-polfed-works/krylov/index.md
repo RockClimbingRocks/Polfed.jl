@@ -87,7 +87,7 @@ Krylov basis: if ``v_{ij}`` is an eigenvector component of ``H_L``, then
 In exact arithmetic the Lanczos vectors stay mutually orthogonal. In floating point they
 gradually lose orthogonality, so reorthogonalization is needed for accurate eigenvectors —
 especially when many eigenpairs are requested. POLFED reorthogonalizes fully by default;
-see [`FullRO`](@ref UniPolfed.Numerics.Lanczos.FullRO) and its alternatives.
+see [`FullRO`](@ref Polfed.Numerics.Lanczos.FullRO) and its alternatives.
 
 ## Why Lanczos finds spectral edges efficiently
 

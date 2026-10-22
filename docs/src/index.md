@@ -1,7 +1,7 @@
-# UniPolfed.jl
+# Polfed.jl
 
 ```@meta
-CurrentModule = UniPolfed
+CurrentModule = Polfed
 ```
 
 **Polynomial Filtering Exact Diagonalization** — eigenpairs from *anywhere* in the spectrum
@@ -190,7 +190,7 @@ html.theme--catppuccin-mocha .polfed-hero-figure figcaption { color: #a7b0b8; }
   </span>
   <span class="polfed-split-button">
     <span class="button is-static">Code</span>
-    <a class="button is-primary" href="https://github.com/RockClimbingRocks/UniPolfed.jl" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <a class="button is-primary" href="https://github.com/RockClimbingRocks/Polfed.jl" target="_blank" rel="noopener noreferrer">GitHub</a>
   </span>
   <span class="polfed-split-button">
     <span class="button is-static">Article</span>
@@ -448,8 +448,8 @@ Already installed? This is the whole thing. If not, the setup steps are on the
 [Quickstart](@ref quickstart).
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse=true)
@@ -465,7 +465,7 @@ filter, and its polynomial order — is resolved automatically. See
 
 ## Citing
 
-If UniPolfed.jl supports your research, please cite **both** the overview article and the
+If Polfed.jl supports your research, please cite **both** the overview article and the
 code — it keeps the method and the software visible, reusable, and maintainable. Details
 are on the [citation page](@ref citation).
 
@@ -479,7 +479,7 @@ Version of the code: `v0.1.0`
 
 ```@raw html
 <p class="polfed-actions">
-  <a class="button is-primary" href="https://juliapkgstats.com/pkg/UniPolfed?timeframe=30d&trendingPeriod=14d&userData=true&ciData=true&missingData=true" target="_blank" rel="noopener noreferrer">Download Statistics</a>
+  <a class="button is-primary" href="https://juliapkgstats.com/pkg/Polfed?timeframe=30d&trendingPeriod=14d&userData=true&ciData=true&missingData=true" target="_blank" rel="noopener noreferrer">Download Statistics</a>
 </p>
 
 <script>

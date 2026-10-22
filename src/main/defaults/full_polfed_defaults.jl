@@ -1,5 +1,5 @@
 """
-    UniPolfed.Defaults.full_polfed
+    Polfed.Defaults.full_polfed
 
 Default registry for the `full_polfed` variant, following the per-function pattern of
 [`Defaults.polfed`](@ref).

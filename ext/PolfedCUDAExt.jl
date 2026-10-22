@@ -1,9 +1,9 @@
-module UniPolfedCUDAExt
+module PolfedCUDAExt
 
 using CUDA
 using CUDA.CUSPARSE
 
-import UniPolfed
+import Polfed
 
 _cuda_memory_info() = CUDA.memory_info()
 _cuda_available_memory() = first(CUDA.memory_info())
@@ -11,7 +11,7 @@ _cuda_total_memory() = last(CUDA.memory_info())
 _cuda_device_count() = isdefined(CUDA, :devices) ? length(CUDA.devices()) : 0
 
 function __init__()
-    UniPolfed._set_cuda_backend!(
+    Polfed._set_cuda_backend!(
         array=CUDA.CuArray,
         matrix=CUDA.CuMatrix,
         vector=CUDA.CuVector,
@@ -33,7 +33,7 @@ function __init__()
     return nothing
 end
 
-UniPolfed.is_gpu_array(::CUDA.CuArray) = true
-UniPolfed.is_gpu_sparse_matrix(::CUDA.CUSPARSE.AbstractCuSparseMatrix) = true
+Polfed.is_gpu_array(::CUDA.CuArray) = true
+Polfed.is_gpu_sparse_matrix(::CUDA.CUSPARSE.AbstractCuSparseMatrix) = true
 
 end

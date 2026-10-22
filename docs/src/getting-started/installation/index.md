@@ -4,16 +4,16 @@
 
 ```julia
 import Pkg
-Pkg.add("UniPolfed")
+Pkg.add("Polfed")
 ```
 
 Then load it:
 
 ```julia
-using UniPolfed
+using Polfed
 ```
 
-That is everything you need for the CPU workflows in these docs. `UniPolfed.jl` requires
+That is everything you need for the CPU workflows in these docs. `Polfed.jl` requires
 Julia 1.10 or newer.
 
 ## Optional: GPU support
@@ -25,11 +25,11 @@ Nothing extra needs to be installed at package level — add CUDA to your own en
 import Pkg
 Pkg.add("CUDA")
 
-using UniPolfed
+using Polfed
 using CUDA          # activates the GPU code paths
 ```
 
-From then on, passing `CuArray`/`CuSparseMatrixCSR` inputs to [`polfed`](@ref UniPolfed.polfed)
+From then on, passing `CuArray`/`CuSparseMatrixCSR` inputs to [`polfed`](@ref Polfed.polfed)
 routes the work to the GPU. See [GPU](@ref going_faster_gpu).
 
 ## Optional: models
@@ -37,7 +37,7 @@ routes the work to the GPU. See [GPU](@ref going_faster_gpu).
 The Hamiltonian builders used throughout the tutorials live in a submodule:
 
 ```julia
-using UniPolfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
+using Polfed.Models: qsun_hamiltonian, xxz_hamiltonian, j1j2_hamiltonian
 ```
 
 These are convenience test Hamiltonians only. POLFED never requires them — you can always
@@ -47,8 +47,8 @@ pass your own matrix or your own operator (see
 ## Check the install
 
 ```julia
-using UniPolfed
-using UniPolfed.Models: qsun_hamiltonian
+using Polfed
+using Polfed.Models: qsun_hamiltonian
 using LinearAlgebra
 
 H  = qsun_hamiltonian(8, 2, 1.0, 0.5; use_sparse=true)

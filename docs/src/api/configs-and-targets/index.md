@@ -6,7 +6,7 @@ Factorization tolerances (`tol`, `eigentol`, `overestimate_iters`) are direct ke
 the entrypoints. The transform and the filter are resolved by the pipeline and are not user
 configuration.
 
-## [`MappingConfig`](@id UniPolfed.MappingConfig)
+## [`MappingConfig`](@id Polfed.MappingConfig)
 
 ```julia
 MappingConfig(;
@@ -39,7 +39,7 @@ mutating your configuration.
 Usage: [Bring your own operator](@ref operator_interface),
 [Optimized kernels](@ref optimized_kernels).
 
-## [`DoSConfig`](@id UniPolfed.DoSConfig)
+## [`DoSConfig`](@id Polfed.DoSConfig)
 
 ```julia
 DoSConfig(; N=500, R=500, kernel=:Jackson, rng=Random.default_rng(),
@@ -89,11 +89,11 @@ Window calls (`polfed(…, target_window)`) accept:
 
 ## Parallelization strategies
 
-### [`Parallelization`](@id UniPolfed.Parallelization)
+### [`Parallelization`](@id Polfed.Parallelization)
 
 Abstract supertype for mapping and transform execution strategies.
 
-### [`BlockWise`](@id UniPolfed.BlockWise)
+### [`BlockWise`](@id Polfed.BlockWise)
 
 ```julia
 BlockWise(; groups = nothing)
@@ -113,7 +113,7 @@ basis-state split. `nothing` resolves it automatically. Values below `1` throw a
     `groups` is validated but **not yet read** — the block decomposition that consumes it is
     unimplemented, so every `BlockWise` currently behaves as a plain whole-block call.
 
-### [`VectorWise`](@id UniPolfed.VectorWise)
+### [`VectorWise`](@id Polfed.VectorWise)
 
 ```julia
 VectorWise()
@@ -122,11 +122,11 @@ VectorWise()
 Parallelize **around** the recurrence: run Clenshaw once per Krylov vector, each with its own
 buffer triplet. Nothing is shared between threads, so there is no per-step barrier and one
 parallel region covers the whole `K`-step loop. Gives no parallelism at block size 1 — use
-[`BlockWise`](@ref UniPolfed.BlockWise) there.
+[`BlockWise`](@ref Polfed.BlockWise) there.
 
 Splits along whichever axis holds the Krylov vectors: columns under
-[`ColumnLayout`](@ref UniPolfed.Numerics.Lanczos.ColumnLayout), rows under
-[`RowLayout`](@ref UniPolfed.Numerics.Lanczos.RowLayout). Serializes BLAS for the duration so
+[`ColumnLayout`](@ref Polfed.Numerics.Lanczos.ColumnLayout), rows under
+[`RowLayout`](@ref Polfed.Numerics.Lanczos.RowLayout). Serializes BLAS for the duration so
 the optimized kernels own the threads. Not supported on the GPU, where an explicit request is
 coerced to `BlockWise` with a warning.
 
@@ -140,11 +140,11 @@ Choosing between them: [Parallelization](@ref parallelization).
 
 ## [Processing units](@id docs_processing_units)
 
-### [`ProcessingUnit`](@id UniPolfed.ProcessingUnit)
+### [`ProcessingUnit`](@id Polfed.ProcessingUnit)
 
 Abstract backend descriptor used by allocation and storage dispatch.
 
-### [`CPU`](@id UniPolfed.CPU)
+### [`CPU`](@id Polfed.CPU)
 
 ```julia
 CPU()
@@ -152,7 +152,7 @@ CPU()
 
 The CPU allocation and array adapter.
 
-### [`GPU`](@id UniPolfed.GPU)
+### [`GPU`](@id Polfed.GPU)
 
 ```julia
 GPU()
@@ -163,46 +163,46 @@ unavailable or nonfunctional.
 
 ## Lanczos reorthogonalization and basis storage
 
-### [`ReOrthTechnique`](@id UniPolfed.Numerics.Lanczos.ReOrthTechnique)
+### [`ReOrthTechnique`](@id Polfed.Numerics.Lanczos.ReOrthTechnique)
 
 Abstract supertype for reorthogonalization strategies.
 
-### [`FullRO`](@id UniPolfed.Numerics.Lanczos.FullRO)
+### [`FullRO`](@id Polfed.Numerics.Lanczos.FullRO)
 
 Reorthogonalize on every iteration. The default.
 
-### [`PartialRO`](@id UniPolfed.Numerics.Lanczos.PartialRO)
+### [`PartialRO`](@id Polfed.Numerics.Lanczos.PartialRO)
 
 `PartialRO(skip)` reorthogonalizes only on selected iterations.
 
-### [`SelectiveRO`](@id UniPolfed.Numerics.Lanczos.SelectiveRO)
+### [`SelectiveRO`](@id Polfed.Numerics.Lanczos.SelectiveRO)
 
 Reserved for a selective scheme; **not yet implemented**.
 
-### [`OrthonormalBasis`](@id UniPolfed.Numerics.Lanczos.OrthonormalBasis)
+### [`OrthonormalBasis`](@id Polfed.Numerics.Lanczos.OrthonormalBasis)
 
 Abstract supertype for Krylov-basis storage.
 
-### [`MatrixBasis`](@id UniPolfed.Numerics.Lanczos.MatrixBasis)
+### [`MatrixBasis`](@id Polfed.Numerics.Lanczos.MatrixBasis)
 
 Store all basis vectors in one dense matrix. Supports both block layouts. The default.
 
-### [`VectorBasis`](@id UniPolfed.Numerics.Lanczos.VectorBasis)
+### [`VectorBasis`](@id Polfed.Numerics.Lanczos.VectorBasis)
 
 Store the basis as a vector of vector or block arrays.
 
 ## Block layout
 
-### [`Layout`](@id UniPolfed.Numerics.Lanczos.Layout)
+### [`Layout`](@id Polfed.Numerics.Lanczos.Layout)
 
 Abstract trait selecting the orientation of a Krylov block.
 
-### [`ColumnLayout`](@id UniPolfed.Numerics.Lanczos.ColumnLayout)
+### [`ColumnLayout`](@id Polfed.Numerics.Lanczos.ColumnLayout)
 
 Vectors as columns (``D \times \texttt{block\_size}``); the operator is applied as `H * X`.
 This is what the operator entrypoints use.
 
-### [`RowLayout`](@id UniPolfed.Numerics.Lanczos.RowLayout)
+### [`RowLayout`](@id Polfed.Numerics.Lanczos.RowLayout)
 
 Vectors as rows (``\texttt{block\_size} \times D``); the operator is applied as `X * H`.
 This is what the matrix entrypoints use.

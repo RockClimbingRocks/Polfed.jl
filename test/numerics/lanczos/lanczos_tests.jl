@@ -1,7 +1,7 @@
 using Test
-using UniPolfed
-using UniPolfed.Numerics.Lanczos
-using UniPolfed.Common: verbosity, POLFED_WARN_LEVEL
+using Polfed
+using Polfed.Numerics.Lanczos
+using Polfed.Common: verbosity, POLFED_WARN_LEVEL
 using LinearAlgebra
 using Logging
 using Random
@@ -92,7 +92,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
     @testset "_prepare_seed" begin
         @testset "vector is normalized, direction preserved, input untouched" begin
             x = [3.0, 4.0, 0.0]
-            s = UniPolfed.Numerics.Lanczos._prepare_seed(UniPolfed.Numerics.Lanczos.ColumnLayout(), x)
+            s = Polfed.Numerics.Lanczos._prepare_seed(Polfed.Numerics.Lanczos.ColumnLayout(), x)
             @test norm(s) ≈ 1
             @test s ≈ x / norm(x)
             @test x == [3.0, 4.0, 0.0]
@@ -100,7 +100,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
 
         @testset "single-column matrix is normalized (shape kept)" begin
             x = reshape([3.0, 4.0], 2, 1)
-            s = UniPolfed.Numerics.Lanczos._prepare_seed(UniPolfed.Numerics.Lanczos.ColumnLayout(), x)
+            s = Polfed.Numerics.Lanczos._prepare_seed(Polfed.Numerics.Lanczos.ColumnLayout(), x)
             @test size(s) == (2, 1)
             @test norm(s) ≈ 1
         end
@@ -108,7 +108,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
         @testset "multi-column block is orthonormalized, spans the same space" begin
             Random.seed!(5)
             x = randn(6, 3)
-            s = UniPolfed.Numerics.Lanczos._prepare_seed(UniPolfed.Numerics.Lanczos.ColumnLayout(), x)
+            s = Polfed.Numerics.Lanczos._prepare_seed(Polfed.Numerics.Lanczos.ColumnLayout(), x)
             @test size(s) == (6, 3)
             @test s' * s ≈ I(3) atol=1e-12
             @test rank(hcat(s, x); atol=1e-10) == 3      # no new directions added
@@ -117,7 +117,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
         @testset "complex block is orthonormalized" begin
             Random.seed!(6)
             x = randn(ComplexF64, 5, 2)
-            s = UniPolfed.Numerics.Lanczos._prepare_seed(UniPolfed.Numerics.Lanczos.ColumnLayout(), x)
+            s = Polfed.Numerics.Lanczos._prepare_seed(Polfed.Numerics.Lanczos.ColumnLayout(), x)
             @test s' * s ≈ I(2) atol=1e-12
         end
     end
@@ -181,7 +181,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
         vals, vecs, report = r          # LanczosResult iterates as a tuple
         @test length(vals) == r.converged
         @test size(vecs, 2) == r.converged
-        @test report isa UniPolfed.Numerics.Lanczos.FactorizationReport
+        @test report isa Polfed.Numerics.Lanczos.FactorizationReport
     end
 
     @testset "does not change the caller's BLAS thread configuration" begin
@@ -322,7 +322,7 @@ genblock(::Type{T}, n) where {T} = T[1 / (i + j + 0.5) - 0.2cos(1.3i + 0.7j) for
 end
 
 @testset "blas_threads resolution" begin
-    LZD = UniPolfed.Numerics.Lanczos
+    LZD = Polfed.Numerics.Lanczos
 
     @testset "explicit requests pass through" begin
         @test LZD.resolve_blas_threads(4) == 4
