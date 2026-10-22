@@ -1,17 +1,18 @@
 # [XXZ](@id xxz_model)
 
-The spin-1/2 XXZ chain is available from the common `Polfed.Models`
-namespace through [`xxz_hamiltonian`](@ref Polfed.Models.xxz_hamiltonian).
+The spin-1/2 XXZ chain is available from the common `UniPolfed.Models`
+namespace through [`xxz_hamiltonian`](@ref UniPolfed.Models.xxz_hamiltonian).
 
 ```julia
-using Polfed.Models: xxz_hamiltonian
+using UniPolfed.Models: xxz_hamiltonian
 
-H = xxz_hamiltonian(L, Lup, J, Delta, W; kwargs...)
+# xxz_hamiltonian(L, Lup, J, Δ, W; kwargs...)
+H = xxz_hamiltonian(14, 7, 1.0, 1.0, 0.5; use_sparse = true)
 ```
 
 For the full Julia constructor signature, argument types, keyword meanings,
 and return types, see [Models](@ref docs_models_reference), in particular
-[`xxz_hamiltonian`](@ref Polfed.Models.xxz_hamiltonian).
+[`xxz_hamiltonian`](@ref UniPolfed.Models.xxz_hamiltonian).
 
 ## Model Definition
 
@@ -36,7 +37,7 @@ magnetization sector:
 For even `L`, the zero-magnetization sector is therefore given by
 `Lup = L ÷ 2`.
 
-Disorder and boundary conventions follow the common `Polfed.Models` API:
+Disorder and boundary conventions follow the common `UniPolfed.Models` API:
 - `W` is the random-field disorder strength,
 - if `fields` is not provided, then `h_i` are sampled uniformly from
   `[field - W, field + W]`,
@@ -60,8 +61,8 @@ Disorder and boundary conventions follow the common `Polfed.Models` API:
 ## Basic Example
 
 ```julia
-using Polfed
-using Polfed.Models: xxz_hamiltonian
+using UniPolfed
+using UniPolfed.Models: xxz_hamiltonian
 using LinearAlgebra
 using Random
 
@@ -96,14 +97,13 @@ target = :middle
 vals, vecs = polfed(H, x0, howmany, target)
 ```
 
-## Relation to Advanced Tutorials
+## Relation to the optimization pages
 
-The advanced tutorial pages build on this same model and show how to exploit
-its structure for faster mappings and GPU workflows:
-- [Optimization of the XXZ Model](@ref optimization_xxz_model)
-- [Custom Mapping](@ref tutorial_xxz_custom_mapping)
-- [Automatic Optimization](@ref tutorial_xxz_baseline)
-- [GPU Implementation](@ref tutorial_xxz_rescaled_clenshaw)
+XXZ is the model used as the worked example for faster mappings, because a single
+constant offdiagonal value makes its structure especially easy to exploit:
+- [Optimized kernels — a worked example: XXZ](@ref optimized_kernels_xxz)
+- [GPU](@ref going_faster_gpu)
+- [Bring your own operator](@ref operator_interface)
 
 For the detailed Julia constructor reference, see
 [Models](@ref docs_models_reference).

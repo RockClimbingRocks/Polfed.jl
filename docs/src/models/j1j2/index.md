@@ -1,17 +1,18 @@
 # [J1-J2](@id j1j2_model)
 
-The spin-1/2 `J1-J2` chain is available from the common `Polfed.Models`
-namespace through [`j1j2_hamiltonian`](@ref Polfed.Models.j1j2_hamiltonian).
+The spin-1/2 `J1-J2` chain is available from the common `UniPolfed.Models`
+namespace through [`j1j2_hamiltonian`](@ref UniPolfed.Models.j1j2_hamiltonian).
 
 ```julia
-using Polfed.Models: j1j2_hamiltonian
+using UniPolfed.Models: j1j2_hamiltonian
 
-H = j1j2_hamiltonian(L, Lup, J1, J2, Delta1, Delta2, W; kwargs...)
+# j1j2_hamiltonian(L, Lup, J1, J2, Δ1, Δ2, W; kwargs...)
+H = j1j2_hamiltonian(14, 7, 1.0, 0.5, 1.0, 1.0, 0.5; use_sparse = true)
 ```
 
 For the full Julia constructor signature, argument types, keyword meanings,
 and return types, see [Models](@ref docs_models_reference), in particular
-[`j1j2_hamiltonian`](@ref Polfed.Models.j1j2_hamiltonian).
+[`j1j2_hamiltonian`](@ref UniPolfed.Models.j1j2_hamiltonian).
 
 ## Model Definition
 
@@ -35,7 +36,7 @@ J_2 \sum_{i=1}^{L}
 + \sum_{i=1}^{L} h_i S_i^z.
 ```
 
-As with [`xxz_hamiltonian`](@ref Polfed.Models.xxz_hamiltonian), the
+As with [`xxz_hamiltonian`](@ref UniPolfed.Models.xxz_hamiltonian), the
 constructor is fixed to spin-1/2 chains and uses `Lup` as the number of
 spin-up sites in the selected sector. The total magnetization is
 ``S_z = Lup - L/2``.
@@ -66,8 +67,8 @@ The disorder and boundary conventions are the same as for the XXZ model:
 ## Basic Example
 
 ```julia
-using Polfed
-using Polfed.Models: j1j2_hamiltonian
+using UniPolfed
+using UniPolfed.Models: j1j2_hamiltonian
 using LinearAlgebra
 using Random
 
@@ -107,7 +108,7 @@ vals, vecs = polfed(H, x0, howmany, target)
 ```
 
 For many practical studies, the `J1-J2` model is handled exactly like any
-other matrix input to [`polfed`](@ref Polfed.polfed): construct `H`, choose
+other matrix input to [`polfed`](@ref UniPolfed.polfed): construct `H`, choose
 `x0`, `howmany`, and `target`, then run the solver.
 
 For the detailed Julia constructor reference, see

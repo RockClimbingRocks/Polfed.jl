@@ -3,37 +3,76 @@
 *.jl.mem
 /Manifest.toml
 /build/
-/docs/Manifest*.toml
-/docs/build/
-/notebooks/
-/Polfed_Models_Details.txt
 /lcov.info
 
-
+/docs/Manifest*.toml
+/docs/build/
 
 *.pdf
 *.png
 !docs/src/assets/*.pdf
 !docs/src/assets/*.png
-*.jpeg  
+*.jpeg
 *.h5
-*.ipynb
 
+# Notebook environments and generated experiment output
+/notebooks/**/Manifest.toml
+/notebooks/**/.ipynb_checkpoints/
+/notebooks/**/*.csv
+/notebooks/**/*.h5
+/notebooks/**/*.pdf
+/notebooks/**/*.png
+/notebooks/**/*.log
+/notebooks/**/*.xlsx
+/notebooks/rok/test/private
 
+# Raw machine-specific benchmark output. notebooks/README.md keeps the notebook set
+# "curated, source-backed" and deliberately excludes archived timings — they are tied to
+# CPU model, thread count and layout, so they are not portable evidence. Drivers,
+# READMEs and RESULTS.md summaries stay committable; the raw numbers they produced do not.
+/notebooks/**/results/*
+!/notebooks/**/results/.gitkeep
+/notebooks/benchmarks/**/*.txt
+!/notebooks/benchmarks/**/README.txt
+.CondaPkg/
+**/.CondaPkg/
+
+# Local/generated project files
+/Polfed_Models_Details.txt
+.vscode/
+.idea/
 .DS_Store
 **/.DS_Store
-.CondaPkg/
-notebooks/.CondaPkg/
-
-
-*.AppleDouble
-
-# Omit all AppleDouble metadata files (e.g. ._foo)
 .AppleDouble/
 **/.AppleDouble/
 ._*
 **/._*
 
 # Temporary docs validation folders
-docs/build_tmp_validate*.pending_delete*/
-docs/build_locked_*/
+/docs/build_tmp_validate*.pending_delete*/
+/docs/build_locked_*/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+
+
+
+# CLAUDE
+CLAUDE.md
