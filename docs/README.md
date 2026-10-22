@@ -1,10 +1,7 @@
 # Documentation Workflow
 
-The webpage is built directly from Markdown files in `docs/src`.
-
-The previous version of the site is kept, unbuilt, in `docs-old/` for reference. Nothing
-there is published — only `docs/` is built and deployed. See `SITE-PLAN.md` for the
-structure decisions behind the current layout.
+The webpage is built directly from Markdown files in `docs/src`. The 0.1 site lives in
+the git history of `main` before the 1.0 merge; nothing from it is built.
 
 ## Site structure
 
@@ -12,8 +9,8 @@ structure decisions behind the current layout.
 Home                    docs/src/index.md
 Getting Started         getting-started/{installation,quickstart}/
 How POLFED works        how-polfed-works/{,krylov,filters,on-the-fly-mapping}/
-Tutorials               tutorials/{polfed,bring-your-own-operator,patched-polfed,
-                                   full-polfed,double-polfed,unitary-polfed}/
+Tutorials               tutorials/{polfed,double-polfed,patched-polfed,
+                                   full-polfed,unitary-polfed}/
 Going faster            going-faster/{,optimized-kernels,parallelization,gpu}/
 Models                  models/{qsun,xxz,j1j2}/
 Guidelines              guidelines/
@@ -50,7 +47,7 @@ The URL follows the folder structure. For example:
 - **Diagrams are inline SVG**, theme-aware via `html.theme--documenter-dark` and the
   catppuccin variants. Mermaid would be more diffable but needs `DocumenterMermaid` added
   to `docs/Project.toml`; that swap has not been made.
-- **Placeholder pages** (Double POLFED, Unitary POLFED, Benchmarks) carry an explicit
+- **Placeholder pages** (Unitary POLFED, Benchmarks) carry an explicit
   admonition saying so, plus a checklist of what to write.
 
 ## Sidebar

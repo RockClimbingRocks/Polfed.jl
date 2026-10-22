@@ -20,6 +20,7 @@
 /notebooks/**/.ipynb_checkpoints/
 /notebooks/**/*.csv
 /notebooks/**/*.h5
+/notebooks/**/*.jld2
 /notebooks/**/*.pdf
 /notebooks/**/*.png
 /notebooks/**/*.log

@@ -30,7 +30,7 @@ and the code. This helps make the method and the software visible, reusable,
 and easier to maintain for the community. Citation details are collected on the
 [citation page](https://rockclimbingrocks.github.io/Polfed.jl/citation/).
 
-Version of the code: `v0.1.0`
+Version of the code: `v1.0.0`
 
 ## What Is POLFED?
 
@@ -72,26 +72,28 @@ For a broader overview and practical discussion, read the `Polfed.jl` article:
 
 ## Features and Capabilities
 
-- Lanczos and block Lanczos factorizations are supported; see
-  [Lanczos and Block Lanczos Factorization](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/lanczos-block-lanczos/).
-- Arbitrary parts of the spectrum can be targeted; see
-  [Choosing Target](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/choosing-target/).
-- Built-in parallelization and optimized mapping workflows are available; see
-  [Parallelization](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/parallelization/),
-  [Optimized Mapping](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/optimized-mapping/), and
-  [Reducing Memory Access](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/reducing-memory-access/).
-- Automatic optimization and custom mappings can be used for structured models;
-  see [Automatic Optimization](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/advanced/automatic-optimization/)
-  and [Custom Mapping](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/advanced/custom-mapping/).
-- CUDA workflows are supported where available; see
-  [Working with GPUs](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/working-with-gpus/).
+- One entrypoint per kind of request: a single window
+  ([POLFED](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/polfed/)), two windows at once
+  ([Double POLFED](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/double-polfed/)), a wide window split into narrow
+  patches ([Patched POLFED](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/patched-polfed/)), and the whole spectrum
+  ([Full POLFED](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/full-polfed/)).
+- Targets are given as a number of states around an energy or as an energy window; the
+  filter, its polynomial order and the Krylov budget are resolved automatically from a
+  KPM density of states. See [The workflow](https://rockclimbingrocks.github.io/Polfed.jl/how-polfed-works/) and
+  [Filters](https://rockclimbingrocks.github.io/Polfed.jl/how-polfed-works/filters/).
+- Works on a sparse matrix or on your own matrix-free operator `f!(Y, X)`; see
+  [the operator interface](https://rockclimbingrocks.github.io/Polfed.jl/api/entrypoints/#operator_interface).
+- Lanczos and block Lanczos factorizations; see
+  [Krylov background](https://rockclimbingrocks.github.io/Polfed.jl/how-polfed-works/krylov/).
+- The filter application is the bottleneck, and is attacked with
+  [optimized kernels](https://rockclimbingrocks.github.io/Polfed.jl/going-faster/optimized-kernels/),
+  [parallelization](https://rockclimbingrocks.github.io/Polfed.jl/going-faster/parallelization/), and
+  [CUDA](https://rockclimbingrocks.github.io/Polfed.jl/going-faster/gpu/); see [Going faster](https://rockclimbingrocks.github.io/Polfed.jl/going-faster/).
 - Built-in Hamiltonian constructors are provided for
-  [Quantum Sun (QSun)](https://rockclimbingrocks.github.io/Polfed.jl/models/qsun/),
-  [XXZ](https://rockclimbingrocks.github.io/Polfed.jl/models/xxz/), and
+  [Quantum Sun (QSun)](https://rockclimbingrocks.github.io/Polfed.jl/models/qsun/), [XXZ](https://rockclimbingrocks.github.io/Polfed.jl/models/xxz/), and
   [J1-J2](https://rockclimbingrocks.github.io/Polfed.jl/models/j1j2/).
-- Reports expose convergence, timing, and configuration details; see
-  [Reporting](https://rockclimbingrocks.github.io/Polfed.jl/tutorials/beginner/reporting/) and
-  [Reports, Logging, and Defaults](https://rockclimbingrocks.github.io/Polfed.jl/documentation/reports-logging-and-defaults/).
+- Results carry a report on the spectral transformation, mapping, convergence, and
+  timings; see [Results, Reports, Logging](https://rockclimbingrocks.github.io/Polfed.jl/api/results-reports-logging/).
 
 ## Development and Experiments
 
