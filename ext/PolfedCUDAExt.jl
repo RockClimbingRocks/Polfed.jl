@@ -3,13 +3,7 @@ module PolfedCUDAExt
 using CUDA
 using CUDA.CUSPARSE
 using LinearAlgebra
-using SparseArrays
-
 import Polfed
-import Polfed.PolfedCore: materialize_host_matrix
-import Polfed.PolfedCore: optimized_clenshaw_final_sum!,
-    optimized_clenshaw_recurrence_relation!, optimized_mapping!
-using Polfed.PolfedCore: Parallelization
 
 _cuda_memory_info() = CUDA.memory_info()
 _cuda_available_memory() = first(CUDA.memory_info())
@@ -39,17 +33,13 @@ function __init__()
     return nothing
 end
 
-Polfed.is_gpu_array(::CUDA.CuArray) = true
-Polfed.is_gpu_sparse_matrix(::CUDA.CUSPARSE.AbstractCuSparseMatrix) = true
+# Views, adjoints and reshapes of device arrays count too: Lanczos hands those to the helpers that
+# decide where a result lives.
+Polfed.is_gpu_array(::CUDA.AnyCuArray) = true
+# The concrete types, not `AbstractCuSparseMatrix`: CUDA.jl 6 no longer makes them subtypes of it.
+Polfed.is_gpu_sparse_matrix(::Union{CUSPARSE.CuSparseMatrixCSR,CUSPARSE.CuSparseMatrixCSC,
+                                    CUSPARSE.CuSparseMatrixCOO,CUSPARSE.CuSparseMatrixBSR}) = true
 
-function materialize_host_matrix(mat::CUDA.CUSPARSE.AbstractCuSparseMatrix{T}) where {T<:Number}
-    I_gpu, J_gpu, V_gpu = findnz(mat)
-    I = Int.(collect(I_gpu))
-    J = Int.(collect(J_gpu))
-    V = collect(V_gpu)
-    return sparse(I, J, V, size(mat, 1), size(mat, 2))
-end
-
-include(joinpath(dirname(pathof(Polfed)), "Optimization", "gpu", "vector_dispatch.jl"))
+include("cusparse_operator.jl")
 
 end

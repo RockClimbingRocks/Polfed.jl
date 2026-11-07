@@ -10,33 +10,38 @@ makedocs(
     pagesonly=true,
     format=Documenter.HTML(
         canonical="https://rockclimbingrocks.github.io/Polfed.jl/",
+        repolink="https://github.com/RockClimbingRocks/Polfed.jl",
         edit_link=nothing,
         assets=String[],
     ),
     pages=[
-        "Introduction" => "index.md",
-        # "Polfed" => "polfed/index.md",
-        "Citation" => "citation/index.md",
+        "Home" => "index.md",
 
-        "Getting Started" => "getting-started/index.md",
+        "Getting Started" => [
+            "Installation" => "getting-started/installation/index.md",
+            "Quickstart" => "getting-started/quickstart/index.md",
+        ],
+
+        "How POLFED works" => [
+            "The workflow" => "how-polfed-works/index.md",
+            "Krylov background" => "how-polfed-works/krylov/index.md",
+            "Filters" => "how-polfed-works/filters/index.md",
+            "On-the-fly mapping" => "how-polfed-works/on-the-fly-mapping/index.md",
+        ],
 
         "Tutorials" => [
-            "Beginner" => [
-                "Choosing Target" => "tutorials/beginner/choosing-target/index.md",
-                "Reporting" => "tutorials/beginner/reporting/index.md",
-                "Lanczos and Block Lanczos Factorization" => "tutorials/beginner/lanczos-block-lanczos/index.md",
-                "Parallelization" => "tutorials/beginner/parallelization/index.md",
-                "Optimized Mapping" => "tutorials/beginner/optimized-mapping/index.md",
-                "Reducing Memory Access" => "tutorials/beginner/reducing-memory-access/index.md",
-                "Hermitian matrices" => "tutorials/beginner/hermitian-matrices/index.md",
-                "Working with GPUs" => "tutorials/beginner/working-with-gpus/index.md",
-            ],
-            "Advanced" => [
-                "Optimization of the XXZ Model" => "tutorials/advanced/optimization-of-the-xxz-model/index.md",
-                "Custom Mapping" => "tutorials/advanced/custom-mapping/index.md",
-                "Automatic Optimization" => "tutorials/advanced/automatic-optimization/index.md",
-                "GPU Implementation" => "tutorials/advanced/gpu-implementation/index.md",
-            ],
+            "POLFED" => "tutorials/polfed/index.md",
+            "Double POLFED" => "tutorials/double-polfed/index.md",
+            "Patched POLFED" => "tutorials/patched-polfed/index.md",
+            "Full POLFED" => "tutorials/full-polfed/index.md",
+            "Unitary POLFED" => "tutorials/unitary-polfed/index.md",
+        ],
+
+        "Going faster" => [
+            "The bottleneck" => "going-faster/index.md",
+            "Optimized kernels" => "going-faster/optimized-kernels/index.md",
+            "Parallelization" => "going-faster/parallelization/index.md",
+            "GPU" => "going-faster/gpu/index.md",
         ],
 
         "Models" => [
@@ -47,13 +52,23 @@ makedocs(
 
         "Guidelines" => "guidelines/index.md",
 
-        "Documentation" => [
-            "Core Functions" => "documentation/core-functions/index.md",
-            "Models" => "documentation/models/index.md",
-            "Configs and Parallelization Types" => "documentation/configs-and-parallelization-types/index.md",
-            "Reports, Logging, and Defaults" => "documentation/reports-logging-and-defaults/index.md",
+        "Benchmarks" => "benchmarks/index.md",
+
+        "API Reference" => [
+            "Entrypoints" => "api/entrypoints/index.md",
+            "Configs and Targets" => "api/configs-and-targets/index.md",
+            "Results, Reports, Logging" => "api/results-reports-logging/index.md",
+            "Models" => "api/models/index.md",
         ],
+
         "FAQ / Troubleshooting" => "faq/index.md",
+
+        "Development" => [
+            "Architecture" => "development/architecture.md",
+            "Roadmap" => "development/roadmap.md",
+        ],
+
+        "Citation" => "citation/index.md",
     ],
 )
 

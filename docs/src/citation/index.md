@@ -1,4 +1,4 @@
-# Citation
+# [Citation](@id citation)
 
 If `Polfed.jl` helps your research, please cite both the scientific article and
 the software. Citations are one of the clearest ways to make research software

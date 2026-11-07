@@ -6,7 +6,8 @@ namespace through [`j1j2_hamiltonian`](@ref Polfed.Models.j1j2_hamiltonian).
 ```julia
 using Polfed.Models: j1j2_hamiltonian
 
-H = j1j2_hamiltonian(L, Lup, J1, J2, Delta1, Delta2, W; kwargs...)
+# j1j2_hamiltonian(L, Lup, J1, J2, Δ1, Δ2, W; kwargs...)
+H = j1j2_hamiltonian(14, 7, 1.0, 0.5, 1.0, 1.0, 0.5; use_sparse = true)
 ```
 
 For the full Julia constructor signature, argument types, keyword meanings,

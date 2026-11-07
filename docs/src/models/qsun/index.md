@@ -12,7 +12,8 @@ The main constructor is [`qsun_hamiltonian`](@ref Polfed.Models.qsun_hamiltonian
 ```julia
 using Polfed.Models: qsun_hamiltonian
 
-H = qsun_hamiltonian(L_loc, L_grain, g0, α; kwargs...)
+# qsun_hamiltonian(L_loc, L_grain, g0, α; kwargs...)
+H = qsun_hamiltonian(12, 2, 1.0, 0.5; use_sparse = true)
 ```
 
 For the full Julia constructor signature, argument types, keyword meanings,
