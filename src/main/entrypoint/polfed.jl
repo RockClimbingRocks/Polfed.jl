@@ -2,7 +2,7 @@
 # thin: they prepare inputs and call that mode's pipeline. Count-based methods take `howmany` and a
 # point/region `target` → `run_polfed_target_pipeline`; window methods take a window `target` and no
 # `howmany` → `run_polfed_window_pipeline`. Operator methods run column-native on the caller's `f!`;
-# matrix methods own `H` and go row-native via `_prepare_matrix_row_pipeline` (entrypoint_helpers.jl).
+# matrix methods own `H` and pick their layout via `_prepare_matrix_pipeline` (entrypoint_helpers.jl).
 
 """
     polfed(f!, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
@@ -15,7 +15,7 @@ dimension, element type, and device. `target` is normalized by [`normalize_targe
 (`:maxdos`, `:middle`, a plain energy, `(:rescaled, v)`, `(:offset, η)`, …).
 
 Returns a [`PolfedResult`](@ref): the eigenpairs (true energies of `H`) **filtered to the target
-interval** and sorted ascending, iterable as `(val, vec)` pairs, carrying the structured
+interval** and sorted ascending, destructuring as `(vals, vecs, report)`, carrying the structured
 [`Report`](@ref). A `@warn` (not an error) is emitted if fewer than `howmany` land in-interval.
 
 `verbosity` (default `nothing`) raises the POLFED log level for this call only and restores it
@@ -40,12 +40,14 @@ polfed(f!, x0::AbstractVecOrMat, howmany::Integer, target;
     polfed(H::AbstractMatrix, x0, howmany, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Matrix (count-based) entrypoint: compute `howmany` eigenpairs of the concrete Hermitian matrix `H`
-near `target`, using the fast **row-layout** path. Owns `H`, so it probes `Emin`/`Emax`, builds the
-value-grouped row kernels, and reorients `x0` to row form ([`_prepare_matrix_row_pipeline`](@ref))
-before delegating to [`run_polfed_target_pipeline`](@ref) with `layout = RowLayout()`.
+near `target`. Owns `H`, so it probes `Emin`/`Emax`, picks the Krylov block layout (`mc.layout`;
+automatic: row on the CPU, by block size on the GPU), builds that layout's operators and orients
+`x0` for it ([`_prepare_matrix_pipeline`](@ref)) before delegating to
+[`run_polfed_target_pipeline`](@ref).
 
-`mc.optimize_mapping` selects the row kernel (`false` | `:auto`/`true` | a kernel `Symbol` | a
-`(kernel=…, G=…, W=…)` NamedTuple). Returns a [`PolfedResult`](@ref).
+`H` and `x0` on the GPU (e.g. a `CuSparseMatrixCSR` and a `CuArray`) run the whole solve on the
+device. `mc.optimize_mapping` selects the CPU row kernel (`false` | `:auto`/`true` | a kernel
+`Symbol` | a `(kernel=…, G=…, W=…)` NamedTuple). Returns a [`PolfedResult`](@ref).
 """
 function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany::Integer, target;
                 mc::MappingConfig        = MappingConfig(),
@@ -55,10 +57,10 @@ function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany::Integer, targe
                 overestimate_iters::Real = Defaults.polfed.overestimate_iters,
                 verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
-    return @with_verbosity verbosity run_polfed_target_pipeline(f!, x0_row, howmany, target;
-                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
-                        overestimate_iters = overestimate_iters, layout = RowLayout())
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
+    return @with_verbosity verbosity run_polfed_target_pipeline(f!, x0_l, howmany, target;
+                        mc = mc_l, dosc = dosc_l, tol = tol, eigentol = eigentol,
+                        overestimate_iters = overestimate_iters, layout = layout)
 end
 
 
@@ -102,8 +104,8 @@ polfed(f!, x0::AbstractVecOrMat, target;
     polfed(H::AbstractMatrix, x0, target; mc, dosc, tol, eigentol, overestimate_iters, verbosity) -> PolfedResult
 
 Matrix **window-target** entrypoint: compute all eigenpairs of `H` whose true energy lies in the
-window `target`, using the fast row-layout path. Same row-prep as the count-based matrix method
-([`_prepare_matrix_row_pipeline`](@ref)); delegates to [`run_polfed_window_pipeline`](@ref) instead.
+window `target`. Same preparation as the count-based matrix method
+([`_prepare_matrix_pipeline`](@ref)); delegates to [`run_polfed_window_pipeline`](@ref) instead.
 `target` must be a window spec — see [`polfed(f!, x0, target)`](@ref).
 """
 function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target;
@@ -114,8 +116,8 @@ function polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target;
                 overestimate_iters::Real = Defaults.polfed.overestimate_iters,
                 verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
-    return @with_verbosity verbosity run_polfed_window_pipeline(f!, x0_row, target;
-                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
-                        overestimate_iters = overestimate_iters, layout = RowLayout())
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
+    return @with_verbosity verbosity run_polfed_window_pipeline(f!, x0_l, target;
+                        mc = mc_l, dosc = dosc_l, tol = tol, eigentol = eigentol,
+                        overestimate_iters = overestimate_iters, layout = layout)
 end

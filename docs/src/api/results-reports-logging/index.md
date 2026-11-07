@@ -82,6 +82,13 @@ entrypoint, regardless of the Krylov layout the run used internally. This access
 rather than a copy, and additionally covers **window-mode** patched runs, where `vecs` is a vector
 of independently owned vectors rather than a matrix.
 
+!!! warning "Strided views and MKLSparse"
+    From a CPU matrix entrypoint (`polfed`, and `patched_polfed`/`full_polfed` in count or full
+    mode) the view is strided: a row of the solver's storage. MKLSparse 3.0, which POLFED loads,
+    multiplies a strided vector by a sparse matrix **wrongly, without an error** — `H * v`,
+    `mul!(y, H, v)`, `v' * H * v`. `collect(v)` first, or take `vecs[:, i]`, which copies. GPU
+    results and window-mode patched results are not affected.
+
 ### [`eigenpair`](@id Polfed.eigenpair)
 
 ```julia

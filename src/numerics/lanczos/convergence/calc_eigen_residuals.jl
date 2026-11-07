@@ -67,12 +67,13 @@ end
     _reconstruct_eigenvectors!(layout, vecs, krylovbasis, ϕ) -> nothing
 
 Backend-specific eigenvector reconstruction for the different basis representations
-(single matrix column/row, vector-of-vectors, vector-of-blocks).
+(single matrix column/row, vector-of-vectors, vector-of-blocks). `ϕ` is the host Ritz-vector
+matrix; it is copied to the device for a device basis.
 """
 _reconstruct_eigenvectors!(::ColumnLayout, vecs::AbstractMatrix, krylovbasis::AbstractMatrix, ϕ::AbstractMatrix) =
-    mul!(vecs, krylovbasis, ϕ)                 # dim×nconv = (dim×k)(k×nconv)
+    mul!(vecs, krylovbasis, on_device_of(vecs, ϕ))    # dim×nconv = (dim×k)(k×nconv)
 _reconstruct_eigenvectors!(::RowLayout, vecs::AbstractMatrix, krylovbasis::AbstractMatrix, ϕ::AbstractMatrix) =
-    mul!(vecs, ϕ', krylovbasis)                # nconv×dim = (nconv×k)(k×dim)
+    mul!(vecs, on_device_of(vecs, ϕ)', krylovbasis)   # nconv×dim = (nconv×k)(k×dim)
 
 """Vector-of-vectors basis overload (column semantics — `VectorBasis` is column-only)."""
 function _reconstruct_eigenvectors!(::Layout, vecs::AbstractMatrix, krylovbasis::Vector{<:AbstractVector}, ϕ::AbstractMatrix)
@@ -90,19 +91,15 @@ function _reconstruct_eigenvectors!(::Layout, vecs::AbstractMatrix, krylovbasis:
     return nothing
 end
 
-"""Vector-of-blocks basis overload (column semantics — `VectorBasis` is column-only)."""
+"""Vector-of-blocks basis overload (column semantics — `VectorBasis` is column-only): one GEMM
+per basis block, accumulating every eigenvector at once."""
 function _reconstruct_eigenvectors!(::Layout, vecs::AbstractMatrix, krylovbasis::Vector{<:AbstractMatrix}, ϕ::AbstractMatrix)
-    howmany = size(ϕ, 2)
     krylovdim = size(ϕ, 1)
     s = size(krylovbasis[1], 2)
-    @inbounds for i in 1:howmany
-        veci = view(vecs, :, i)
-        fill!(veci, zero(eltype(veci)))
-        for j in 1:s:krylovdim
-            l = (j+s-1) ÷ s
-            ϕ_ = @view(ϕ[j:j+s-1, i])
-            mul!(veci, krylovbasis[l], ϕ_, one(eltype(veci)), one(eltype(veci)))
-        end
+    fill!(vecs, zero(eltype(vecs)))
+    for j in 1:s:krylovdim
+        l = (j+s-1) ÷ s
+        mul!(vecs, krylovbasis[l], on_device_of(vecs, ϕ[j:j+s-1, :]), one(eltype(vecs)), one(eltype(vecs)))
     end
     return nothing
 end
@@ -113,21 +110,23 @@ end
     build_eigenvalues(layout, vecs::AbstractMatrix, valsmap!, pu::ProcessingUnit) -> AbstractVector
 
 Eigenvalues of the reconstructed eigenvectors as Rayleigh quotients `λᵢ = ⟨vᵢ | A | vᵢ⟩`
-under the original operator `valsmap!`, applied per `layout`. Returns a real vector on `pu`.
+under the original operator `valsmap!`, applied per `layout`. Returns a real host vector (also
+for a GPU run: eigenvalues are few, and every consumer indexes them).
 """
 function build_eigenvalues(layout::Layout, vecs::AbstractMatrix, valsmap!, pu::ProcessingUnit)
     S = real(eltype(vecs))
     nconv = _neigvecs(layout, vecs)
     vals_cpu = zeros(S, nconv)
-    nconv == 0 && return pu.Vector{S}(vals_cpu)
+    nconv == 0 && return vals_cpu
 
     Hv = _eigvec_workspace(layout, vecs, pu)
+    u = _contiguous_workspace(Hv)
     for i in 1:nconv
-        v = _eigvec(layout, vecs, i)
+        v = _contiguous(_eigvec(layout, vecs, i), u)
         valsmap!(Hv, v)
         vals_cpu[i] = real(dot(vec(v), vec(Hv)))
     end
-    return pu.Vector{S}(vals_cpu)
+    return vals_cpu
 end
 
 """
@@ -142,9 +141,10 @@ function build_residuals(layout::Layout, vecs::AbstractMatrix, vals::AbstractVec
     nconv == 0 && return res
 
     r = _eigvec_workspace(layout, vecs, pu)
+    u = _contiguous_workspace(r)
     vals_cpu = Vector(vals)
     for i in 1:nconv
-        v = _eigvec(layout, vecs, i)
+        v = _contiguous(_eigvec(layout, vecs, i), u)
         valsmap!(r, v)
         axpy!(-vals_cpu[i], vec(v), vec(r))
         res[i] = norm(vec(r))
@@ -173,10 +173,10 @@ function build_values_and_residuals(layout::Layout, vecs::AbstractMatrix, valsma
     nconv = _neigvecs(layout, vecs)
     vals_cpu = zeros(S, nconv)
     res = zeros(Float64, nconv)
-    nconv == 0 && return pu.Vector{S}(vals_cpu), res
+    nconv == 0 && return vals_cpu, res
 
     _values_and_residuals!(vals_cpu, res, layout, vecs, valsmap!, _eigvec_workspace(layout, vecs, pu))
-    return pu.Vector{S}(vals_cpu), res
+    return vals_cpu, res
 end
 
 """
@@ -187,16 +187,32 @@ caller's single-eigenvector workspace `w`.
 """
 function _values_and_residuals!(vals::AbstractVector, res::AbstractVector, layout::Layout,
                                 vecs::AbstractMatrix, valsmap!, w::AbstractArray)
+    u = _contiguous_workspace(w)
     for i in 1:_neigvecs(layout, vecs)
-        v = _eigvec(layout, vecs, i)
-        valsmap!(w, v)                          # the one operator application
-        λ = real(dot(vec(v), vec(w)))
-        vals[i] = λ
-        axpy!(-λ, vec(v), vec(w))               # w ← A·v − λ·v, in place
-        res[i] = norm(vec(w))
+        vals[i], res[i] = _value_and_residual!(w, _contiguous(_eigvec(layout, vecs, i), u), valsmap!)
     end
     return nothing
 end
+
+"""    _value_and_residual!(w, v, valsmap!) -> (λ, ‖A·v − λ·v‖) — one operator application, `w` as scratch."""
+function _value_and_residual!(w::AbstractArray, v::AbstractArray, valsmap!)
+    valsmap!(w, v)                          # the one operator application
+    λ = real(dot(vec(v), vec(w)))
+    axpy!(-λ, vec(v), vec(w))               # w ← A·v − λ·v, in place
+    return λ, norm(vec(w))
+end
+
+"""    _contiguous_workspace(w) — a buffer like `w` on the GPU, `nothing` on the CPU: the scratch of [`_contiguous`](@ref)."""
+_contiguous_workspace(w::AbstractArray) = is_gpu_array(w) ? similar(w) : nothing
+
+"""
+    _contiguous(v, u) -> AbstractArray
+
+`v` itself on the CPU (`u === nothing`), else `v` copied into the contiguous device buffer `u`:
+device BLAS (`dot`, `axpy!`) cannot take a strided row-layout eigenvector through `vec`.
+"""
+_contiguous(v::AbstractArray, ::Nothing) = v
+_contiguous(v::AbstractArray, u::AbstractArray) = (u .= v)
 
 # --- memory-bounded variants: the Krylov basis is the only full-size array --------------
 
@@ -273,6 +289,7 @@ end
 # just consumed. The leading `n ≤ k` slots end up holding the eigenvectors.
 function _reconstruct_in_place!(::RowLayout, B::AbstractMatrix, k::Int, ϕs::AbstractMatrix,
                                 block::Int)
+    ϕs = on_device_of(B, ϕs)
     n, dim = size(ϕs, 2), size(B, 2)
     width = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(B))
     scratch = similar(B, n, width)
@@ -287,6 +304,7 @@ end
 
 function _reconstruct_in_place!(::ColumnLayout, B::AbstractMatrix, k::Int, ϕs::AbstractMatrix,
                                 block::Int)
+    ϕs = on_device_of(B, ϕs)
     n, dim = size(ϕs, 2), size(B, 1)
     height = block > 0 ? min(block, dim) : _scratch_width(n, dim, eltype(B))
     scratch = similar(B, height, n)

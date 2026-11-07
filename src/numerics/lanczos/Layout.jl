@@ -46,18 +46,32 @@ Orthonormalize the block `X` (same shape out). Returns the orthonormal block `Q`
 `bs × bs` triangular coupling factor `β` such that `X = Q·β` (column: `qr`, orthonormal
 columns, `β` upper-triangular `R`) or `X = β·Q` (row: `lq`, orthonormal rows, `β`
 lower-triangular `L`). `β` is the block analogue of the Lanczos norm coupling.
+
+On a device `X`, `Q` stays on the device and `β` is a host matrix, like every projected quantity.
 """
 function orthonormalize(::ColumnLayout, X::AbstractMatrix)
+    is_gpu_array(X) && return _device_qr(X)
     # For strided CPU BlasFloat matrices Julia dispatches `qr` to LAPACK.  If MKL.jl
     # was loaded by the caller, libblastrampoline sends that LAPACK call to MKL.
     F = qr(X)
     return Matrix(F.Q), Matrix(F.R)
 end
 function orthonormalize(::RowLayout, X::AbstractMatrix)
-    # Likewise, CPU `lq` dispatches to LAPACK; device arrays retain their backend's
-    # own method.  Lanczos deliberately does not select a backend or thread count here.
+    if is_gpu_array(X)
+        # CUSOLVER has no LQ: X = (Xᴴ)ᴴ = (Q₁R₁)ᴴ = R₁ᴴ·Q₁ᴴ, so L = R₁ᴴ and Q = Q₁ᴴ.
+        Q₁, R₁ = _device_qr(copy(X'))
+        return copy(Q₁'), Matrix(R₁')
+    end
+    # Likewise, CPU `lq` dispatches to LAPACK.  Lanczos deliberately does not select a
+    # backend or thread count here.
     F = lq(X)
     return Matrix(F.Q), Matrix(F.L)
+end
+
+"""    _device_qr(X) -> (Q, R) — thin QR of a tall device block: `Q` on the device, `R` on the host."""
+function _device_qr(X::AbstractMatrix)
+    F = qr(X)
+    return gpu_matrix(F.Q), Matrix(F.R)
 end
 
 # --- overlap (Gram block) ----------------------------------------------------

@@ -15,13 +15,13 @@ Base.getindex(::_EntrypointProbeMatrix, i::Int, j::Int) = Float64(i == j)
 
 const _ENTRYPOINT_ROW_SEED = reshape(collect(1.0:4.0), 1, 4)
 
-function Polfed._prepare_matrix_row_pipeline(
+function Polfed._prepare_matrix_pipeline(
     ::_EntrypointProbeMatrix,
     ::AbstractVecOrMat,
     mc::MappingConfig,
     dosc::Polfed.DoSConfig,
 )
-    return _EntrypointProbeOperator(:matrix), _ENTRYPOINT_ROW_SEED, mc, dosc
+    return _EntrypointProbeOperator(:matrix), _ENTRYPOINT_ROW_SEED, mc, dosc, RowLayout()
 end
 
 function Polfed.run_patched_polfed_target_pipeline(

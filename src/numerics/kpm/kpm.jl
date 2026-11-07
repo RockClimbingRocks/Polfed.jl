@@ -5,6 +5,7 @@ using LinearAlgebra, Random
 
 import ..Clenshaw: ClenshawExpansion
 import ...CPU, ...GPU, ...ProcessingUnit
+import ...is_gpu_array   # device probe blocks take the batched dots (moments.jl)
 
 include("kernels.jl")
 include("probes.jl")

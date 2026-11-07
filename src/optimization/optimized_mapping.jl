@@ -1,4 +1,4 @@
-# The boundary the POLFED pipeline consumes. `_build_matrix_rowops` calls exactly one function
+# The boundary the POLFED pipeline consumes. `_build_matrix_ops` calls exactly one function
 # here — `build_optimized_mapping` — so everything above this line is free to change shape.
 #
 # `resolve_mapping_kernel` turns whatever the user put in `optimize_mapping` into a concrete

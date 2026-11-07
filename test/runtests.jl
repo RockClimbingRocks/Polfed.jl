@@ -72,6 +72,8 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
             include("numerics/lanczos/row_layout_tests.jl")
             include("numerics/lanczos/LanczosResult_tests.jl")
             include("numerics/lanczos/FactorizationReport_tests.jl")
+            # Gated: reports as not run when no CUDA device is present (the usual case).
+            include("numerics/lanczos/gpu_lanczos_tests.jl")
         end
     end
 
@@ -108,7 +110,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
         @testset "logic" begin
             @testset "mapping" begin
                 include("main/logic/mapping/parallel_tests.jl")
-                include("main/logic/mapping/row_operators_tests.jl")
+                include("main/logic/mapping/matrix_operators_tests.jl")
             end
 
             @testset "dos" begin
@@ -201,7 +203,7 @@ const _old_logger = _quiet ? global_logger(SimpleLogger(stderr, Logging.Error)) 
             include("main/entrypoint/edge_entrypoint_tests.jl")
             include("main/entrypoint/double_entrypoint_tests.jl")
             include("main/entrypoint/patched_full_entrypoint_tests.jl")
-            # Gated: reports as skipped when no CUDA device is present (the usual case).
+            # Gated: reports as not run when no CUDA device is present (the usual case).
             include("main/entrypoint/gpu_entrypoint_tests.jl")
         end
     end

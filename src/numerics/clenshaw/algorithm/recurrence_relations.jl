@@ -5,9 +5,11 @@
 
 Chunk-based, never indexed by `threadid()`: tasks migrate on Julia >= 1.12, so a per-thread
 index is not bounded by the thread count. The single-thread branch skips the parallel region
-entirely.
+entirely. Device arrays take one fused broadcast instead (an element loop would index them from
+the host).
 """
 function _threaded_combine!(b1, X, b3, c, α, β)
+    is_gpu_array(b1) && return (@. b1 = c * X + α * b1 + β * b3)
     n = length(b1)
     n == 0 && return b1
 

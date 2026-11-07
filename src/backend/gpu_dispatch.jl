@@ -75,10 +75,27 @@ _gpu_call(ref::Base.RefValue{Any}, args...; kwargs...) = _gpu_backend(ref)(args.
 """
     is_gpu_array(x) -> Bool
 
-Return `true` when CUDA is available and `x` is a CUDA array.
+Return `true` when CUDA is available and `x` is a CUDA array, or a view/adjoint/reshape of one.
 """
 is_gpu_array(x) = false
 is_gpu_sparse_matrix(x) = false
+
+"""
+    to_host(x) -> AbstractArray
+
+`x` itself on the CPU, a host `Array` copy of a device array. Lanczos keeps its small projected
+quantities (coupling blocks, Gram matrices, Ritz vectors) on the host and moves only those.
+"""
+to_host(x) = is_gpu_array(x) ? Array(x) : x
+
+"""
+    on_device_of(A, M) -> AbstractArray
+
+`M` on the device that holds `A`: `M` itself when `A` is a host array, else a device copy. For
+host coefficients (Ritz vectors, coupling blocks) entering a product with device vectors.
+"""
+on_device_of(A, M::AbstractArray) =
+    is_gpu_array(A) ? copyto!(similar(A, eltype(M), size(M)), M isa Array ? M : Array(M)) : M
 
 gpu_array(args...; kwargs...) = _gpu_call(_GPU_ARRAY, args...; kwargs...)
 gpu_matrix(args...; kwargs...) = _gpu_call(_GPU_MATRIX, args...; kwargs...)

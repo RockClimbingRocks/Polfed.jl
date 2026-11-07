@@ -10,8 +10,9 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
     r::AbstractMatrix{T}
     v_last::AbstractMatrix{T}
     v_secondlast::AbstractMatrix{T}
-    mat::AbstractMatrix{T}
-    orth_coeff::AbstractMatrix{T}
+    mat::Matrix{T}                 # projected block-tridiagonal matrix — always on the host
+    orth_coeff::AbstractMatrix{T}  # bs × bs on the vectors' device: overlaps, DGKS δ, α for project!
+    coeff_scratch::AbstractMatrix{T}  # bs × bs on the vectors' device: β for project!
     reorth_coeff::Union{Nothing,AbstractMatrix{T}}
     pu::P
     layout::L                      # block storage orientation (Column/Row)
@@ -23,16 +24,18 @@ mutable struct BlockLanczosFactorization{S<:Real,T<:Number,P,L<:Layout} <: Krylo
         r = similar(v0)
         v_last = pu.zeros(T, size(v0))
         v_secondlast = pu.zeros(T, size(v0))
-        mat = pu.zeros(T, maxdim, maxdim)
+        mat = zeros(T, maxdim, maxdim)
         bs = blocksize(layout, v0)
         orth_coeff = pu.zeros(T, bs, bs)
+        coeff_scratch = pu.zeros(T, bs, bs)
         reorth_coeff = if basis isa MatrixBasis
             layout isa RowLayout ? pu.zeros(T, bs, maxdim) : pu.zeros(T, maxdim, bs)
         else
             nothing
         end
 
-        return new{S,T,P,L}(0, bs, basis, r, v_last, v_secondlast, mat, orth_coeff, reorth_coeff, pu, layout)
+        return new{S,T,P,L}(0, bs, basis, r, v_last, v_secondlast, mat, orth_coeff, coeff_scratch,
+                            reorth_coeff, pu, layout)
 
     end
 end
@@ -76,18 +79,29 @@ end
 end
 
 
-"""Projected factorized matrix view (`Hermitian` on CPU, device matrix on GPU)."""
+"""Projected factorized matrix view, `Hermitian` on the host (also for a GPU run)."""
 function constructfactorizedmat(fact::BlockLanczosFactorization)
     krylovdim = fact.krylovdim
-    factmat = view(fact.mat, 1:krylovdim, 1:krylovdim)
-    return isa(fact.pu, GPU) ? gpu_matrix(factmat) : Hermitian(factmat)
+    return Hermitian(view(fact.mat, 1:krylovdim, 1:krylovdim))
+end
+
+"""
+    _device_coeff(fact, M, slot) -> AbstractMatrix
+
+A host coupling block `M` (a view of `fact.mat`, or its adjoint) in a form [`project!`](@ref)
+can apply to the factorization's vectors: `M` itself on the CPU, a copy in device scratch on
+the GPU (`slot` 1 → `orth_coeff`, 2 → `coeff_scratch`, so two blocks can be live at once).
+"""
+function _device_coeff(fact::BlockLanczosFactorization, M::AbstractMatrix, slot::Int)
+    fact.pu isa GPU || return M
+    return copyto!(slot == 1 ? fact.orth_coeff : fact.coeff_scratch, Matrix(M))
 end
 
 """Orthonormalize the residual block per `layout` (column: `qr`→`R`; row: `lq`→`L`) and return
 the `bs × bs` coupling factor."""
 function calc_norm_krylovvec!(fact::BlockLanczosFactorization)
     Q, β = orthonormalize(fact.layout, fact.r)
-    copy!(fact.r, fact.pu.Matrix(Q))
+    copy!(fact.r, Q)
     return β
 end
 
@@ -96,7 +110,12 @@ function calcoverlap!(fact::BlockLanczosFactorization)
     krylovdim = fact.krylovdim
     blocksize = fact.blocksize
     α_k = view(fact.mat, krylovdim-blocksize+1:krylovdim, krylovdim-blocksize+1:krylovdim)
-    overlap!(fact.layout, α_k, fact.v_last, fact.r)
+    if fact.pu isa GPU                     # the product lands on the device; the block lives here
+        overlap!(fact.layout, fact.orth_coeff, fact.v_last, fact.r)
+        copyto!(α_k, Array(fact.orth_coeff))
+    else
+        overlap!(fact.layout, α_k, fact.v_last, fact.r)
+    end
     α_k .= Hermitian(α_k)
 end
 
@@ -124,6 +143,6 @@ function tridiagonalization!(fact::BlockLanczosFactorization)
         copyto!(β′_, β')
     end
 
-    update!(fact, fact.pu.Matrix(Q))
+    update!(fact, Q)
     return true
 end

@@ -1,8 +1,8 @@
 # End-to-end tests for the matrix entrypoint `polfed(H, x0, howmany, target)` (Stage C/D).
 #
-# The matrix entrypoint owns H, so it estimates the spectral bounds, builds the fast ROW-layout
-# operators (value-grouped kernels or a generic mul! fallback), copies x0 to row orientation, and
-# delegates to the operator entrypoint running Lanczos row-native. Ground truth here is EXACT
+# The matrix entrypoint owns H, so it estimates the spectral bounds, picks the block layout (row by
+# default on the CPU), builds that layout's operators (value-grouped row kernels or a generic mul!
+# fallback), orients x0 for it, and delegates to the pipeline. Ground truth here is EXACT
 # diagonalization: for a structured (QREM) Hamiltonian and an interior target, the eigenvalues
 # POLFED returns must be the true eigenvalues of H nearest the target, to machine precision — for
 # every optimize_mapping choice (generic + each value-grouped kernel) and both single-vector and
@@ -91,14 +91,63 @@ end
     Random.seed!(3)
     H = _qrem(6)
     before = BLAS.get_num_threads()
-    _, _, _, dosc = Polfed._prepare_matrix_row_pipeline(H, randn(size(H, 1), 2), MappingConfig(),
-                                                          DoSConfig(R = 40))
+    _, _, _, dosc, _ = Polfed._prepare_matrix_pipeline(H, randn(size(H, 1), 2), MappingConfig(),
+                                                         DoSConfig(R = 40))
     @test dosc.R == 40
     @test dosc.block_size == Polfed.Defaults.polfed.dos_block_size
     @test dosc.tasks == Threads.nthreads()
     @test BLAS.get_num_threads() == before    # the serial bounds probe restored it
 
-    _, _, _, kept = Polfed._prepare_matrix_row_pipeline(H, randn(size(H, 1)), MappingConfig(),
-                                                          DoSConfig(block_size = 2, tasks = 1))
+    _, _, _, kept, _ = Polfed._prepare_matrix_pipeline(H, randn(size(H, 1)), MappingConfig(),
+                                                         DoSConfig(block_size = 2, tasks = 1))
     @test (kept.block_size, kept.tasks) == (2, 1)
+end
+
+@testset "matrix entrypoint layout: resolution and seed orientation" begin
+    @test Polfed._matrix_layout(nothing, Polfed.CPU(), 1) == RowLayout()
+    @test Polfed._matrix_layout(nothing, Polfed.CPU(), 16) == RowLayout()
+    @test Polfed._matrix_layout(ColumnLayout(), Polfed.CPU(), 4) == ColumnLayout()
+    @test Polfed._matrix_layout(RowLayout(), Polfed.CPU(), 1) == RowLayout()
+
+    D = 12
+    v, C, R = randn(D), randn(D, 3), randn(3, D)
+    @test size(Polfed._orient_seed(RowLayout(), v, false)) == (1, D)
+    @test Polfed._orient_seed(RowLayout(), C, false) == permutedims(C)
+    @test Polfed._orient_seed(RowLayout(), R, true) === R
+    @test Polfed._orient_seed(ColumnLayout(), v, false) === v      # stays a vector: scalar Lanczos
+    @test Polfed._orient_seed(ColumnLayout(), C, false) === C
+    @test Polfed._orient_seed(ColumnLayout(), R, true) == permutedims(R)
+end
+
+# Eigenvectors are checked with `collect`: a row-layout eigenvector is a strided row view, and
+# MKLSparse 3.0's `mul!(y, A::SparseMatrixCSC, x::StridedVector)` ignores the stride of `x`.
+@testset "matrix entrypoint in both layouts, $T" for T in (Float64, ComplexF64)
+    Random.seed!(20260707)
+    L = 8; D = 2^L
+    H = _qrem(L)
+    if T <: Complex                # a genuinely complex Hermitian H (Hᵀ ≠ H)
+        Random.seed!(7)
+        P = sprand(D, D, 2 / D)
+        H = H + im * 0.3 * (P - P')
+    end
+    exact = sort(eigvals(Hermitian(Matrix(H))))
+    target_E = exact[cld(D, 2)] + 0.13
+    howmany = 6
+    @testset "$(nameof(typeof(layout))), bs = $bs" for layout in (RowLayout(), ColumnLayout()),
+                                                      bs in (1, 3)
+        x0 = bs == 1 ? randn(T, D) : randn(T, D, bs)
+        res = polfed(H, x0, howmany, target_E; mc = MappingConfig(layout = layout))
+        vals = collect(res.vals)
+        @test maximum(abs.(_closest(vals, target_E, howmany) .- _closest(exact, target_E, howmany))) < 1e-6
+        # the returned vectors are eigenvectors of H itself, not of conj(H)
+        for i in eachindex(vals)
+            v = collect(eigenvector(res, i))
+            @test norm(H * v - vals[i] * v) < 1e-6
+        end
+    end
+    @testset "value-grouped kernels need the row layout" begin
+        @test_throws ArgumentError polfed(H, randn(T, D), howmany, target_E;
+                                          mc = MappingConfig(layout = ColumnLayout(),
+                                                             optimize_mapping = :universal))
+    end
 end

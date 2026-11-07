@@ -79,6 +79,10 @@ v1   = eigenvector(result, 1)     # a view of column 1
 λ, v = eigenpair(result, 1)       # value and vector together
 ```
 
+To multiply such a view by a sparse `H` on the CPU, `collect` it first: the view is strided,
+and MKLSparse (loaded by POLFED) gets strided vectors wrong — see
+[`eigenvector`](@ref Polfed.eigenvector).
+
 ## 4. Read the output
 
 ```julia

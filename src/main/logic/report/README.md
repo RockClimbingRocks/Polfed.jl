@@ -9,12 +9,15 @@ summary of the run.
 filtered to the target interval** and **sorted ascending by true energy of `H`**, and carries the
 `Report`.
 
-- **Iterable** → `(val, vec)` pairs: `for (λ, v) in result ... end`.
-- **Indexable**: `result[i]` → `(val, vec)`; `length(result)` = number of eigenpairs.
-- `vec` is always a length-`dim` view, whichever layout the eigenvectors are stored in
-  (columns for `ColumnLayout`, rows for `RowLayout` — the matrix entrypoint's row-native path).
+- **Destructures** as `(vals, vecs, report)`, like `LanczosResult` and `PatchedResult`. No
+  `length` and no `getindex` (by design: `length(result)` would be ambiguous); the count is
+  `length(result.vals)`.
+- `vecs` is always `dim × n` with the eigenvectors as columns (a row-layout run returns a lazy
+  `transpose` of its rows). `eigenvector(result, i)` / `eigenpair(result, i)` give the `i`-th one
+  as a view — a STRIDED view on the CPU matrix path, which MKLSparse 3.0 multiplies by a sparse
+  matrix wrongly (no error): `collect` it before `H * v`.
 - Fields: `vals`, `vecs`, `residuals`, `converged` (total from Lanczos, before interval
-  filtering; the in-interval count is `length(result)`), `layout`, `report`.
+  filtering; the in-interval count is `length(result.vals)`), `layout`, `report`.
 
 Post-processing lives in [build_report.jl](build_report.jl): the in-interval subset is the
 contiguous `searchsorted` range of the sorted values (so the eigenvector slice is a **view**, no

@@ -22,8 +22,9 @@ include("optimization/Optimization.jl")  # value-grouped row kernels        (mod
 using Printf                                                  # Report section formatting
 using PrettyTables                                            # Report detail tables
 using LinearAlgebra: BLAS                                     # BLAS-thread gating in clenshaw_apply
-using MKLSparse                                               # MKL sparse matrix multiplication (CPU) for row-native path
-using MKL_jll: libmkl_rt                                      # MKL sparse matrix multiplication (CPU) for row-native path
+if MKL_jll.is_available()       # MKL has no aarch64 build (GPU nodes): SparseArrays' own mul! serves there
+    using MKLSparse                                           # MKL sparse matrix multiplication (CPU) for row-native path
+end
 using .Common: should_log, polfed_log, with_verbosity,        # gated POLFED logging
                POLFED_SILENT_LEVEL, POLFED_WARN_LEVEL,        # verbosity levels (warn_parallelization gating)
                POLFED_INFO_LEVEL, POLFED_DEBUG_LEVEL, POLFED_DEEP_DEBUG_LEVEL,

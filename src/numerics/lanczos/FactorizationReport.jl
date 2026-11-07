@@ -281,11 +281,15 @@ function display_factorization_report(report::FactorizationReport, use_colors::B
 
     if show_convergence_details
         println("- Convergence check was performed $(report.numofchecks) times, here is the table of results:")
-        kwargs = (; header = CONVERGENCE_TABLE_HEADER, tf = tf_unicode_rounded)
+        kwargs = (; column_labels = CONVERGENCE_TABLE_HEADER,
+                  table_format = TextTableFormat(borders = text_table_borders__unicode_rounded),
+                  # whole table, never cropped to the display (PrettyTables 2 did not crop)
+                  fit_table_in_display_horizontally = false,
+                  fit_table_in_display_vertically = false)
         if use_colors
             # Matches the POLFED report's copy of this same table.
             pretty_table(stdout, convergence_table_rows(report); kwargs...,
-                         header_crayon = crayon"white bold")
+                         style = TextTableStyle(first_line_column_label = crayon"white bold"))
         else
             pretty_table(stdout, convergence_table_rows(report); kwargs...)
         end

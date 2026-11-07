@@ -3,6 +3,8 @@ module Clenshaw
 
 using LinearAlgebra, SparseArrays, StaticArrays
 
+import ...is_gpu_array   # device buffers take the broadcast combine (recurrence_relations.jl)
+
 """Polynomial families supported by [`recurrence_weights`](@ref) / `ClenshawExpansion`."""
 const SUPPORTED_FAMILIES = (:Chebyshev, :Legendre, :Hermite, :Taylor)
 

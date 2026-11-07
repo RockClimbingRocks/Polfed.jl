@@ -3,13 +3,12 @@
 
 Return a normalized Lanczos seed: a unit vector for vector/single-vector input, or an
 orthonormalized block for a multi-vector block (columns via `qr` for [`ColumnLayout`](@ref),
-rows via `lq` for [`RowLayout`](@ref)). GPU blocks are passed through (assumed already
-orthonormal). Does not mutate the caller's array.
+rows via `lq` for [`RowLayout`](@ref)), on the same device as `x0`. Does not mutate the
+caller's array.
 """
 _prepare_seed(::Layout, x0::AbstractVector) = x0 ./ norm(x0)
 function _prepare_seed(layout::Layout, x0::AbstractMatrix)
     blocksize(layout, x0) == 1 && return x0 ./ norm(x0)
-    is_gpu_array(x0) && return x0
     return first(orthonormalize(layout, x0))
 end
 
@@ -78,9 +77,6 @@ function lanczos(
     end
 
     pu = is_gpu_array(x0) ? GPU() : CPU()
-    if isa(pu, GPU) && !(eltype(x0) <: Real)
-        error("Complex GPU arrays are not supported yet. The GPU Lanczos path is real-only; use CPU arrays for complex operators.")
-    end
 
     # A plain vector is orientation-free — always column semantics for the vector path.
     layout = x0 isa AbstractVector ? ColumnLayout() : layout

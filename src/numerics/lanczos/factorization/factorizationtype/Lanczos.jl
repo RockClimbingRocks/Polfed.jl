@@ -50,19 +50,19 @@ single-vector subspace has no coupling, so the Ritz residual estimate is `0`.
 """Store scalar norm-coupling value `β` for the current iteration."""
 @inline addnorm!(fact::LanczosFactorization, β::Real) = (fact.βs[fact.krylovdim-1] = β)
 
+"""Scalar couplings need no device copy; see the block method of `_device_coeff`."""
+@inline _device_coeff(::LanczosFactorization, x, ::Int) = x
+
 """Accumulate a DGKS correction into the stored overlap `α_k`."""
 @inline addoverlap!(fact::LanczosFactorization, δα::Real) = (fact.αs[fact.krylovdim] += δα)
 
 
 """
-Construct the projected matrix from stored Lanczos coefficients. On CPU this is a
-`SymTridiagonal` (so `eigen` dispatches to the fast symmetric-tridiagonal solver);
-on GPU it is materialized as a dense device matrix.
+Construct the projected matrix from stored Lanczos coefficients: a host `SymTridiagonal` (so
+`eigen` dispatches to the fast symmetric-tridiagonal solver), also for a GPU run.
 """
 @inline constructfactorizedmat(fact::LanczosFactorization) =
-    isa(fact.pu, GPU) ?
-        gpu_matrix(SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])) :
-        SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])
+    SymTridiagonal(fact.αs[1:fact.krylovdim], fact.βs[1:fact.krylovdim-1])
 
 """Normalize the residual vector in place and return its norm."""
 @inline calc_norm_krylovvec!(fact::LanczosFactorization) = (β = LinearAlgebra.norm(fact.r); fact.r ./= β; β)

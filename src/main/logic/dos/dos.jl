@@ -81,16 +81,17 @@ struct DoSConfig{RNG<:AbstractRNG}
 end
 
 """
-    _owned_operator_dos(cfg::DoSConfig) -> DoSConfig
+    _owned_operator_dos(cfg::DoSConfig; gpu = false) -> DoSConfig
 
 `cfg` with the automatic (`nothing`) `block_size`/`tasks` resolved for an operator POLFED owns:
-[`Defaults.polfed.dos_block_size`](@ref) and `Threads.nthreads()`. Explicit values are kept.
+[`Defaults.polfed.dos_block_size`](@ref) and `Threads.nthreads()` — one task on the GPU, where the
+device is already parallel and more host tasks only contend for it. Explicit values are kept.
 Used by the matrix entrypoints, whose DoS operator is a generic, reentrant `mul!` on `H`.
 """
-_owned_operator_dos(cfg::DoSConfig) =
+_owned_operator_dos(cfg::DoSConfig; gpu::Bool = false) =
     DoSConfig(N = cfg.N, R = cfg.R, kernel = cfg.kernel, rng = cfg.rng,
               block_size = something(cfg.block_size, Defaults.polfed.dos_block_size),
-              tasks = something(cfg.tasks, Threads.nthreads(:default)))
+              tasks = something(cfg.tasks, gpu ? 1 : Threads.nthreads(:default)))
 
 
 

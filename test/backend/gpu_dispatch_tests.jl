@@ -20,6 +20,14 @@ using Polfed
         @test_throws ErrorException Polfed.gpu_zeros(2)
     end
 
+    @testset "host/device movers leave host arrays alone" begin
+        x, M = [1.0, 2.0], [1.0 2.0; 3.0 4.0]
+        @test Polfed.to_host(x) === x
+        @test Polfed.on_device_of(x, M) === M
+        v = view(M, :, 1)
+        @test Polfed.on_device_of(x, v) === v          # a host view is not copied either
+    end
+
     @testset "soft accessors no-op without CUDA" begin
         @test Polfed.gpu_functional()  == false
         @test Polfed.gpu_device_count() == 0

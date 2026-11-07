@@ -71,6 +71,17 @@ off-diagonal values.
 """
 const optimize_mapping = false
 
+"""
+    Defaults.polfed.gpu_row_layout_from::Int = 8
+
+On the GPU the automatic matrix-entrypoint layout (`MappingConfig(layout = nothing)`) is
+[`RowLayout`](@ref) from this Krylov block size on and [`ColumnLayout`](@ref) below it. CUSPARSE's
+row-major SpMM reads the matrix once for the whole block and is cheaper per vector than column SpMM
+from `bs = 8` on; below that column SpMM wins, and `bs = 1` is true (scalar) vector Lanczos only in
+the column layout.
+"""
+const gpu_row_layout_from = 8
+
 # ── Target resolution ─────────────────────────────────────────────────────────
 
 """

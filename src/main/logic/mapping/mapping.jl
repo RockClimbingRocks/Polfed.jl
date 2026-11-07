@@ -3,12 +3,12 @@
 # — it pulls in the parallelization strategy types (chosen here, consumed downstream)
 
 include("parallel.jl")       # Parallelization types + resolve/warn (MappingConfig field + build)
-include("row_operators.jl")  # row-layout operator builders for the matrix entrypoint (polfed(H, …))
+include("matrix_operators.jl")  # operator builders for the matrix entrypoints (polfed(H, …)), both layouts + GPU
 
 """
     MappingConfig(; parallel_strategy=nothing, optimize_mapping=Defaults.polfed.optimize_mapping,
                     f!_rescaled=nothing, clenshaw_recurrence=nothing, clenshaw_finalsum=nothing,
-                    Emin=nothing, Emax=nothing)
+                    Emin=nothing, Emax=nothing, layout=nothing)
 
 User-facing configuration for POLFED's **mapping** stage — how the operator is
 rescaled to `[-1, 1]` and how that application is parallelized/optimized.
@@ -32,6 +32,11 @@ and builds the `f!_rescaled` closure.
   (CPU → [`VectorWise`](@ref), GPU → [`BlockWise`](@ref)).
 - `Emin`, `Emax::Union{Real,Nothing}`: explicit spectral bounds. Either left `nothing`
   is estimated by a short Lanczos probe.
+- `layout::Union{Layout,Nothing}`: Krylov block layout of the **matrix** entrypoints —
+  [`RowLayout`](@ref) (one vector per row of a `bs × D` block) or [`ColumnLayout`](@ref). `nothing`
+  (default) is automatic: row on the CPU (the value-grouped kernels are row kernels); on the GPU
+  column below [`Defaults.polfed.gpu_row_layout_from`](@ref) and row from it on. The operator
+  entrypoints `polfed(f!, …)` are always column-layout (the caller's `f!` fixes it).
 
 # Example
 ```julia
@@ -52,6 +57,7 @@ struct MappingConfig
     parallel_strategy::Union{Parallelization,Nothing}
     Emin::Union{Real,Nothing}
     Emax::Union{Real,Nothing}
+    layout::Union{Layout,Nothing}
 
     function MappingConfig(;
         optimize_mapping::Union{Bool,Symbol,NamedTuple,MappingKernel}   = Defaults.polfed.optimize_mapping,
@@ -61,9 +67,10 @@ struct MappingConfig
         parallel_strategy::Union{Parallelization,Nothing} = nothing,
         Emin::Union{Real,Nothing}                         = nothing,
         Emax::Union{Real,Nothing}                         = nothing,
+        layout::Union{Layout,Nothing}                     = nothing,
     )
         new(optimize_mapping, f!_rescaled,
-            clenshaw_recurrence, clenshaw_finalsum, parallel_strategy, Emin, Emax)
+            clenshaw_recurrence, clenshaw_finalsum, parallel_strategy, Emin, Emax, layout)
     end
 end
 

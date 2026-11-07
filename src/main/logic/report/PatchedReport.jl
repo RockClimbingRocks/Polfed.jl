@@ -137,10 +137,14 @@ function render_patched_convergence(io::IO, f::Formatter, r::PatchedReport; deta
                           @sprintf("%.1e", p.factorization.eigenresidual),
                           string(p.factorization.itersneeded), string(p.retries)]
         end
-        kwargs = (; header = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"],
-                  tf = tf_unicode_rounded)
+        kwargs = (; column_labels = ["#", "kind", "filter", "K", "conv/req", "eigen res", "iters", "retries"],
+                  table_format = TextTableFormat(borders = text_table_borders__unicode_rounded),
+                  # whole table, never cropped to the display (PrettyTables 2 did not crop)
+                  fit_table_in_display_horizontally = false,
+                  fit_table_in_display_vertically = false)
         if f.color
-            pretty_table(io, data; kwargs..., header_crayon = crayon"white bold")
+            pretty_table(io, data; kwargs...,
+                         style = TextTableStyle(first_line_column_label = crayon"white bold"))
         else
             pretty_table(io, data; kwargs...)
         end

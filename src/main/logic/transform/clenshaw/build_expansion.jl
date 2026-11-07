@@ -57,8 +57,9 @@ end
 
 The Clenshaw evaluator for the operator `op`, callable as `e(Y, X, b)`:
 
-- [`_RowRescaled`](@ref) (generic matrix path) → [`AxpbyClenshaw`](@ref): every step is one
-  accumulating MKL product plus one MKL `axpy`, all on MKL's threads;
+- an [`_AccumulatingOperator`](@ref) (generic matrix path, CPU or GPU) → [`AxpbyClenshaw`](@ref):
+  every step is one accumulating product plus one `axpy` — on MKL's threads on the CPU, as two
+  device calls (CUSPARSE + CUBLAS) on the GPU;
 - [`RangeKernelOperator`](@ref) (optimized kernel with a range form) → [`RangeClenshaw`](@ref):
   the whole recurrence in one threaded region;
 - anything else → [`ClenshawExpansion`](@ref): operator call, then a threaded combine, per step.
@@ -68,10 +69,10 @@ The first two never switch thread pool inside a step.
 _operator_expansion(family::Symbol, coefficients, order::Int, op) =
     ClenshawExpansion(family, coefficients, order, op)
 
-_operator_expansion(family::Symbol, coefficients, order::Int, op::_RowRescaled) =
+_operator_expansion(family::Symbol, coefficients, order::Int, op::_AccumulatingOperator) =
     AxpbyClenshaw(family, coefficients, order,
-                  (Y, X, α, β) -> _row_axpby!(op, Y, X, α, β),
-                  (Y, c, X) -> _row_add!(op, Y, c, X))
+                  (Y, X, α, β) -> _axpby!(op, Y, X, α, β),
+                  (Y, c, X) -> _add!(op, Y, c, X))
 
 _operator_expansion(family::Symbol, coefficients, order::Int, op::RangeKernelOperator) =
     RangeClenshaw(family, coefficients, order, op.range!, op.units; alignment = op.alignment)

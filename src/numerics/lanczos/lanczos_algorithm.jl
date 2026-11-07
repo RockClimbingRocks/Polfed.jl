@@ -57,7 +57,7 @@ function lanczos_algorithm(
         S = real(T)
         dim = opdim(iterator.layout, iterator.x0)
         emptyvecs = iterator.layout isa RowLayout ? pu.Matrix{T}(undef, 0, dim) : pu.Matrix{T}(undef, dim, 0)
-        result = (pu.Vector{S}(undef, 0), emptyvecs, Float64[])
+        result = (Vector{S}(undef, 0), emptyvecs, Float64[])
     end
     vals, vecs, residuals = result
 

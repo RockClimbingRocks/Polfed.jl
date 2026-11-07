@@ -1,7 +1,7 @@
 # Public patched POLFED entrypoints. Count and window modes differ by arity:
 # count mode receives `howmany` plus `howmany_per_patch`; window mode receives only
 # `howmany_per_patch`. Operator inputs stay column-native, while matrix inputs use
-# `_prepare_matrix_row_pipeline` and force `RowLayout()`.
+# `_prepare_matrix_pipeline`, which picks the layout.
 
 """
     patched_polfed(f!, x0, howmany, howmany_per_patch, target; kwargs...)
@@ -43,8 +43,9 @@ end
     patched_polfed(H, x0, howmany, howmany_per_patch, target; kwargs...)
         -> (vals, vecs, report)
 
-Matrix form of patched count-target POLFED. It prepares optimized row-native operator
-kernels, converts `x0` to row layout, and returns eigenvectors as a `howmany × D` matrix.
+Matrix form of patched count-target POLFED. It prepares the matrix operators for the resolved
+layout ([`_prepare_matrix_pipeline`](@ref)), orients `x0` for it, and returns the eigenvectors as
+columns (a lazy `transpose` of the rows under row layout).
 """
 function patched_polfed(
     H::AbstractMatrix,
@@ -63,11 +64,11 @@ function patched_polfed(
     retry_growth::Real = Defaults.patched_polfed.retry_budget_growth,
     verbosity::Union{Nothing,Integer} = nothing,
 )
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_patched_polfed_target_pipeline(
-        f!, x0_row, howmany, howmany_per_patch, target;
-        mc = mc_row, dosc = dosc_row, tol, eigentol, overestimate_iters,
-        layout = RowLayout(),
+        f!, x0_l, howmany, howmany_per_patch, target;
+        mc = mc_l, dosc = dosc_l, tol, eigentol, overestimate_iters,
+        layout = layout,
         edge_distance, howmany_pad, max_retries, retry_growth,
     )
 end
@@ -108,8 +109,8 @@ end
     patched_polfed(H, x0, howmany_per_patch, target; kwargs...)
         -> (vals, vecs, report)
 
-Matrix form of patched window POLFED. It uses the row-native matrix path and returns a
-vector of independently owned eigenvectors in the requested window.
+Matrix form of patched window POLFED. It uses the matrix path ([`_prepare_matrix_pipeline`](@ref))
+and returns a vector of independently owned eigenvectors in the requested window.
 """
 function patched_polfed(
     H::AbstractMatrix,
@@ -127,11 +128,11 @@ function patched_polfed(
     retry_growth::Real = Defaults.patched_polfed.retry_budget_growth,
     verbosity::Union{Nothing,Integer} = nothing,
 )
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_patched_polfed_window_pipeline(
-        f!, x0_row, howmany_per_patch, target;
-        mc = mc_row, dosc = dosc_row, tol, eigentol, overestimate_iters,
-        layout = RowLayout(),
+        f!, x0_l, howmany_per_patch, target;
+        mc = mc_l, dosc = dosc_l, tol, eigentol, overestimate_iters,
+        layout = layout,
         edge_distance, howmany_pad, max_retries, retry_growth,
     )
 end

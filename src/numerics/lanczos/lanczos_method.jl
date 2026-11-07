@@ -44,10 +44,9 @@ function lanczos_method(
     # sort the converged eigenpairs ascending and align vecs + per-eigenpair residuals.
     # eigenvectors are stored as columns (ColumnLayout) or rows (RowLayout). They are
     # permuted in place: a sorted copy would be a second full eigenvector matrix.
-    vals_cpu = is_gpu_array(vals) ? collect(vals) : vals
-    perm = sortperm(vals_cpu)
+    perm = sortperm(vals)                       # vals is a host vector (also for a GPU run)
 
-    vals_sorted = pu.Vector(vals[perm])
+    vals_sorted = vals[perm]
     vecs_sorted = permute_eigenvectors!(iterator.layout, vecs, perm)
     residuals_sorted = residuals[perm]
     converged = count(<(criterion.eigentol), residuals_sorted)

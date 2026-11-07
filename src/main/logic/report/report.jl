@@ -190,9 +190,14 @@ function render_convergence(io::IO, f::Formatter, fr::FactorizationReport; detai
         println(io, "- Convergence check ran ", cyan(f, string(fr.numofchecks)), " times:")
         # Bold (not blue) header: blue is the section-title color here, and reusing it made the
         # table read as a new section rather than as detail hanging off the Convergence one.
-        kwargs = (; header = CONVERGENCE_TABLE_HEADER, tf = tf_unicode_rounded)
+        kwargs = (; column_labels = CONVERGENCE_TABLE_HEADER,
+                  table_format = TextTableFormat(borders = text_table_borders__unicode_rounded),
+                  # whole table, never cropped to the display (PrettyTables 2 did not crop)
+                  fit_table_in_display_horizontally = false,
+                  fit_table_in_display_vertically = false)
         if f.color
-            pretty_table(io, convergence_table_rows(fr); kwargs..., header_crayon = crayon"white bold")
+            pretty_table(io, convergence_table_rows(fr); kwargs...,
+                         style = TextTableStyle(first_line_column_label = crayon"white bold"))
         else
             pretty_table(io, convergence_table_rows(fr); kwargs...)
         end

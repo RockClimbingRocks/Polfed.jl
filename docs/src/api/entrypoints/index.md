@@ -275,8 +275,10 @@ cfs! = (b1, b2, c, Y, X) -> begin       # final sum
     return nothing
 end
 
-mc = MappingConfig(clenshaw_recurrence = crr!, clenshaw_finalsum = cfs!)
+mc = MappingConfig(clenshaw_recurrence = crr!, clenshaw_finalsum = cfs!, Emin = Emin, Emax = Emax)
 ```
+
+The kernels apply `H_rescaled`, so pass the `Emin`/`Emax` it was built from, as above.
 
 In production you would replace the bodies with fused kernels that avoid the temporary
 allocation entirely; the integration point stays

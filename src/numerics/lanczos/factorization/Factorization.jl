@@ -59,7 +59,8 @@ function lanczositer(iterator::LanczosIterator, basis::OrthonormalBasis, maxdim:
     if x0 isa AbstractVector
         axpy!(-α, x0, factorization.r)                     # scalar α; BLAS AXPY on CPU
     else
-        project!(iterator.layout, factorization.r, x0, α)  # block: r ← r − x0·α (col) / α·x0 (row)
+        project!(iterator.layout, factorization.r, x0,     # block: r ← r − x0·α (col) / α·x0 (row)
+                 _device_coeff(factorization, α, 1))
     end
 
     return factorization

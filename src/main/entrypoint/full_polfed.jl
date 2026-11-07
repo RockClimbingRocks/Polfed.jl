@@ -41,8 +41,9 @@ end
 """
     full_polfed(H, x0, howmany_per_patch; kwargs...) -> (vals, vecs, report)
 
-Matrix form of full POLFED. It prepares the row-native matrix operator and writes
-eigenvectors directly into one `D × D` row-layout result matrix.
+Matrix form of full POLFED. It prepares the matrix operators for the resolved layout
+([`_prepare_matrix_pipeline`](@ref)) and writes eigenvectors directly into one `D × D` result matrix
+in that layout.
 """
 function full_polfed(
     H::AbstractMatrix,
@@ -65,11 +66,11 @@ function full_polfed(
     retry_growth::Real = Defaults.full_polfed.retry_budget_growth,
     verbosity::Union{Nothing,Integer} = nothing,
 )
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
     return @with_verbosity verbosity run_full_polfed_pipeline(
-        f!, x0_row, howmany_per_patch;
-        mc = mc_row, dosc = dosc_row, tol, eigentol, overestimate_iters,
-        layout = RowLayout(),
+        f!, x0_l, howmany_per_patch;
+        mc = mc_l, dosc = dosc_l, tol, eigentol, overestimate_iters,
+        layout = layout,
         edge_distance, howmany_pad, max_retries, retry_growth,
     )
 end

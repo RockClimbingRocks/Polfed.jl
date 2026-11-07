@@ -70,9 +70,15 @@ The `i`-th eigenvector as a length-`dim` view. Equivalent to `r.vecs[:, i]` — 
 column-oriented — but returns a view rather than a copy.
 
 ```julia
-vals, vecs, report = polfed(H, x0, howmany, target)
+result = polfed(H, x0, howmany, target)
 v1 = eigenvector(result, 1)
 ```
+
+!!! warning
+    From a CPU matrix entrypoint the view is strided (a row of the Krylov storage), and MKLSparse
+    3.0, which POLFED loads, multiplies a strided vector by a sparse matrix wrongly, without an
+    error (`H * v`, `mul!(y, H, v)`, `v' * H * v`). `collect` it first, or use `r.vecs[:, i]`,
+    which copies.
 """
 eigenvector(r::PolfedResult, i::Integer) = _result_eigvec(r.layout, r.vecs, i)
 

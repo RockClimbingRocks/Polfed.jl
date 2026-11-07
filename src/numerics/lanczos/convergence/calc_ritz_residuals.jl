@@ -16,11 +16,10 @@ error. For the current `m`-dimensional projection the residual is controlled by 
 is precisely the norm/factor still held in `factorization.r` before the next Lanczos step.
 """
 function calc_ritz_residuals(factorization::KrylovFactorization)
-    mat = constructfactorizedmat(factorization)
+    mat = constructfactorizedmat(factorization)     # on the host, also for a GPU run
     λ, ϕ = eigen(mat)
-    λcpu = is_gpu_array(λ) ? collect(λ) : λ
-    residuals = _current_ritz_residuals(factorization, ϕ, eachindex(λcpu))
-    return λcpu, ϕ, residuals
+    residuals = _current_ritz_residuals(factorization, ϕ, eachindex(λ))
+    return λ, ϕ, residuals
 end
 
 function _current_ritz_residuals(factorization::LanczosFactorization,
@@ -38,7 +37,7 @@ function _current_ritz_residuals(factorization::BlockLanczosFactorization,
 
     # Column layout: G = r' r. Row layout: G = r r'. In both cases the squared
     # residual of trailing Ritz block z is z'Gz.
-    G = overlap(factorization.layout, factorization.r, factorization.r)
+    G = to_host(overlap(factorization.layout, factorization.r, factorization.r))
     s = factorization.blocksize
     return Float64[_gram_residual(ϕ, G, s, i) for i in idxs]
 end

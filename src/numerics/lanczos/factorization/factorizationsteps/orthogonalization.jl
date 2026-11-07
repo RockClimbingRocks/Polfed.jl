@@ -8,8 +8,8 @@ subtraction leaves behind ([`dgks_correction!`](@ref)).
 @inline function orthogonalization!(factorization::KrylovFactorization)
     v1 = factorization.v_last
     v2 = factorization.v_secondlast
-    α = getoverlap(factorization)
-    β = getnorm(factorization)
+    α = _device_coeff(factorization, getoverlap(factorization), 1)
+    β = _device_coeff(factorization, getnorm(factorization), 2)
     orthogonalization!(factorization.layout, factorization.r, v1, v2, α, β)
     dgks_correction!(factorization)
     return nothing
@@ -73,7 +73,7 @@ arithmetic, and `β` already lives in two mirrored views of `fact.mat`.
     layout, r, δ = fact.layout, fact.r, fact.orth_coeff
     overlap!(layout, δ, fact.v_last, r)
     project!(layout, r, fact.v_last, δ)
-    addoverlap!(fact, δ)
+    addoverlap!(fact, to_host(δ))
     if fact.krylovdim >= 2 * fact.blocksize          # mirrors the getnorm guard
         overlap!(layout, δ, fact.v_secondlast, r)
         project!(layout, r, fact.v_secondlast, δ)

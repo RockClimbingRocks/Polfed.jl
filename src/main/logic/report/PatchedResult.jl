@@ -71,6 +71,10 @@ _patched_eigvec(::Layout, vecs::AbstractVector, i::Int) = vecs[i]
 The `i`-th eigenvector as a length-`dim` vector, for either storage form. In count/full mode
 this is `r.vecs[:, i]`; in **window** mode `vecs` is a vector of vectors rather than a matrix, and
 this accessor hides that difference.
+
+!!! warning
+    In count/full mode on the CPU the result is a strided view, which MKLSparse 3.0 multiplies by
+    a sparse matrix wrongly, as for a [`PolfedResult`](@ref): `collect` it before `H * v`.
 """
 eigenvector(r::PatchedResult, i::Integer) = _patched_eigvec(r.layout, r.vecs, Int(i))
 

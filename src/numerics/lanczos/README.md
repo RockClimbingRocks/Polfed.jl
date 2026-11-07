@@ -101,6 +101,12 @@ the operator dimension), `tol`/`eigentol`, `mapvals` (operator for eigenvalues),
 `collect_garbage`. CPU vs GPU is detected from `x0`. The seed is normalized (vector)
 or orthonormalized (block) automatically.
 
+**On the GPU** the Krylov vectors, blocks and basis are device arrays, while everything
+projected stays on the host: the block-tridiagonal matrix, its `eigen`, the Ritz vectors,
+the coupling blocks (copied to device scratch before each projection) and the returned
+eigenvalues. Every factorization, layout and basis runs there, real and complex; the row
+layout orthonormalizes by a device QR of `Xᴴ` (CUSOLVER has no LQ).
+
 ---
 
 ## Internals
@@ -157,5 +163,5 @@ invariant-subspace breakdown path, and the report.
 > iteration-1 breakdown. The tests use fixed generic seed vectors instead.
 
 Run with `Pkg.test()` (`coverage=true` for line coverage). CPU paths are ~fully
-covered; the few remaining gaps are GPU-only (GPU diagnostics/cleanup, the GPU
-projected-matrix branch), gated for the aarch64/CUDA build.
+covered; the device paths are covered by `gpu_lanczos_tests.jl`, which is gated on a
+CUDA device and does not run under `Pkg.test()` (see the top-level CLAUDE.md).

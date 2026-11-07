@@ -134,11 +134,24 @@ end
 @inline _re_dot(a::Complex, b::Complex) = real(a) * real(b) + imag(a) * imag(b)
 
 function _pair_dots!(aa, ab, x::AbstractVecOrMat, y::AbstractVecOrMat, info::ProbeInfo)
+    is_gpu_array(x) && return _device_pair_dots!(aa, ab, x, y, info)
     for p in 1:info.block_size
         xs, ys = _probe_slot(x, info, p), _probe_slot(y, info, p)
         aa[p] = real(dot(xs, xs))
         ab[p] = real(dot(xs, ys))
     end
+    return nothing
+end
+
+# Device blocks: each dot vector is one reduction over the Hilbert-space axis and one bulk copy,
+# instead of `2·block_size` scalar `dot`s per step. Each of those is a host round trip — a DoS makes
+# ~10⁵ — and CUDA.jl's scalar readback segfaults intermittently on GH200 nodes (bulk copies into an
+# `Array` do not). Accumulates in `eltype(aa)` like the CPU kernel.
+function _device_pair_dots!(aa::Vector{A}, ab::Vector{A}, x::AbstractVecOrMat,
+                            y::AbstractVecOrMat, info::ProbeInfo) where {A}
+    d = info.layout === :rows ? 2 : 1                  # the Hilbert-space axis
+    copyto!(aa, Array(sum(z -> abs2(_widen(A, z)), x; dims = d)))
+    copyto!(ab, Array(real.(sum(conj.(_widen.(A, x)) .* _widen.(A, y); dims = d))))
     return nothing
 end
 

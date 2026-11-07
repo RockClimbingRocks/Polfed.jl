@@ -56,9 +56,8 @@ double_polfed(f!, x0::AbstractVecOrMat, howmany, target1, target2;
                   eigentol, overestimate_iters, verbosity) -> DoublePolfedResult
 
 Matrix (count-based) two-window entrypoint: as [`double_polfed(f!, x0, howmany, target1,
-target2)`](@ref), on the fast **row-layout** path. Owns `H`, so it probes `Emin`/`Emax`, builds the
-value-grouped row kernels and reorients `x0` ([`_prepare_matrix_row_pipeline`](@ref)) before
-delegating with `layout = RowLayout()`.
+target2)`](@ref). Owns `H`, so it probes `Emin`/`Emax`, picks the layout, builds its operators and
+orients `x0` ([`_prepare_matrix_pipeline`](@ref)) before delegating.
 """
 function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany, target1, target2;
                        strategy::Symbol         = Defaults.double_polfed.strategy,
@@ -69,11 +68,11 @@ function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, howmany, target1
                        overestimate_iters::Real = Defaults.double_polfed.overestimate_iters,
                        verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
-    return @with_verbosity verbosity run_double_polfed_target_pipeline(f!, x0_row, howmany, target1, target2;
-                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
+    return @with_verbosity verbosity run_double_polfed_target_pipeline(f!, x0_l, howmany, target1, target2;
+                        mc = mc_l, dosc = dosc_l, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, strategy = strategy,
-                        layout = RowLayout())
+                        layout = layout)
 end
 
 """
@@ -110,7 +109,7 @@ double_polfed(f!, x0::AbstractVecOrMat, target1, target2;
                   overestimate_iters, verbosity) -> DoublePolfedResult
 
 Matrix **window-target** two-window entrypoint: all eigenpairs of `H` inside each of the two
-windows, on the fast row-layout path. Same row-prep as the count-based matrix method; delegates to
+windows. Same preparation as the count-based matrix method; delegates to
 [`run_double_polfed_window_pipeline`](@ref).
 """
 function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target1, target2;
@@ -122,9 +121,9 @@ function double_polfed(H::AbstractMatrix, x0::AbstractVecOrMat, target1, target2
                        overestimate_iters::Real = Defaults.double_polfed.overestimate_iters,
                        verbosity::Union{Nothing,Integer} = nothing)
 
-    f!, x0_row, mc_row, dosc_row = _prepare_matrix_row_pipeline(H, x0, mc, dosc)
-    return @with_verbosity verbosity run_double_polfed_window_pipeline(f!, x0_row, target1, target2;
-                        mc = mc_row, dosc = dosc_row, tol = tol, eigentol = eigentol,
+    f!, x0_l, mc_l, dosc_l, layout = _prepare_matrix_pipeline(H, x0, mc, dosc)
+    return @with_verbosity verbosity run_double_polfed_window_pipeline(f!, x0_l, target1, target2;
+                        mc = mc_l, dosc = dosc_l, tol = tol, eigentol = eigentol,
                         overestimate_iters = overestimate_iters, strategy = strategy,
-                        layout = RowLayout())
+                        layout = layout)
 end

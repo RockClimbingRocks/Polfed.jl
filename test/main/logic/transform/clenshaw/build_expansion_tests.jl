@@ -72,7 +72,7 @@ using Polfed
         ws() = [rand(bs, D) for _ in 1:3]
         ref(op, K) = C.ClenshawExpansion(:Chebyshev, coef, K, op)(zeros(bs, D), X, ws())
 
-        gen = Polfed._generic_row_rescaled(H, a, b)
+        gen = Polfed._generic_rescaled(RowLayout(), H, a, b)
         e = Polfed._operator_expansion(:Chebyshev, coef, 30, gen)
         @test e isa C.AxpbyClenshaw
         @test e(zeros(bs, D), X, ws()) ≈ ref(gen, 30) rtol = 1e-12
